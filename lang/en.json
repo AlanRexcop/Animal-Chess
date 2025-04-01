@@ -1,0 +1,21 @@
+{
+  "gameTitle": "Mope.io Animal Chess",
+  "playerTurn": "Player {player}'s Turn ({color})",
+  "player1Name": "Player 1",
+  "player2Name": "Player 2",
+  "player1Color": "Blue",
+  "player2Color": "Red",
+  "statusSelecting": "Select a piece to move.",
+  "statusSelected": "Selected {animal}. Choose a destination.",
+  "statusMoved": "Player {player} moved {animal}.",
+  "statusCaptured": "Player {player}'s {attackerAnimal} captured {defenderAnimal}!",
+  "statusInvalidMove": "Invalid move. Please try again.",
+  "statusInvalidCapture": "Invalid capture: {attackerAnimal} cannot capture {defenderAnimal}.",
+  "statusBlockedPath": "Invalid move: Path is blocked.",
+  "statusTrapEffect": "{animal} entered a trap!",
+  "winMessageCapture": "Player {player} ({color}) Wins! All opponent pieces captured.",
+  "winMessageDen": "Player {player} ({color}) Wins! Reached the opponent's den.",
+  "drawMessage": "Draw game!",
+  "resetButton": "Reset Game",
+  "languageLabel": "Language:"
+}

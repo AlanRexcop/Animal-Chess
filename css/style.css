@@ -1,0 +1,223 @@
+/* css/style.css */
+
+/* Basic body styling (optional, adjust as needed) */
+body {
+  font-family: sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f0f0f0;
+  margin: 0;
+}
+
+/* Main game container */
+#game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+/* Game Title */
+h1 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* Board Grid Container */
+#board {
+  display: grid;
+  /* 9 rows, 7 columns */
+  grid-template-rows: repeat(9, 60px);    /* Adjust 60px square size as needed */
+  grid-template-columns: repeat(7, 60px);
+  gap: 1px; /* Creates thin lines between squares */
+  border: 3px solid #444; /* Dark border around the whole board */
+  background-color: #5a8a5a; /* Color shown in the gaps */
+  user-select: none; /* Prevent text selection on the board */
+  position: relative; /* For potential absolute positioning of overlays */
+}
+
+/* Basic Square Styling */
+.square {
+  /* width/height implicitly set by grid template */
+  background-color: #a0d8a0; /* Default light green for NORMAL terrain */
+  border: 1px solid #81c784; /* Slightly darker green border for squares */
+  box-sizing: border-box; /* Include border in size calculation */
+  cursor: pointer; /* Indicate clickable squares */
+  position: relative; /* Positioning context for pieces inside */
+  display: flex; /* For centering pieces */
+  justify-content: center;
+  align-items: center;
+}
+
+.square:hover {
+  /* Optional: Subtle hover effect */
+  /* background-color: #b2dfdb; */
+  outline: 1px solid gold; /* Example hover */
+}
+
+
+/* --- Terrain Styling --- */
+
+/* River Squares */
+.square.river {
+  background-color: #64b5f6; /* Light blue for water */
+  border-color: #1e88e5; /* Darker blue border */
+  cursor: default; /* Usually non-clickable unless moving Rat */
+}
+.square.river:hover {
+  outline: none; /* No hover outline on river unless moving valid piece */
+}
+
+
+/* Trap Squares */
+/* NOTE: renderer.js needs to add 'trap-p1' or 'trap-p2' based on location */
+.square.trap {
+  background-color: #bdbdbd; /* Neutral greyish background for traps */
+  /* Optional: Add a subtle background pattern or icon later */
+}
+
+.square.trap-p1 { /* Trap belonging to Player 1 (Blue - typically bottom traps) */
+  border: 2px dashed #007bff; /* Dashed blue border */
+}
+
+.square.trap-p2 { /* Trap belonging to Player 2 (Red - typically top traps) */
+  border: 2px dashed #dc3545; /* Dashed red border */
+}
+
+
+/* Den Squares */
+/* NOTE: renderer.js needs to add 'den-p1' or 'den-p2' based on location */
+.square.den {
+  background-color: #e7e2e2; /* Very light gray */
+  border: 3px solid #bdbdbd; /* Solid gray border */
+}
+
+.square.den-p1 { /* Den belonging to Player 1 (Blue - typically bottom den) */
+  background-color: #e3f2fd; /* Very light blue */
+  border: 3px solid #007bff; /* Solid blue border */
+}
+
+.square.den-p2 { /* Den belonging to Player 2 (Red - typically top den) */
+  background-color: #fce4e4; /* Very light red */
+  border: 3px solid #dc3545; /* Solid red border */
+}
+
+
+/* Status Display */
+#status {
+  margin-top: 15px;
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #333;
+  min-height: 1.5em; /* Prevent layout shifts */
+  text-align: center;
+}
+
+/* Controls Area (placeholder) */
+#controls {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* --- Piece Styling --- */
+
+/* Base style for all pieces */
+.piece {
+  width: 85%;  /* Adjust percentage for desired size within the square (e.g., 80%-90%) */
+  height: 85%;
+  border-radius: 50%; /* Make it circular */
+  box-sizing: border-box; /* Include border in size calculation */
+  pointer-events: none; /* Clicks should register on the square underneath */
+
+  /* Background image settings */
+  background-size: contain; /* Scale image down to fit within the element */
+  background-repeat: no-repeat; /* Prevent image tiling */
+  background-position: center; /* Center the image */
+
+  /* Default subtle border (optional) */
+  /* border: 1px solid rgba(0, 0, 0, 0.1); */
+
+  /* Add a very subtle inner shadow for depth (optional) */
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Player-specific borders */
+.piece.player1 { /* Player 1 (Blue) */
+  border: 4px solid #0056b3; /* Solid, slightly darker blue border */
+  background-color: #e7f5ff; /* Optional: Very light blue background tint */
+}
+
+.piece.player2 { /* Player 2 (Red) */
+  border: 4px solid #c82333; /* Solid, slightly darker red border */
+  background-color: #ffeeee; /* Optional: Very light red background tint */
+}
+
+/* Specific animal background images */
+/* Assumes images are named like 'rat.png', 'cat.png', etc. */
+/* Path is relative to the CSS file location (css/style.css) */
+
+.piece.rat {
+  background-image: url('../assets/images/rat.webp');
+}
+
+.piece.cat {
+  background-image: url('../assets/images/cat.webp');
+}
+
+.piece.dog {
+  background-image: url('../assets/images/dog.webp');
+}
+
+.piece.wolf {
+  background-image: url('../assets/images/wolf.webp');
+}
+
+.piece.leopard {
+  background-image: url('../assets/images/leopard.webp');
+}
+
+.piece.tiger {
+  background-image: url('../assets/images/tiger.webp');
+}
+
+.piece.lion {
+  background-image: url('../assets/images/lion.webp');
+}
+
+.piece.elephant {
+  background-image: url('../assets/images/elephant.webp');
+}
+
+/* --- UI Feedback Styling (Add later or now) --- */
+
+/* Style for the selected piece */
+.selected-piece {
+  outline: 3px solid gold; /* Gold outline */
+  outline-offset: 2px; /* Small gap between border and outline */
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2), 0 0 10px gold; /* Existing shadow + gold glow */
+}
+
+/* Style for squares indicating a valid move */
+.valid-move::after {
+   content: '';
+   position: absolute;
+   top: 50%;
+   left: 50%;
+   transform: translate(-50%, -50%);
+   width: 25%; /* Size relative to the square */
+   height: 25%;
+   background-color: rgba(0, 200, 0, 0.6); /* Semi-transparent green */
+   border: 1px solid rgba(0, 100, 0, 0.8);
+   border-radius: 50%;
+   pointer-events: none; /* Don't interfere with clicks */
+   z-index: 10;
+}
+
+/* Style for square holding the selected piece (optional) */
+.selected-square {
+  background-color: #fff9c4; /* Light yellow highlight */
+}
