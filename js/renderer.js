@@ -4,80 +4,82 @@
 import { BOARD_ROWS, BOARD_COLS, TerrainType, Player } from './constants.js';
 // We don't strictly need to import Piece here, as we get piece objects from the board state.
 
+const boardElement = document.getElementById('board');
+
+// ... (rest of the file, including highlight functions)
+
 /**
- * Renders the current state of the board to the HTML DOM.
- * Assumes an HTML element with id="board" exists.
- * @param {Board} board - The Board object instance containing the game state.
+ * Renders the entire board based on the board state.
+ * @param {Array<Array<object>>} boardState - The 2D array representing the board.
+ * @param {Function} clickHandler - Function to call when a square is clicked (e.g., game.handleSquareClick).
  */
-export function renderBoard(board) {
-    const boardElement = document.getElementById('board');
+export function renderBoard(boardState, clickHandler) {
     if (!boardElement) {
-        console.error("Renderer Error: Board element #board not found!");
+        console.error("Board element not found!");
         return;
     }
+    boardElement.innerHTML = ''; // Clear previous state
 
-    // Clear the previous board state from the DOM
-    boardElement.innerHTML = '';
+    const rows = boardState.length;
+    if (rows === 0) return;
+    const cols = boardState[0].length;
 
-    // Loop through each row and column of the board state
-    for (let r = 0; r < BOARD_ROWS; r++) {
-        for (let c = 0; c < BOARD_COLS; c++) {
-            // Create the square element
+    boardElement.style.gridTemplateColumns = `repeat(${cols}, 70px)`;
+    boardElement.style.gridTemplateRows = `repeat(${rows}, 70px)`;
+
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const squareData = boardState[r][c];
             const square = document.createElement('div');
             square.classList.add('square');
-            // Add data attributes for easier identification later (e.g., in event handlers)
             square.dataset.row = r;
             square.dataset.col = c;
 
-            // Determine and add terrain classes
-            const terrain = board.getTerrain(r, c);
-            square.classList.add(terrain); // Add base terrain class ('normal', 'river', 'trap', 'den')
+            // --- Add terrain classes ---
+            if (squareData && squareData.terrain) {
+                const terrain = squareData.terrain; // Assuming terrain is stored directly, e.g., 'RIVER', 'TRAP_P1', 'DEN_P2'
+                square.classList.add(terrain.toLowerCase()); // Adds 'river', 'trap_p1', 'den_p2' etc.
 
-            // Add player-specific terrain classes if needed (based on location)
-            // These checks assume P1 (Blue) is bottom, P2 (Red) is top
-            if (terrain === TerrainType.TRAP) {
-                // Player 1's traps are typically at the bottom (rows 5, 6)
-                if (r >= 5) {
-                    square.classList.add('trap-p1');
-                } else { // Player 2's traps are typically at the top (rows 0, 1)
-                    square.classList.add('trap-p2');
+                // *** Refined Handling for Trap/Den Player Association ***
+                // If your board state stores terrain differently (e.g., type: TRAP, owner: P1),
+                // you might need slightly different logic here. Example:
+                /*
+                if (squareData.terrain.type === TerrainType.TRAP) {
+                    square.classList.add('trap'); // Generic trap class
+                    square.classList.add(`trap-p${squareData.terrain.owner}`); // Specific owner class like 'trap-p1'
+                } else if (squareData.terrain.type === TerrainType.DEN) {
+                     square.classList.add('den');
+                     square.classList.add(`den-p${squareData.terrain.owner}`); // Specific owner class like 'den-p1'
+                } else {
+                     square.classList.add(squareData.terrain.type.toLowerCase()); // For RIVER, NORMAL etc.
                 }
-            } else if (terrain === TerrainType.DEN) {
-                 // Player 1's den is typically at the bottom (row 6)
-                 if (r === 8) {
-                    square.classList.add('den-p1');
-                 } else { // Player 2's den is typically at the top (row 0)
-                    square.classList.add('den-p2');
-                 }
+                */
+
+            } else {
+                 square.classList.add('normal'); // Default if no terrain info
             }
+            // -------------------------
 
-            // Check if there's a piece on this square
-            const piece = board.getPiece(r, c);
-            if (piece) {
-                // Create the piece element
+
+            // Add piece if exists
+            if (squareData && squareData.piece) {
+                const pieceData = squareData.piece;
                 const pieceElement = document.createElement('div');
-                pieceElement.classList.add('piece');
-                pieceElement.classList.add(piece.type); // Add animal type class (e.g., 'rat', 'lion')
-
-                // Add player class ('player1' or 'player2')
-                const playerClass = (piece.player === Player.PLAYER1) ? 'player1' : 'player2';
-                pieceElement.classList.add(playerClass);
-
-                // Add a title attribute for hover tooltip (optional)
-                pieceElement.title = `${piece.type} (Player ${piece.player})`;
-
-                // Append the piece element to the square element
+                pieceElement.classList.add('piece', pieceData.type.toLowerCase(), `player${pieceData.player}`);
+                pieceElement.dataset.piece = `${pieceData.type}-P${pieceData.player}`;
+                 // Ensure piece visuals override terrain background if needed (usually handled by CSS specificity)
                 square.appendChild(pieceElement);
             }
 
-            // Append the configured square element to the board element
+            // Add the click listener
+            square.addEventListener('click', () => clickHandler(r, c));
+
             boardElement.appendChild(square);
         }
     }
+    // console.log("Board rendered with terrain");
 }
-
-// --- Other potential renderer functions to add later ---
-
+//TODO other renderer
 /**
  * Highlights a specific square with a given class name.
  * @param {number} row
@@ -85,10 +87,13 @@ export function renderBoard(board) {
  * @param {string} className - e.g., 'selected-square', 'valid-move'
  */
 export function highlightSquare(row, col, className) {
-    const square = document.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
-    if (square) {
-        square.classList.add(className);
-    }
+  // Find the square element using its data attributes
+  const square = boardElement.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
+  if (square) {
+      square.classList.add(className); // Add the CSS class (e.g., 'selected', 'valid-move')
+  } else {
+      console.warn(`Could not find square at ${row},${col} to highlight.`);
+  }
 }
 
 /**

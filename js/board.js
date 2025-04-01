@@ -8,7 +8,7 @@ export class Board {
     state; // The 2D array representing the board state
 
     constructor() {
-        this.state = [];
+        this.state = null;
         this.initBoard();
     }
 
@@ -168,5 +168,17 @@ export class Board {
             return false; // Invalid coordinates are not considered "empty" in a gameplay context
         }
         return this.state[row][col].piece === null;
+    }
+    // --- Board Helper Method (Add to Board Class) ---
+    // Add this method inside your Board class in board.js:
+    getSquareData(row, col) {
+        if (!this.isValidCoordinate(row, col)) {
+            return null;
+        }
+        return this.state[row][col];
+    }
+    // Also modify getState() if it doesn't exist or isn't public:
+    getState() {
+        return this.state;
     }
 }
