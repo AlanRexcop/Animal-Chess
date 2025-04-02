@@ -78,12 +78,21 @@ h1 {
   /* Optional: Add a subtle background pattern or icon later */
 }
 
-.square.trap-p1 { /* Trap belonging to Player 1 (Blue - typically bottom traps) */
+.square.trap_p1 { /* Trap belonging to Player 1 (Blue - typically bottom traps) */
   border: 2px dashed #007bff; /* Dashed blue border */
+  /* Optional: Add an icon or symbol */
+  background-image: url('../assets/images/trap_p1.png'); 
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50%;
 }
 
-.square.trap-p2 { /* Trap belonging to Player 2 (Red - typically top traps) */
+.square.trap_p2 { /* Trap belonging to Player 2 (Red - typically top traps) */
   border: 2px dashed #dc3545; /* Dashed red border */
+  background-image: url('../assets/images/trap_p2.png'); 
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50%;
 }
 
 
@@ -92,16 +101,25 @@ h1 {
 .square.den {
   background-color: #e7e2e2; /* Very light gray */
   border: 3px solid #bdbdbd; /* Solid gray border */
+  
 }
 
-.square.den-p1 { /* Den belonging to Player 1 (Blue - typically bottom den) */
+.square.den_p1 { /* Den belonging to Player 1 (Blue - typically bottom den) */
   background-color: #e3f2fd; /* Very light blue */
   border: 3px solid #007bff; /* Solid blue border */
+  background-image: url('../assets/images/den_p1.png'); 
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50%;
 }
 
-.square.den-p2 { /* Den belonging to Player 2 (Red - typically top den) */
+.square.den_p2 { /* Den belonging to Player 2 (Red - typically top den) */
   background-color: #fce4e4; /* Very light red */
   border: 3px solid #dc3545; /* Solid red border */
+  background-image: url('../assets/images/den_p2.png'); 
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50%;
 }
 
 

@@ -27,6 +27,7 @@ function initGame() {
     validMoves = [];
     gameStatus = 'Ongoing';
     // Pass the click handler to renderBoard
+    console.log(board)
     renderBoard(board.getState(), handleSquareClick);
     updateStatus();
     console.log("Game Initialized. Player 1's Turn.");

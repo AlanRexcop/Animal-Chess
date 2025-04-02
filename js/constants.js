@@ -11,10 +11,12 @@ export const BOARD_COLS = 7;
  * Using string constants for clarity in debugging and state representation.
  */
 export const TerrainType = {
-    NORMAL: 'normal', // Regular land square
-    RIVER: 'river',   // River square (only Rat can enter, Lion/Tiger jump over)
-    TRAP: 'trap',     // Trap square (reduces rank of opponent pieces)
-    DEN: 'den'      // Den square (target for winning)
+    NORMAL: 'NORMAL',   // Regular ground square
+    RIVER: 'RIVER',     // River square
+    TRAP_P1: 'TRAP_P1', // Trap adjacent to Player 1's Den (affects Player 2)
+    TRAP_P2: 'TRAP_P2', // Trap adjacent to Player 2's Den (affects Player 1)
+    DEN_P1: 'DEN_P1',   // Player 1's Den (goal for Player 2)
+    DEN_P2: 'DEN_P2'    // Player 2's Den (goal for Player 1)
 };
 
 /**
@@ -23,9 +25,14 @@ export const TerrainType = {
  * Player 1 typically starts at the bottom, Player 2 at the top.
  */
 export const Player = {
-    NONE: 0,    // Represents no player (e.g., an empty square)
-    PLAYER1: 1, // Player 1 (e.g., Blue)
-    PLAYER2: 2  // Player 2 (e.g., Red)
+    NONE: 0,
+    PLAYER1: 1, // Typically starts at the bottom
+    PLAYER2: 2, // Typically starts at the top
+    getOpponent: function(player) {
+        if (player === this.PLAYER1) return this.PLAYER2;
+        if (player === this.PLAYER2) return this.PLAYER1;
+        return this.NONE;
+    }
 };
 
 /**
@@ -49,6 +56,14 @@ export const AnimalRanks = {
  * Useful for iteration or setup.
  */
 export const AnimalTypes = Object.keys(AnimalRanks);
+
+export const GameStatus = {
+    INIT: 'Initializing',
+    ONGOING: 'Ongoing',
+    P1_WINS: 'Player 1 Wins!',
+    P2_WINS: 'Player 2 Wins!',
+    DRAW: 'Draw' // Though draws are rare in Jungle
+};
 
 // Optional: You could also define specific locations for dens and traps here
 // if they are always the same, but it might be cleaner to handle that
