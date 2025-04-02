@@ -26,7 +26,7 @@ function initGame() {
     currentPlayer = Player.PLAYER1;
     selectedPiece = null;
     validMoves = [];
-    gameStatus = 'Ongoing';
+    gameStatus = GameStatus.ONGOING;
     // Pass the click handler to renderBoard
     console.log(board)
     renderBoard(board.getState(), handleSquareClick);
@@ -128,10 +128,10 @@ function checkGameEndAndUpdate() {
         // 3. Announce the winner
         let winMessageKey = ''; // Use keys for localization if setup
         let winner = '';
-        if (gameStatus === GameStatus.PLAYER1_WINS) {
+        if (gameStatus === GameStatus.P1_WINS) {
             winMessageKey = 'player1Wins'; // Example key for localization
             winner = 'Player 1';
-        } else if (gameStatus === GameStatus.PLAYER2_WINS) {
+        } else if (gameStatus === GameStatus.P2_WINS) {
             winMessageKey = 'player2Wins'; // Example key
             winner = 'Player 2';
         }
@@ -139,7 +139,8 @@ function checkGameEndAndUpdate() {
         // else if (gameStatus === GameStatus.DRAW) { winMessageKey = 'drawGame'; winner = 'No one';}
 
         console.log(`Game Over! ${winner} wins!`);
-        renderer.updateStatus(winMessageKey || `Game Over! ${winner} wins!`); // Update UI
+        updateStatus(`Game Over! ${winner} wins!`); // Update UI
+        // updateStatus(winMessageKey || `Game Over! ${winner} wins!`); // Update UI
 
         // DO NOT switch player here if game is over
     } else {

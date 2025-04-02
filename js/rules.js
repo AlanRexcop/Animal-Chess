@@ -349,8 +349,6 @@ export function canCapture(attackerPiece, defenderPiece, targetTerrain) {
 export function getGameStatus(board) {
     let p1PieceCount = 0;
     let p2PieceCount = 0;
-    let p1InOpponentDen = false;
-    let p2InOpponentDen = false;
 
     // Iterate through the entire board
     for (let r = 0; r < BOARD_ROWS; r++) {
@@ -366,7 +364,7 @@ export function getGameStatus(board) {
                     if (terrain === TerrainType.DEN_P2) {
                         // console.log("Game Over: Player 1 reached Player 2's Den.");
                         // Can return immediately, this is a primary win condition
-                        return GameStatus.PLAYER1_WINS;
+                        return GameStatus.P1_WINS;
                     }
                 } else if (piece.player === Player.PLAYER2) {
                     p2PieceCount++;
@@ -374,7 +372,7 @@ export function getGameStatus(board) {
                     if (terrain === TerrainType.DEN_P1) {
                         // console.log("Game Over: Player 2 reached Player 1's Den.");
                         // Can return immediately
-                        return GameStatus.PLAYER2_WINS;
+                        return GameStatus.P2_WINS;
                     }
                 }
             }
@@ -387,12 +385,12 @@ export function getGameStatus(board) {
     // These checks happen *after* the full board scan for Den entry.
     if (p2PieceCount === 0 && p1PieceCount > 0) { // Check p1PieceCount > 0 to avoid draw if both are 0? Though that shouldn't happen.
         // console.log("Game Over: Player 2 has no pieces remaining.");
-        return GameStatus.PLAYER1_WINS;
+        return GameStatus.P1_WINS;
     }
 
     if (p1PieceCount === 0 && p2PieceCount > 0) {
         // console.log("Game Over: Player 1 has no pieces remaining.");
-        return GameStatus.PLAYER2_WINS;
+        return GameStatus.P2_WINS;
     }
 
     // Optional: Handle Stalemate/Draw conditions here if needed later.
