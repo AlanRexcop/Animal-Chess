@@ -1,19 +1,21 @@
 // js/rules.js
-import { BOARD_ROWS, BOARD_COLS, AnimalRanks, Player } from './constants.js'; // Import necessary constants
+import { BOARD_ROWS, BOARD_COLS, TerrainType, Player } from './constants.js';
 
 /**
- * Checks if a move is structurally valid (within bounds, one orthogonal step).
- * NOTE: This initial version DOES NOT check for terrain, friendly pieces at destination,
- * or special moves like jumps. It only checks the basic step structure.
+ * Checks if a move is valid according to basic orthogonal steps and river rules.
+ * NOTE: Still needs additions for jumps, traps, dens, and friendly piece collision.
  *
- * @param {number} startRow - The starting row of the move.
- * @param {number} startCol - The starting column of the move.
+ * @param {object} board - The board instance (needs methods like getTerrain, getPiece).
+ * @param {object} piece - The piece object being moved (needs { type, row, col, player }).
  * @param {number} endRow - The intended ending row of the move.
  * @param {number} endCol - The intended ending column of the move.
- * @returns {boolean} - True if the move structure is valid, false otherwise.
+ * @returns {boolean} - True if the move is valid according to current rules, false otherwise.
  */
-export function isValidMoveStructure(startRow, startCol, endRow, endCol) {
-    // 1. Check boundaries
+export function isValidMove(board, piece, endRow, endCol) {
+    const startRow = piece.row;
+    const startCol = piece.col;
+
+    // 1. Check boundaries (using board dimensions from constants)
     if (endRow < 0 || endRow >= BOARD_ROWS || endCol < 0 || endCol >= BOARD_COLS) {
         // console.log("Move invalid: Out of bounds");
         return false;
@@ -25,23 +27,102 @@ export function isValidMoveStructure(startRow, startCol, endRow, endCol) {
         return false;
     }
 
+    // --- Potential Future Location for Jump Logic Check ---
+    // If we detect a jump pattern, we'd handle it here and potentially
+    // skip the single-step check below. For now, we only check single steps.
+
     // 3. Check if move is exactly one step orthogonally (up, down, left, or right)
     const rowDiff = Math.abs(startRow - endRow);
     const colDiff = Math.abs(startCol - endCol);
 
     // Manhattan distance must be 1 for a single orthogonal step
+    // (This check will need modification/bypass when jump logic is added)
     if (rowDiff + colDiff !== 1) {
-        // console.log(`Move invalid: Not orthogonal step (${rowDiff + colDiff})`);
+        // console.log(`Move invalid: Not a single orthogonal step (${rowDiff + colDiff})`);
+        // Note: This currently prevents jumps. Jump logic needs to be added separately.
         return false;
     }
 
-    // If it passes all checks, the basic structure is valid
-    // console.log("Move structure valid");
-    return true;
+    // 4. *** NEW: Check Terrain Rules (River) ***
+    const targetTerrain = board.getTerrain(endRow, endCol); // Assumes board has getTerrain method
 
-    // Later enhancements: Check terrain, check friendly piece collision, check special moves (jump)
+    if (targetTerrain === TerrainType.RIVER) {
+        // Only Rats can enter the river
+        if (piece.type !== 'rat') {
+            // console.log("Move invalid: Only rats can enter the river.");
+            return false;
+        }
+        // If it IS a rat, moving into the river is okay (based on this rule alone)
+    }
+
+    // 5. --- Placeholder for Future Checks ---
+    // Check if target square has a friendly piece
+    // const destinationPiece = board.getPiece(endRow, endCol);
+    // if (destinationPiece && destinationPiece.player === piece.player) {
+    //     // console.log("Move invalid: Cannot capture friendly piece.");
+    //     return false;
+    // }
+
+    // Check if moving into own Den
+    // Check special capture rules (traps - might be handled in canCapture called later)
+
+    // If it passes all current checks, the move is valid *so far*
+    // console.log("Move valid based on current rules");
+    return true;
 }
 
+/**
+ * Calculates all valid destination squares for a given piece.
+ * Considers basic orthogonal moves, river rules (via isValidMove),
+ * and prevents moving onto friendly pieces.
+ * NOTE: Still needs additions for jumps, dens, etc.
+ *
+ * @param {object} board - The board instance (needs getPiece, getTerrain).
+ * @param {object} piece - The piece object to find moves for ({type, row, col, player}).
+ * @returns {Array<object>} - An array of valid move destination objects [{r: row1, c: col1}, {r: row2, c: col2}, ...].
+ */
+export function getValidMovesForPiece(board, piece) {
+    const validDestinations = [];
+    if (!piece) return validDestinations; // Should not happen if called correctly
+
+    const startRow = piece.row;
+    const startCol = piece.col;
+    const currentPlayer = piece.player;
+
+    // Define potential neighbors (orthogonal for now)
+    // TODO: Add potential jump destinations for Lion/Tiger later
+    const potentialDeltas = [
+        { dr: -1, dc: 0 }, // Up
+        { dr: 1, dc: 0 },  // Down
+        { dr: 0, dc: -1 }, // Left
+        { dr: 0, dc: 1 }   // Right
+    ];
+
+    for (const delta of potentialDeltas) {
+        const endRow = startRow + delta.dr;
+        const endCol = startCol + delta.dc;
+
+        // Use the detailed isValidMove check (handles bounds, step, river rules)
+        if (isValidMove(board, piece, endRow, endCol)) {
+            // isValidMove passed, now check for friendly piece collision
+            const destinationPiece = board.getPiece(endRow, endCol);
+
+            if (!destinationPiece || destinationPiece.player !== currentPlayer) {
+                // It's a valid move if:
+                // 1. isValidMove allows it (basic step, terrain ok)
+                // 2. AND the destination is empty OR holds an opponent's piece
+                validDestinations.push({ r: endRow, c: endCol });
+            }
+        }
+    }
+
+    // --- TODO: Add Jump Logic ---
+    // If piece is Lion or Tiger, check potential jump destinations
+    // Call isValidMove for jumps (or have specific jump validation)
+    // Check destination for friendly pieces as above
+
+    return validDestinations;
+}
 
 /**
  * Determines if an attacking piece can capture a defending piece based on rank rules.

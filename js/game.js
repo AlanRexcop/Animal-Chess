@@ -5,7 +5,7 @@ import { renderBoard, highlightSquare, clearHighlights } from './renderer.js';
 import { Player, AnimalRanks } from './constants.js'; // Added AnimalRanks if needed by Piece setup
 
 // Import rules later when needed for valid moves
-import { isValidMoveStructure, canCapture } from './rules.js';
+import * as rules from './rules.js';
 // import { getValidMovesForPiece } from './rules.js';
 // Import rules functions
 
@@ -33,70 +33,81 @@ function initGame() {
     console.log("Game Initialized. Player 1's Turn.");
 }
 
+// --- Updated handleSquareClick ---
 function handleSquareClick(row, col) {
-  if (gameStatus !== 'Ongoing') return;
+    if (gameStatus !== 'Ongoing') return;
 
-  const clickedSquareData = board.getSquareData(row, col);
-  const clickedPiece = clickedSquareData ? clickedSquareData.piece : null;
+    // Use board methods that return piece and terrain directly if available
+    const clickedPiece = board.getPiece(row, col);
+    const clickedTerrain = board.getTerrain(row, col); // Needed for canCapture
 
-  if (selectedPiece) {
-      // === CASE 1: A piece is already selected ===
-      const startRow = selectedPiece.row;
-      const startCol = selectedPiece.col;
+    if (selectedPiece) {
+        // === CASE 1: A piece is already selected ===
+        const startRow = selectedPiece.row;
+        const startCol = selectedPiece.col;
+        const pieceToMove = selectedPiece.piece; // The actual piece object
 
-      if (startRow === row && startCol === col) {
-          // 1a: Clicked the *same* selected piece -> Deselect
-          deselectPiece();
-      } else if (clickedPiece && clickedPiece.player === currentPlayer) {
-          // 1b: Clicked *another* friendly piece -> Switch selection
-          deselectPiece();
-          selectPiece(clickedPiece, row, col);
-      } else {
-          // 1c: Clicked an empty square or an opponent's piece -> Try to move/capture
+        if (startRow === row && startCol === col) {
+            // 1a: Clicked the *same* selected piece -> Deselect
+            deselectPiece();
+        } else if (clickedPiece && clickedPiece.player === currentPlayer) {
+            // 1b: Clicked *another* friendly piece -> Switch selection
+            // Deselect first (clears highlights) then select the new one
+            deselectPiece();
+            selectPiece(clickedPiece, row, col); // Select the NEW piece
+        } else {
+            // 1c: Clicked an empty square or an opponent's piece -> Try to move/capture
 
-          // Check if the target square is among the valid moves calculated earlier
-          const isMoveTargetValid = validMoves.some(move => move.r === row && move.c === col);
+            // Check if the target square is among the valid moves calculated when selecting
+            const isMoveTargetValid = validMoves.some(move => move.r === row && move.c === col);
 
-          if (isMoveTargetValid) {
-              // Target square is potentially reachable (structurally and basic checks)
-              if (!clickedPiece) {
-                  // -- Moving to an Empty Square --
-                  console.log(`Moving ${selectedPiece.piece.type} from ${startRow},${startCol} to ${row},${col}`);
-                  movePiece(startRow, startCol, row, col);
-                  // movePiece handles deselect, render, switchPlayer
-              } else {
-                  // -- Attempting to Capture Opponent Piece --
-                  console.log(`Attempting to capture ${clickedPiece.type} at ${row},${col} with ${selectedPiece.piece.type}`);
-                  if (canCapture(selectedPiece.piece, clickedPiece)) {
-                       capturePiece(startRow, startCol, row, col);
-                       // capturePiece handles deselect, render, switchPlayer
-                  } else {
-                      // Cannot capture (e.g., Elephant vs Rat, or lower rank)
-                      console.log("Capture failed: Invalid rank interaction.");
-                      // Optional: Provide feedback to the user via status bar?
-                      // Don't move, don't deselect, let the user choose another valid move.
-                       updateStatus(`Invalid capture: ${selectedPiece.piece.type} cannot capture ${clickedPiece.type}.`);
-                       // Return early to prevent status override by the general updateStatus() call
-                       return;
-                  }
-              }
-          } else {
-               // Clicked square is not a valid move destination for the selected piece
-               console.log("Clicked square is not a valid move destination.");
-               // Optional: Deselect if clicking invalid square? Or keep selection active?
-               // deselectPiece(); // Uncomment to deselect on invalid click
-          }
-      }
-  } else {
-      // === CASE 2: No piece is currently selected ===
-      if (clickedPiece && clickedPiece.player === currentPlayer) {
-          // 2a: Clicked a friendly piece -> Select it
-          selectPiece(clickedPiece, row, col);
-      }
-      // 2b: Clicked empty / opponent -> Do nothing
-  }
+            if (isMoveTargetValid) {
+                // Target square is reachable based on getValidMovesForPiece calculation
+                if (!clickedPiece) {
+                    // -- Moving to an Empty Square --
+                    console.log(`Moving ${pieceToMove.type} from ${startRow},${startCol} to ${row},${col}`);
+                    movePiece(startRow, startCol, row, col);
+                    // movePiece should handle deselect, render, switchPlayer, checkGameEnd
+                } else {
+                    // -- Attempting to Capture Opponent Piece --
+                    console.log(`Attempting to capture ${clickedPiece.type} at ${row},${col} with ${pieceToMove.type}`);
 
-  updateStatus(); // Update UI feedback (unless already updated in failed capture)
+                    // *** IMPORTANT: Pass targetTerrain to canCapture ***
+                    if (rules.canCapture(pieceToMove, clickedPiece, clickedTerrain)) { // Pass terrain!
+                         capturePiece(startRow, startCol, row, col);
+                         // capturePiece should handle deselect, render, switchPlayer, checkGameEnd
+                    } else {
+                        // Cannot capture (e.g., Elephant vs Rat, wrong rank, maybe trap immunity etc.)
+                        console.log("Capture failed: Rules violation.");
+                        // Provide feedback - keep selection active
+                        updateStatus(`Invalid capture: ${pieceToMove.type} cannot capture ${clickedPiece.type} here.`);
+                         // Return early to prevent overwriting status message
+                         return;
+                    }
+                }
+            } else {
+                 // Clicked square is not in the pre-calculated validMoves list
+                 console.log("Clicked square is not a valid move destination.");
+                 // Optional: Deselect if clicking invalid square?
+                 // deselectPiece();
+            }
+        }
+    } else {
+        // === CASE 2: No piece is currently selected ===
+        if (clickedPiece && clickedPiece.player === currentPlayer) {
+            // 2a: Clicked a friendly piece -> Select it
+            selectPiece(clickedPiece, row, col);
+        }
+        // 2b: Clicked empty / opponent -> Do nothing
+    }
+
+    // Update general status (e.g., "Player X's turn") if no specific message was set
+    // Consider making updateStatus check if a specific message was just shown
+    // Or refactor movePiece/capturePiece/failure cases to set the final status.
+    // For now, calling it might overwrite the "Invalid capture" message.
+    // A better approach is to have movePiece/capturePiece call updateStatus *after* switching player.
+    // Let's assume updateStatus() might be called inside movePiece/capturePiece instead.
+    updateStatus(); // Maybe remove this general call or make it smarter
 }
 /**
  * Moves a piece on the board state.
@@ -165,23 +176,34 @@ function capturePiece(startRow, startCol, targetRow, targetCol) {
 /**
  * Selects a piece and highlights it and its valid moves.
  */
+// --- Updated selectPiece ---
 function selectPiece(piece, row, col) {
-    selectedPiece = { piece, row, col };
+    // Ensure we have the actual piece object
+    if (!piece || !piece.type) {
+        console.error("selectPiece called with invalid piece data:", piece);
+        return;
+    }
+
+    selectedPiece = { piece: piece, row: row, col: col }; // Store the piece object
     console.log(`Selected ${piece.type} at ${row},${col}`);
 
-    // Clear any previous highlights first (safety measure)
+    // Clear previous highlights
     clearHighlights('selected');
     clearHighlights('valid-move');
 
     // Highlight the selected piece's square
     highlightSquare(row, col, 'selected');
 
-    // Calculate and highlight valid moves (placeholder for now)
-    // validMoves = getValidMovesForPiece(board.getState(), row, col); // Need rules.js
-    validMoves = calculatePlaceholderValidMoves(row, col); // Use placeholder
-    highlightValidMoves(validMoves);
+    // *** Calculate valid moves using the new function from rules.js ***
+    // Pass the board instance and the piece object
+    validMoves = rules.getValidMovesForPiece(board, piece);
+    console.log(validMoves)
 
-    console.log("Valid moves (placeholder):", validMoves);
+    // Highlight the calculated valid moves on the board
+    highlightValidMoves(validMoves); // Assumes this function loops through validMoves and calls highlightSquare(m.r, m.c, 'valid-move')
+
+    console.log("Calculated valid moves:", validMoves);
+    updateStatus(`${piece.type} selected. Choose a move.`); // Update UI
 }
 
 /**
@@ -227,37 +249,6 @@ function updateStatus() {
     }
 }
 
-// --- Placeholder Functions (to be replaced) ---
-
-/**
- * Calculates placeholder valid moves (just adjacent squares for now).
- * Replace this with actual logic using rules.js later.
- */
-function calculatePlaceholderValidMoves(row, col) {
-  const moves = [];
-  const piece = board.getPiece(row, col);
-  if (!piece) return moves; // No piece to move
-
-  const directions = [ { r: -1, c: 0 }, { r: 1, c: 0 }, { r: 0, c: -1 }, { r: 0, c: 1 } ];
-
-  for (const dir of directions) {
-      const nextR = row + dir.r;
-      const nextC = col + dir.c;
-
-      // Use the basic structure check from rules.js
-      if (isValidMoveStructure(row, col, nextR, nextC)) {
-           const targetSquareData = board.getSquareData(nextR, nextC);
-           const targetPiece = targetSquareData ? targetSquareData.piece : null;
-
-           // Can move if square is empty OR contains an opponent piece
-           // (Capture possibility is checked later by canCapture)
-           if (!targetPiece || targetPiece.player !== currentPlayer) {
-               moves.push({ r: nextR, c: nextC });
-           }
-      }
-  }
-  return moves;
-}
 
 /**
  * Highlights squares representing valid moves.
