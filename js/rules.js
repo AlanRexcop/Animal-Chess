@@ -1,5 +1,5 @@
 // js/rules.js
-import { BOARD_ROWS, BOARD_COLS, TerrainType, Player , AnimalRanks} from './constants.js';
+import { BOARD_ROWS, BOARD_COLS, TerrainType, Player , GameStatus} from './constants.js';
 
 /**
  * Checks if a move is valid according to basic orthogonal steps and river rules.
@@ -337,4 +337,67 @@ export function canCapture(attackerPiece, defenderPiece, targetTerrain) {
     // capture is based on rank. Equal or higher rank captures.
     // console.log(`Standard capture check: Attacker ${attackerType}(${attackerRank}) vs Defender ${defenderType}(${defenderRank})`);
     return attackerRank >= defenderRank;
+}
+
+/**
+ * Checks the current board state to determine the game status (win/ongoing).
+ * Checks for pieces in opponent's den and for elimination of all opponent pieces.
+ *
+ * @param {object} board - The board instance with methods like getPiece(r, c) and getTerrain(r, c).
+ * @returns {GameStatus} - The current status of the game (PLAYER1_WINS, PLAYER2_WINS, ONGOING).
+ */
+export function getGameStatus(board) {
+    let p1PieceCount = 0;
+    let p2PieceCount = 0;
+    let p1InOpponentDen = false;
+    let p2InOpponentDen = false;
+
+    // Iterate through the entire board
+    for (let r = 0; r < BOARD_ROWS; r++) {
+        for (let c = 0; c < BOARD_COLS; c++) {
+            const piece = board.getPiece(r, c);
+            const terrain = board.getTerrain(r, c);
+
+            if (piece) {
+                // --- Count Pieces ---
+                if (piece.player === Player.PLAYER1) {
+                    p1PieceCount++;
+                    // --- Check if P1 reached P2 Den ---
+                    if (terrain === TerrainType.DEN_P2) {
+                        // console.log("Game Over: Player 1 reached Player 2's Den.");
+                        // Can return immediately, this is a primary win condition
+                        return GameStatus.PLAYER1_WINS;
+                    }
+                } else if (piece.player === Player.PLAYER2) {
+                    p2PieceCount++;
+                    // --- Check if P2 reached P1 Den ---
+                    if (terrain === TerrainType.DEN_P1) {
+                        // console.log("Game Over: Player 2 reached Player 1's Den.");
+                        // Can return immediately
+                        return GameStatus.PLAYER2_WINS;
+                    }
+                }
+            }
+            // We continue iterating even after counting pieces to ensure we check all squares for den entry.
+            // The immediate returns above handle the den win condition efficiently.
+        }
+    }
+
+    // --- Check for Piece Elimination (if no one reached a den) ---
+    // These checks happen *after* the full board scan for Den entry.
+    if (p2PieceCount === 0 && p1PieceCount > 0) { // Check p1PieceCount > 0 to avoid draw if both are 0? Though that shouldn't happen.
+        // console.log("Game Over: Player 2 has no pieces remaining.");
+        return GameStatus.PLAYER1_WINS;
+    }
+
+    if (p1PieceCount === 0 && p2PieceCount > 0) {
+        // console.log("Game Over: Player 1 has no pieces remaining.");
+        return GameStatus.PLAYER2_WINS;
+    }
+
+    // Optional: Handle Stalemate/Draw conditions here if needed later.
+    // e.g., if no valid moves exist for the current player.
+
+    // --- If no win conditions met, the game is ongoing ---
+    return GameStatus.ONGOING;
 }

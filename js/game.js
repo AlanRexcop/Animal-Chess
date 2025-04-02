@@ -2,7 +2,7 @@
 import { Board } from './board.js';
 // Import highlight functions from renderer
 import { renderBoard, highlightSquare, clearHighlights } from './renderer.js';
-import { Player, AnimalRanks } from './constants.js'; // Added AnimalRanks if needed by Piece setup
+import { Player, GameStatus } from './constants.js'; // Added AnimalRanks if needed by Piece setup
 
 // Import rules later when needed for valid moves
 import * as rules from './rules.js';
@@ -13,8 +13,9 @@ import * as rules from './rules.js';
 let board = null;
 let currentPlayer = Player.NONE;
 let selectedPiece = null; // Stores { piece: Piece, row: number, col: number }
-let gameStatus = 'Initializing';
+let gameStatus = GameStatus.INIT;
 let validMoves = []; // Stores coordinates {r, c} of valid moves for the selected piece
+let isGameOver = false;
 
 // --- Core Functions ---
 
@@ -35,7 +36,13 @@ function initGame() {
 
 // --- Updated handleSquareClick ---
 function handleSquareClick(row, col) {
-    if (gameStatus !== 'Ongoing') return;
+    if (isGameOver) {
+        console.log("Game over. No more moves allowed.");
+        return;
+    }
+    // *** END OF ADDED CHECK ***
+
+    if (gameStatus !== GameStatus.ONGOING) return; 
 
     // Use board methods that return piece and terrain directly if available
     const clickedPiece = board.getPiece(row, col);
@@ -109,6 +116,37 @@ function handleSquareClick(row, col) {
     // Let's assume updateStatus() might be called inside movePiece/capturePiece instead.
     updateStatus(); // Maybe remove this general call or make it smarter
 }
+function checkGameEndAndUpdate() {
+    // 1. Get the current game status from rules.js
+    const newStatus = rules.getGameStatus(board); // Pass the board instance
+    gameStatus = newStatus; // Update the game state variable
+
+    // 2. Check if the game has ended
+    if (gameStatus !== GameStatus.ONGOING) {
+        isGameOver = true; // Set the flag to prevent further moves
+
+        // 3. Announce the winner
+        let winMessageKey = ''; // Use keys for localization if setup
+        let winner = '';
+        if (gameStatus === GameStatus.PLAYER1_WINS) {
+            winMessageKey = 'player1Wins'; // Example key for localization
+            winner = 'Player 1';
+        } else if (gameStatus === GameStatus.PLAYER2_WINS) {
+            winMessageKey = 'player2Wins'; // Example key
+            winner = 'Player 2';
+        }
+        // Add draw condition if implemented
+        // else if (gameStatus === GameStatus.DRAW) { winMessageKey = 'drawGame'; winner = 'No one';}
+
+        console.log(`Game Over! ${winner} wins!`);
+        renderer.updateStatus(winMessageKey || `Game Over! ${winner} wins!`); // Update UI
+
+        // DO NOT switch player here if game is over
+    } else {
+        // 4. If the game is ongoing, switch the player
+        switchPlayer(); // switchPlayer should handle updating the status for the next turn
+    }
+}
 /**
  * Moves a piece on the board state.
  */
@@ -133,8 +171,7 @@ function movePiece(startRow, startCol, endRow, endCol) {
   renderBoard(board.getState(), handleSquareClick);
   // Check win condition here later
   // checkWinCondition();
-  switchPlayer();
-  updateStatus(`Player ${currentPlayer} moved ${movedPieceType}. Player ${Player.getOpponent(currentPlayer)}'s turn.`); // Use updated status
+  checkGameEndAndUpdate();
 }
 
 /**
@@ -168,9 +205,8 @@ function capturePiece(startRow, startCol, targetRow, targetCol) {
   deselectPiece();
   renderBoard(board.getState(), handleSquareClick);
   // Check win condition here later
-  // checkWinCondition();
-  switchPlayer();
-  updateStatus(`Player ${currentPlayer} ${attackerType} captured ${defenderType}. Player ${Player.getOpponent(currentPlayer)}'s turn.`);
+  // checkWinCondition();  
+  checkGameEndAndUpdate();
 }
 
 /**
@@ -226,9 +262,9 @@ function switchPlayer() {
     deselectPiece(); // Deselect piece and clear highlights when turn switches
     updateStatus();
     console.log(`Turn switched. Player ${currentPlayer}'s Turn.`);
-    // Later: Check for AI turn if applicable
+    // If AI's turn, trigger AI move here (add later)
+    // triggerAiMoveIfNeeded();
 }
-
 /**
  * Updates the status message display.
  */

@@ -40,21 +40,6 @@ export function renderBoard(boardState, clickHandler) {
                 const terrain = squareData.terrain; // Assuming terrain is stored directly, e.g., 'RIVER', 'TRAP_P1', 'DEN_P2'
                 square.classList.add(terrain.toLowerCase()); // Adds 'river', 'trap_p1', 'den_p2' etc.
 
-                // *** Refined Handling for Trap/Den Player Association ***
-                // If your board state stores terrain differently (e.g., type: TRAP, owner: P1),
-                // you might need slightly different logic here. Example:
-                /*
-                if (squareData.terrain.type === TerrainType.TRAP) {
-                    square.classList.add('trap'); // Generic trap class
-                    square.classList.add(`trap-p${squareData.terrain.owner}`); // Specific owner class like 'trap-p1'
-                } else if (squareData.terrain.type === TerrainType.DEN) {
-                     square.classList.add('den');
-                     square.classList.add(`den-p${squareData.terrain.owner}`); // Specific owner class like 'den-p1'
-                } else {
-                     square.classList.add(squareData.terrain.type.toLowerCase()); // For RIVER, NORMAL etc.
-                }
-                */
-
             } else {
                  square.classList.add('normal'); // Default if no terrain info
             }
