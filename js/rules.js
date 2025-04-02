@@ -71,7 +71,7 @@ export function isValidMove(board, piece, endRow, endCol) {
             }
         }
         // Check for Horizontal Jump Pattern (distance 4)
-        else if (startCol === endCol && rowDiff === 4) {
+        else if (startCol === endCol && rowDiff === 4 && pieceType === 'lion') {
             // Check if crossing a river segment horizontally
             const intermediateRow1 = Math.min(startRow, endRow) + 1;
             const intermediateRow2 = intermediateRow1 + 1;
