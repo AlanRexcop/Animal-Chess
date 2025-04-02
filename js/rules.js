@@ -278,54 +278,63 @@ export function isRiverJumpPathClear(board, startRow, startCol, endRow, endCol) 
     return false;
 }
 /**
- * Determines if an attacking piece can capture a defending piece based on rank rules.
- * NOTE: This initial version DOES NOT consider trap effects.
+ * Determines if an attacker piece can capture a defender piece based on
+ * rank, special rules (Rat/Elephant), and trap status.
  *
- * @param {object} attackerPiece - The piece object initiating the capture. Expected properties: { type: string, rank: number, player: Player }
- * @param {object} defenderPiece - The piece object being targeted. Expected properties: { type: string, rank: number, player: Player }
- * @returns {boolean} - True if the attacker can capture the defender, false otherwise.
+ * @param {object} attackerPiece - The attacking piece object ({ type, rank, player }).
+ * @param {object} defenderPiece - The defending piece object ({ type, rank, player }).
+ * @param {TerrainType} targetTerrain - The terrain type the defender is currently on.
+ * @returns {boolean} - True if the capture is valid, false otherwise.
  */
-export function canCapture(attackerPiece, defenderPiece) {
-    if (!attackerPiece || !defenderPiece) {
-        console.error("Cannot check capture: Invalid piece data provided.");
-        return false;
-    }
-
-    // Cannot capture your own pieces
-    if (attackerPiece.player === defenderPiece.player) {
+export function canCapture(attackerPiece, defenderPiece, targetTerrain) {
+    // Basic validation: Ensure we have piece data
+    if (!attackerPiece || !defenderPiece || !attackerPiece.type || !defenderPiece.type) {
+        console.error("canCapture called with invalid piece data.");
         return false;
     }
 
     const attackerType = attackerPiece.type;
     const defenderType = defenderPiece.type;
+    const attackerRank = attackerPiece.rank; // Assumes rank is stored on piece object
+    const defenderRank = defenderPiece.rank; // Assumes rank is stored on piece object
+    const attackerPlayer = attackerPiece.player;
 
-    // Use ranks from constants for clarity and consistency
-    const attackerRank = AnimalRanks[attackerType];
-    const defenderRank = AnimalRanks[defenderType];
-
-    if (attackerRank === undefined || defenderRank === undefined) {
-         console.error(`Cannot check capture: Unknown piece type involved (${attackerType} or ${defenderType}).`);
-         return false;
-    }
-
-
-    // 1. Special case: Rat captures Elephant
-    if (attackerType === 'rat' && defenderType === 'elephant') {
-        console.log("Capture rule: Rat captures Elephant");
-        return true;
-    }
-
-    // 2. Special case: Elephant cannot capture Rat
-    //    (Unless Rat is in water - terrain rule to be added later)
+    // --- Rule Priority 1: Elephant Immunity ---
+    // An Elephant can NEVER capture a Rat, regardless of traps.
     if (attackerType === 'elephant' && defenderType === 'rat') {
-        console.log("Capture rule: Elephant cannot capture Rat");
+        // console.log("Capture invalid: Elephant cannot capture Rat.");
         return false;
     }
 
-    // 3. General case: Higher or equal rank captures lower rank
-    const canGenerallyCapture = attackerRank >= defenderRank;
-    // console.log(`Capture rule: General rank check (${attackerType}[${attackerRank}] vs ${defenderType}[${defenderRank}]) -> ${canGenerallyCapture}`);
-    return canGenerallyCapture;
+    // --- Rule Priority 2: Trap Vulnerability ---
+    // Check if the defender is on a trap square belonging to the *attacker's* opponent
+    // (which makes it vulnerable to the attacker).
+    let opponentTrapTerrain = null;
+    if (attackerPlayer === Player.PLAYER1 && targetTerrain === TerrainType.TRAP_P1) {
+        opponentTrapTerrain = TerrainType.TRAP_P1; // P1 attacker, P2 defender is on P2's trap
+    } else if (attackerPlayer === Player.PLAYER2 && targetTerrain === TerrainType.TRAP_P2) {
+        opponentTrapTerrain = TerrainType.TRAP_P2; // P2 attacker, P1 defender is on P1's trap
+    }
+    // Note: A piece is NOT vulnerable if it's in its *own* trap.
 
-    // Later enhancements: Check trap effects (defender rank reduced in opponent trap)
+    if (targetTerrain === opponentTrapTerrain) {
+        // Defender is in an opponent's trap. Attacker can capture regardless of rank.
+        // The Elephant vs Rat case was already handled above, so no need to re-check here.
+        // console.log(`Capture valid: Defender ${defenderType} is in opponent's trap (${targetTerrain}).`);
+        return true;
+    }
+
+    // --- Rule Priority 3: Rat Power ---
+    // A Rat can ALWAYS capture an Elephant (unless Elephant already captured Rat).
+    // This applies even if the Elephant is not in a trap.
+    if (attackerType === 'rat' && defenderType === 'elephant') {
+        // console.log("Capture valid: Rat captures Elephant.");
+        return true;
+    }
+
+    // --- Rule Priority 4: Standard Rank Comparison ---
+    // If no special rules (Elephant/Rat immunity, Trap vulnerability, Rat/Elephant power) apply,
+    // capture is based on rank. Equal or higher rank captures.
+    // console.log(`Standard capture check: Attacker ${attackerType}(${attackerRank}) vs Defender ${defenderType}(${defenderRank})`);
+    return attackerRank >= defenderRank;
 }
