@@ -64,11 +64,3 @@ export const GameStatus = {
     P2_WINS: 'Player 2 Wins!',
     DRAW: 'Draw' // Though draws are rare in Jungle
 };
-
-// Optional: You could also define specific locations for dens and traps here
-// if they are always the same, but it might be cleaner to handle that
-// during board initialization logic in board.js.
-// export const P1_DEN_POS = { row: 0, col: 4 };
-// export const P2_DEN_POS = { row: 6, col: 4 };
-// export const P1_TRAP_POS = [{ row: 0, col: 2 }, { row: 0, col: 6 }, { row: 1, col: 4 }];
-// export const P2_TRAP_POS = [{ row: 6, col: 2 }, { row: 6, col: 6 }, { row: 5, col: 4 }];

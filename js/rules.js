@@ -2,16 +2,6 @@
 import { BOARD_ROWS, BOARD_COLS, TerrainType, Player , GameStatus} from './constants.js';
 
 /**
- * Checks if a move is valid according to basic orthogonal steps and river rules.
- * NOTE: Still needs additions for jumps, traps, dens, and friendly piece collision.
- *
- * @param {object} board - The board instance (needs methods like getTerrain, getPiece).
- * @param {object} piece - The piece object being moved (needs { type, row, col, player }).
- * @param {number} endRow - The intended ending row of the move.
- * @param {number} endCol - The intended ending column of the move.
- * @returns {boolean} - True if the move is valid according to current rules, false otherwise.
- */
-/**
  * Checks if a move is valid considering bounds, orthogonal steps,
  * river rules (Rat movement & Lion/Tiger jumps), and avoiding own den.
  * NOTE: Still needs integration for friendly piece collision check (often done AFTER this),
