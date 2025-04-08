@@ -1,0 +1,163 @@
+Overall Summary:
+
+This codebase implements a web-based "Animal Chess" game (similar to Dou Shou Qi / Jungle Chess). It uses HTML for structure, CSS for styling, and modular JavaScript for game logic, rendering, and rules. The game state is managed primarily in game.js and board.js, rules are encapsulated in rules.js, and rendering is handled by renderer.js.
+
+1. index.html
+
+Summary: The main HTML file. Sets up the basic page structure, includes the title, links the CSS stylesheet, defines container elements for the game board, status messages, and controls, and loads the main JavaScript module (main.js).
+
+DOM Element IDs:
+
+game-container: Main wrapper div.
+
+board: Div where the game board grid will be rendered.
+
+status: Div to display game messages (whose turn, win/loss).
+
+controls: Placeholder div for future buttons (like reset, language).
+
+2. constants.js
+
+Summary: Defines essential constant values used throughout the game logic.
+
+Key Constants:
+
+BOARD_ROWS, BOARD_COLS: Dimensions of the game board (9x7).
+
+TerrainType: Object mapping terrain names (e.g., NORMAL, RIVER, TRAP_P1, DEN_P2) to string identifiers.
+
+Player: Object defining player identifiers (NONE, PLAYER1, PLAYER2) and a helper getOpponent function.
+
+AnimalRanks: Object mapping animal type strings (e.g., 'rat', 'elephant') to numerical ranks (1-8).
+
+AnimalTypes: Array of animal type strings.
+
+GameStatus: Object mapping game state names (e.g., INIT, ONGOING, P1_WINS) to string identifiers.
+
+3. piece.js
+
+Summary: Defines the Piece class.
+
+Class Names & Key Methods:
+
+Piece: Represents a single animal piece.
+
+constructor(type, player, row, col): Initializes a piece with its type (string), rank (derived from AnimalRanks), owner (Player), and current row/col.
+
+4. board.js
+
+Summary: Defines the Board class, responsible for managing the game board's state, including terrain and piece locations.
+
+Class Names & Key Methods:
+
+Board: Represents the game board grid.
+
+constructor(): Initializes an empty state (2D array).
+
+initBoard(): Populates the state with terrain and initial piece placements by calling private helpers.
+
+_setupTerrain(): Configures river, dens, and traps.
+
+_setupInitialPieces(): Places starting pieces using the Piece class.
+
+isValidCoordinate(row, col): Checks if coordinates are within board bounds.
+
+getSquareData(row, col): Returns the object {piece: Piece|null, terrain: string} for a given square.
+
+getPiece(row, col): Returns the Piece object or null at the coordinates.
+
+getTerrain(row, col): Returns the terrain type string at the coordinates.
+
+setPiece(row, col, piece): Updates the piece at the given coordinates (can be null to clear). Updates piece's internal row/col if piece is provided.
+
+isEmpty(row, col): Checks if a square has no piece.
+
+getState(): Returns the entire 2D board state array.
+
+5. rules.js
+
+Summary: Encapsulates the specific rules of Animal Chess, including movement validation, capture logic, and win conditions. Does not directly modify state.
+
+Important Function Signatures:
+
+isValidMove(board, piece, endRow, endCol): Checks if a piece can legally move from its current position to endRow, endCol on the given board, considering terrain, special jumps (Lion/Tiger), and basic orthogonal movement. Returns boolean.
+
+getValidMovesForPiece(board, piece): Calculates all valid destination squares ({r, c}) for a given piece on the board. Returns Array<{r, c}>.
+
+isRiverJumpPathClear(board, startRow, startCol, endRow, endCol): Helper to check if intermediate squares are empty for Lion/Tiger river jumps. Returns boolean.
+
+canCapture(attackerPiece, defenderPiece, targetTerrain): Determines if the attackerPiece can capture the defenderPiece based on rank, special rules (Rat/Elephant), and whether the defender is on targetTerrain (especially traps). Returns boolean.
+
+getGameStatus(board): Checks the board state for win conditions (piece in opponent's den, no pieces left for one player). Returns a GameStatus value (e.g., GameStatus.ONGOING, GameStatus.P1_WINS).
+
+6. renderer.js
+
+Summary: Handles all direct DOM manipulation for rendering the game's visual state (board, pieces, highlights, status messages).
+
+Important Function Signatures:
+
+renderBoard(boardState, clickHandler): Clears the #board element and redraws all squares, terrain, and pieces based on the boardState (2D array). Attaches the clickHandler function to each square.
+
+highlightSquare(row, col, className): Adds a CSS class (className) to the DOM element representing the square at row, col.
+
+clearHighlights(className): Removes a specific CSS class (className) from all relevant DOM elements (usually squares).
+
+updateStatus(message): Sets the text content of the #status DOM element.
+
+addBoardEventListeners(handleClickCallback): (Potentially used internally or called by game.js initially) Sets up event listeners on the board, likely using delegation.
+
+DOM Element IDs: Interacts with #board, #status. Selects child elements based on classes and data attributes.
+
+7. game.js
+
+Summary: The main game orchestration logic. Initializes the game, manages the core game loop (player turns), handles user interactions (clicks), applies rules, updates the board state, and coordinates rendering.
+
+Global State Variables:
+
+board: An instance of the Board class.
+
+currentPlayer: Player.PLAYER1 or Player.PLAYER2.
+
+selectedPiece: Object { piece: Piece, row: number, col: number } or null.
+
+gameStatus: Current GameStatus value.
+
+validMoves: Array of {r, c} objects representing valid moves for the selectedPiece.
+
+isGameOver: Boolean flag.
+
+Important Function Signatures:
+
+initGame(): Sets up the initial game state (creates board, sets player 1, renders). Exported.
+
+handleSquareClick(row, col): The primary event handler for clicks on the board. Manages piece selection, deselection, move attempts, and capture attempts by calling other functions and rule checks.
+
+selectPiece(piece, row, col): Updates selectedPiece, calculates validMoves (using rules.getValidMovesForPiece), and triggers highlighting (via renderer).
+
+deselectPiece(): Clears selectedPiece, validMoves, and highlights.
+
+movePiece(startRow, startCol, endRow, endCol): Updates the board state for a valid move.
+
+capturePiece(startRow, startCol, targetRow, targetCol): Updates the board state for a valid capture.
+
+switchPlayer(): Toggles currentPlayer.
+
+checkGameEndAndUpdate(): Calls rules.getGameStatus and updates gameStatus and isGameOver flag if the game has ended. Switches player if ongoing.
+
+updateStatus(): Updates the status message display (likely via renderer.updateStatus).
+
+DOM Element IDs: Indirectly interacts with #board and #status via the renderer.js module.
+
+8. main.js
+
+Summary: The application entry point. Simply imports and calls initGame() from game.js to start the application.
+
+9. style.css
+
+Summary: Contains all CSS rules for styling the HTML elements, including the layout, board grid, square appearance (based on terrain classes like .river, .trap_p1, .den_p2), piece appearance (using background images and player-specific borders like .player1, .rat), and UI feedback (like .selected, .valid-move).
+
+Key CSS Selectors: #game-container, #board, .square, .piece, terrain classes (.river, .trap_p1, etc.), player classes (.player1, .player2), animal classes (.rat, .cat, etc.), state classes (.selected, .valid-move).
+
+10. ai.js & localization.js
+
+Summary: Currently empty placeholders for future AI player logic and internationalization/localization features, respectively.
