@@ -263,3 +263,94 @@ h1 {
   pointer-events: none; /* Allow clicks to pass through */
   z-index: 10;
 }
+
+/* ===================================== */
+/* == Phase 3: UI/UX Enhancements == */
+/* ===================================== */
+
+/* --- Last Move Highlighting --- */
+
+/* Style for the square where the last move STARTED */
+.square.last-move-start {
+  /* Using outline as it doesn't affect element dimensions/layout */
+  outline: 3px solid rgba(80, 200, 120, 0.8); /* A noticeable green, slightly transparent */
+  outline-offset: -3px; /* Draws the outline inside the border */
+  box-shadow: inset 0 0 0 3px rgba(80, 200, 120, 0.8); /* Alternative/Fallback using inset shadow */
+  z-index: 5; /* Ensure highlight is potentially above basic square styles */
+  position: relative; /* Needed for z-index to potentially work depending on other styles */
+}
+
+/* Style for the square where the last move ENDED (move or capture) */
+.square.last-move-end {
+  outline: 3px solid rgba(70, 130, 180, 0.8); /* A noticeable steel blue, slightly transparent */
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 3px rgba(70, 130, 180, 0.8); /* Alternative/Fallback */
+  z-index: 5;
+  position: relative;
+}
+
+/* You might want to ensure these highlights appear above piece elements if pieces use z-index */
+/* If pieces overlap the edge slightly, you might need adjustments */
+
+
+/* --- Captured Pieces Display --- */
+
+/* The main container holding both players' captured pieces */
+.captured-pieces-area {
+  display: flex;            /* Arrange player sections side-by-side */
+  justify-content: space-around; /* Space out the player sections */
+  align-items: flex-start; /* Align items at the top */
+  margin-top: 20px;         /* Space above this area */
+  padding: 10px;            /* Padding inside the area */
+  border: 1px solid #ccc;   /* Optional border for the whole area */
+  border-radius: 5px;       /* Optional rounded corners */
+  min-height: 50px;         /* Ensure it has some height even when empty */
+  background-color: #f8f8f8; /* Optional subtle background */
+}
+
+/* Styling for each player's individual captured pieces section */
+#captured-p1,
+#captured-p2 {
+  flex-basis: 45%;        /* Each section takes up roughly half the space */
+  padding: 8px;
+  border: 1px dashed #ddd; /* Optional border for individual sections */
+  min-height: 30px;
+  font-size: 0.9em;
+  color: #333;
+  word-wrap: break-word; /* Allow text (piece names) to wrap */
+}
+
+#captured-p1 {
+  /* Specific styles for Player 1's captured area if needed */
+  /* Example: background-color: #eef; */
+}
+
+#captured-p2 {
+  /* Specific styles for Player 2's captured area if needed */
+  /* Example: background-color: #fee; */
+}
+
+/* (Optional) Styling for individual captured piece icons if you render them as elements */
+.captured-piece-icon {
+  display: inline-block; /* Display icons next to each other */
+  width: 20px;           /* Small icon size */
+  height: 20px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin: 0 3px 3px 0;   /* Small spacing around icons */
+  vertical-align: middle; /* Align icons nicely with text if any */
+  border: 1px solid #eee; /* Tiny border around icon */
+  border-radius: 3px;
+}
+
+/* Add specific background images if using icons (requires JS to add these classes) */
+/* Example:
+.captured-piece-icon.rat { background-image: url('../assets/images/rat.png'); }
+.captured-piece-icon.cat { background-image: url('../assets/images/cat.png'); }
+... etc ...
+*/
+
+/* ===================================== */
+/* == End Phase 3 CSS == */
+/* ===================================== */

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Page Title (Can be updated by JS later using localization) -->
-    <title>Mope.io Animal Chess</title>
+    <!-- Page Title (Will be updated by JS using localization) -->
+    <title>Mope.io Animal Chess</title> <!-- Default Title -->
 
     <!-- Link to the main CSS file -->
     <link rel="stylesheet" href="css/style.css">
@@ -17,7 +17,7 @@
     <div id="game-container">
 
         <!-- Game Title (Can be updated by JS later) -->
-        <h1>Mope.io Animal Chess</h1> <!-- Placeholder Title -->
+        <h1 id="game-title">Mope.io Animal Chess</h1> <!-- Placeholder Title, added ID -->
 
         <!-- The element where the game board will be dynamically generated -->
         <div id="board">
@@ -26,17 +26,32 @@
 
         <!-- Element to display game status messages -->
         <div id="status">
-            <!-- Game status messages (whose turn, errors, win/loss) will appear here -->
-            Loading game... <!-- Initial placeholder status -->
+            Loading language resources... <!-- Updated initial placeholder status -->
         </div>
 
-        <!-- Placeholder for future UI controls -->
+        <!-- UI Controls Area -->
         <div id="controls">
-             <!-- Example: Reset button and language selector will go here later -->
-             <!-- <button id="reset-button">Reset</button> -->
-             <!-- <label for="lang-select">Language:</label> -->
-             <!-- <select id="lang-select"></select> -->
+             <!-- Language Selector -->
+             <label for="lang-select" id="lang-select-label">Language:</label> <!-- Label ID for localization -->
+             <select id="lang-select">
+                 <option value="en">English</option>
+                 <option value="es">Español</option> <!-- Example: Add Spanish -->
+                 <!-- Add more <option value="code">LanguageName</option> as needed -->
+             </select>
+
+             <!-- Spacer (optional, use CSS for better control) -->
+                <!-- Simple spacing -->
+
+             <!-- Reset Button -->
+             <button id="reset-button">Reset Game</button> <!-- ID for JS interaction -->
         </div>
+
+        <!-- Optional Area for Captured Pieces -->
+        <div class="captured-pieces-area">
+            <div id="captured-p1">P1 Captured: None</div> <!-- Placeholder for pieces P1 captured -->
+            <div id="captured-p2">P2 Captured: None</div> <!-- Placeholder for pieces P2 captured -->
+        </div>
+
 
     </div> <!-- end #game-container -->
 

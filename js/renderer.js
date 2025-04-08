@@ -1,15 +1,16 @@
 // Import necessary constants and potentially the Board class if needed for type hinting
 import { BOARD_ROWS, BOARD_COLS, TerrainType, Player } from './constants.js';
+import { getString } from './localization.js';
+
 
 const boardElement = document.getElementById('board');
-
-
 /**
- * Renders the entire board based on the board state.
- * @param {Array<Array<object>>} boardState - The 2D array representing the board.
- * @param {Function} clickHandler - Function to call when a square is clicked (e.g., game.handleSquareClick).
+ * Clears the board container and redraws squares, terrain, and pieces.
+ * @param {Array<Array<{piece: Piece | null, terrain: string}>>} boardState - The 2D array representing the board.
+ * @param {Function} clickHandler - The function to call when a square is clicked, passing (row, col).
+ * @param {object | null} lastMove - Object like { start: {r, c}, end: {r, c} } or null
  */
-export function renderBoard(boardState, clickHandler) {
+export function renderBoard(boardState, clickHandler, lastMove = null) {
     if (!boardElement) {
         console.error("Board element not found!");
         return;
@@ -22,6 +23,9 @@ export function renderBoard(boardState, clickHandler) {
 
     boardElement.style.gridTemplateColumns = `repeat(${cols}, 70px)`;
     boardElement.style.gridTemplateRows = `repeat(${rows}, 70px)`;
+
+    clearHighlights('last-move-start', boardElement); // Pass boardElement for context if needed
+    clearHighlights('last-move-end', boardElement); // Pass boardElement for context if needed
 
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -52,6 +56,14 @@ export function renderBoard(boardState, clickHandler) {
                 square.appendChild(pieceElement);
             }
 
+            // Add last move highlights ---
+            if (lastMove?.start && lastMove.start.r === r && lastMove.start.c === c) {
+                square.classList.add('last-move-start');
+            }
+            if (lastMove?.end && lastMove.end.r === r && lastMove.end.c === c) {
+                square.classList.add('last-move-end');
+            }
+
             // Add the click listener
             square.addEventListener('click', () => clickHandler(r, c));
 
@@ -78,8 +90,9 @@ export function highlightSquare(row, col, className) {
 }
 
 /**
- * Removes a specific highlight class from all squares.
- * @param {string} className - e.g., 'selected-square', 'valid-move'
+ * Removes a specific CSS class from all elements that have it within a given container.
+ * @param {string} className - The CSS class selector (MUST start with '.', e.g., '.selected', '.valid-move').
+ * @param {HTMLElement} [container=document] - The container element to search within (defaults to document).
  */
 export function clearHighlights(className) {
     const highlighted = document.querySelectorAll(`#board .${className}`);
@@ -111,12 +124,13 @@ export function clearPieceHighlights(className) {
 
 /**
  * Updates the text content of the status element.
- * @param {string} message
+ * @param {string} messageKey
  */
-export function updateStatus(message) {
+export function updateStatus(messageKey, params = {}) {
     const statusElement = document.getElementById('status');
     if (statusElement) {
-        statusElement.textContent = message;
+        const translatedText = getString(messageKey, params);
+        statusElement.textContent = translatedText;
     } else {
         console.warn("Renderer Warning: Status element #status not found!");
     }
@@ -145,5 +159,25 @@ export function addBoardEventListeners(handleClickCallback) {
         console.log("Board event listener added.");
     } else {
          console.error("Renderer Error: Could not add board event listeners, #board not found!");
+    }
+}
+
+/**
+ * Updates the display for captured pieces (Example Implementation)
+ * @param {string[]} capturedP1 - Array of piece types captured by Player 1
+ * @param {string[]} capturedP2 - Array of piece types captured by Player 2
+ */
+export function renderCapturedPieces(capturedP1 = [], capturedP2 = []) {
+    const capturedP1Element = document.getElementById('captured-p1');
+    const capturedP2Element = document.getElementById('captured-p2');
+    const noneText = getString('capturedNone'); // Get localized "None"
+
+    if (capturedP1Element) {
+        const label = getString('capturedByP1Label'); // Get localized label
+        capturedP1Element.textContent = `${label} ${capturedP1.join(', ') || noneText}`;
+    }
+     if (capturedP2Element) {
+        const label = getString('capturedByP2Label'); // Get localized label
+        capturedP2Element.textContent = `${label} ${capturedP2.join(', ') || noneText}`;
     }
 }
