@@ -1,13 +1,8 @@
-// js/game.js
 import { Board } from './board.js';
 // Import highlight functions from renderer
 import { renderBoard, highlightSquare, clearHighlights } from './renderer.js';
-import { Player, GameStatus } from './constants.js'; // Added AnimalRanks if needed by Piece setup
-
-// Import rules later when needed for valid moves
+import { Player, GameStatus } from './constants.js'; 
 import * as rules from './rules.js';
-// import { getValidMovesForPiece } from './rules.js';
-// Import rules functions
 
 // --- Game State ---
 let board = null;
@@ -40,7 +35,6 @@ function handleSquareClick(row, col) {
         console.log("Game over. No more moves allowed.");
         return;
     }
-    // *** END OF ADDED CHECK ***
 
     if (gameStatus !== GameStatus.ONGOING) return; 
 
@@ -108,12 +102,6 @@ function handleSquareClick(row, col) {
         // 2b: Clicked empty / opponent -> Do nothing
     }
 
-    // Update general status (e.g., "Player X's turn") if no specific message was set
-    // Consider making updateStatus check if a specific message was just shown
-    // Or refactor movePiece/capturePiece/failure cases to set the final status.
-    // For now, calling it might overwrite the "Invalid capture" message.
-    // A better approach is to have movePiece/capturePiece call updateStatus *after* switching player.
-    // Let's assume updateStatus() might be called inside movePiece/capturePiece instead.
     updateStatus(); // Maybe remove this general call or make it smarter
 }
 function checkGameEndAndUpdate() {
@@ -142,7 +130,6 @@ function checkGameEndAndUpdate() {
         updateStatus(`Game Over! ${winner} wins!`); // Update UI
         // updateStatus(winMessageKey || `Game Over! ${winner} wins!`); // Update UI
 
-        // DO NOT switch player here if game is over
     } else {
         // 4. If the game is ongoing, switch the player
         switchPlayer(); // switchPlayer should handle updating the status for the next turn
@@ -167,7 +154,6 @@ function movePiece(startRow, startCol, endRow, endCol) {
   board.setPiece(startRow, startCol, null);
 
   // Post-move actions
-  const movedPieceType = pieceToMove.type; // Store before deselecting
   deselectPiece();
   renderBoard(board.getState(), handleSquareClick);
   // Check win condition here later
@@ -200,20 +186,17 @@ function capturePiece(startRow, startCol, targetRow, targetCol) {
   board.setPiece(targetRow, targetCol, attackerPiece); // Attacker moves to target square
   board.setPiece(startRow, startCol, null);        // Attacker leaves original square
 
+  //TODO:
   // Add captured piece to a list later if needed
 
-  // Post-capture actions
   deselectPiece();
   renderBoard(board.getState(), handleSquareClick);
-  // Check win condition here later
-  // checkWinCondition();  
   checkGameEndAndUpdate();
 }
 
 /**
  * Selects a piece and highlights it and its valid moves.
  */
-// --- Updated selectPiece ---
 function selectPiece(piece, row, col) {
     // Ensure we have the actual piece object
     if (!piece || !piece.type) {

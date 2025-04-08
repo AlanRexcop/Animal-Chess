@@ -1,12 +1,8 @@
-// js/renderer.js
-
 // Import necessary constants and potentially the Board class if needed for type hinting
 import { BOARD_ROWS, BOARD_COLS, TerrainType, Player } from './constants.js';
-// We don't strictly need to import Piece here, as we get piece objects from the board state.
 
 const boardElement = document.getElementById('board');
 
-// ... (rest of the file, including highlight functions)
 
 /**
  * Renders the entire board based on the board state.
