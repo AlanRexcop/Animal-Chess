@@ -74,11 +74,12 @@ export function isValidMove(board, piece, endRow, endCol) {
 }
 
 /**
- * Calculates all valid destination squares for a given piece.
+ * Calculates all valid destination squares for a given piece,
+ * ensuring captures are valid according to game rules.
  *
  * @param {object} board - The board instance.
- * @param {object} piece - The piece object.
- * @returns {Array<object>} - An array of valid move destination objects.
+ * @param {object} piece - The piece object attempting to move.
+ * @returns {Array<object>} - An array of valid move destination objects {r, c}.
  */
 export function getValidMovesForPiece(board, piece) {
     const validDestinations = [];
@@ -92,6 +93,7 @@ export function getValidMovesForPiece(board, piece) {
     const pieceType = piece.type;
     const currentPlayer = piece.player;
 
+    // --- Generate Potential Target Coordinates ---
     const potentialTargets = [];
     const orthogonalDeltas = [
         { dr: -1, dc: 0 }, // Up
@@ -103,29 +105,55 @@ export function getValidMovesForPiece(board, piece) {
         potentialTargets.push({ r: startRow + delta.dr, c: startCol + delta.dc });
     }
 
+    // Add jump targets only for Lion and Tiger
     if (pieceType === 'lion' || pieceType === 'tiger') {
+        // Define jump logic relative to river positions might be safer,
+        // but using fixed deltas requires isValidMove to handle river checks correctly.
         const jumpDeltas = [
-            { dr: -4, dc: 0 }, // Jump Up
-            { dr: 4, dc: 0 },  // Jump Down
-            { dr: 0, dc: -3 }, // Jump Left
-            { dr: 0, dc: 3 }   // Jump Right
+            // Assuming isValidMove handles the path clearing and river crossing checks
+            { dr: -4, dc: 0 }, // Jump Up over river
+            { dr: 4, dc: 0 },  // Jump Down over river
+            { dr: 0, dc: -3 }, // Jump Left over river
+            { dr: 0, dc: 3 }   // Jump Right over river
         ];
         for (const delta of jumpDeltas) {
             potentialTargets.push({ r: startRow + delta.dr, c: startCol + delta.dc });
         }
     }
 
+    // --- Validate Each Potential Target ---
     for (const target of potentialTargets) {
         const endRow = target.r;
         const endCol = target.c;
 
+        // 1. Check basic movement validity (bounds, terrain rules, own den, jumps)
         if (isValidMove(board, piece, endRow, endCol)) {
+            // Movement is allowed by terrain/jump rules, now check occupancy/capture
+
             const destinationPiece = board.getPiece(endRow, endCol);
-            if (!destinationPiece || destinationPiece.player !== currentPlayer) {
+            const targetTerrain = board.getTerrain(endRow, endCol); // Needed for canCapture
+
+            if (destinationPiece === null) {
+                // 2a. Destination is empty: Valid move.
                 validDestinations.push({ r: endRow, c: endCol });
+            } else {
+                // 2b. Destination is occupied. Check if it's an opponent.
+                if (destinationPiece.player !== currentPlayer) {
+                    // It's an opponent's piece. Check if capture is allowed.
+                    if (canCapture(piece, destinationPiece, targetTerrain)) {
+                        // Capture is valid according to ranks/traps/etc.
+                        validDestinations.push({ r: endRow, c: endCol });
+                    }
+                    // Else: canCapture returned false, so this is not a valid move.
+                }
+                // Else: destinationPiece.player === currentPlayer (friendly piece)
+                // This is not a valid move (can't move onto own piece).
+                // isValidMove *should* ideally already prevent this, but doesn't hurt to be explicit.
             }
         }
+        // Else: isValidMove returned false, so don't even consider this target.
     }
+
     return validDestinations;
 }
 
@@ -245,4 +273,46 @@ export function getGameStatus(board) {
     }
 
     return GameStatus.ONGOING;
+}
+
+/**
+ * Calculates all possible valid moves for a given player on the current board state.
+ * For AI
+ *
+ * @param {object} board - The board instance.
+ * @param {string} player - The player identifier (e.g., Player.PLAYER1).
+ * @returns {Array<object>} - An array of "rich" move objects, each containing
+ *                           { piece: Piece, startRow: number, startCol: number, endRow: number, endCol: number }.
+ *                           Returns an empty array if no moves are possible.
+ */
+export function getAllValidMoves(board, player) {
+    const allMoves = []; // Initialize an empty array to store all valid moves
+
+    // Iterate through every square on the board
+    for (let r = 0; r < BOARD_ROWS; r++) {
+        for (let c = 0; c < BOARD_COLS; c++) {
+            const piece = board.getPiece(r, c);
+
+            // Check if there's a piece and if it belongs to the current player
+            if (piece && piece.player === player) {
+                // Get the valid destinations for this specific piece
+                // getValidMovesForPiece returns Array<{r, c}>
+                const validDestinations = getValidMovesForPiece(board, piece);
+
+                // For each valid destination, create the rich move object
+                for (const destination of validDestinations) {
+                    const move = {
+                        piece: piece,         // The piece object itself
+                        startRow: piece.row,  // Starting row (piece's current row)
+                        startCol: piece.col,  // Starting column (piece's current col)
+                        endRow: destination.r, // Destination row from getValidMovesForPiece
+                        endCol: destination.c  // Destination column from getValidMovesForPiece
+                    };
+                    allMoves.push(move); // Add the detailed move object to the list
+                }
+            }
+        }
+    }
+
+    return allMoves; // Return the complete list of possible moves for the player
 }

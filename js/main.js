@@ -3,7 +3,7 @@
 // Import the main game initialization function
 import { initGame } from './game.js';
 // Import the function to load language data
-import { loadLanguage } from './localization.js';
+import { loadLanguage, getString } from './localization.js';
 
 /**
  * Asynchronous function to set up and start the application.
@@ -36,6 +36,17 @@ async function startApp() {
     if (languageLoaded) {
         console.log("Language resources loaded successfully. Initializing game...");
         // Initialize the game only if the language data loaded successfully
+        try {
+            document.title = getString('gameTitle'); // Set browser tab title
+            const h1TitleElement = document.getElementById('game-title');
+            if (h1TitleElement) {
+                h1TitleElement.textContent = getString('gameTitle'); // Set H1 heading
+            } else {
+                console.warn("Game title H1 element (#game-title) not found.");
+            }
+        } catch (e) {
+             console.error("Error setting initial game titles:", e);
+        }
         initGame();
     } else {
         // Handle the critical error where essential language data couldn't be loaded

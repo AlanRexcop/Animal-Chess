@@ -20,5 +20,6 @@
   "languageLabel": "Language:",
   "capturedByP1Label": "Captured by P1:",
   "capturedByP2Label": "Captured by P2:",
-  "capturedNone": "None"
+  "capturedNone": "None",
+  "ai_thinking": "AI is thinking..."
 }

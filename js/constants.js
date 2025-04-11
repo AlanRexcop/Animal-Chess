@@ -41,3 +41,6 @@ export const GameStatus = {
     P2_WINS: 'Player 2 Wins!',
     DRAW: 'Draw'
 };
+
+export const aiPlayer = Player.PLAYER2;
+export const aiDifficulty = 2;

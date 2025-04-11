@@ -11,8 +11,9 @@ import {
 } from './renderer.js';
 import { getString, loadLanguage } from './localization.js'; // Import localization functions
 // --- END MODIFIED IMPORTS ---
-import { Player, GameStatus } from './constants.js';
+import { Player, GameStatus, aiPlayer, aiDifficulty } from './constants.js';
 import * as rules from './rules.js';
+import { findBestMove } from './ai.js';
 
 // --- Game State ---
 let board = null;
@@ -21,10 +22,15 @@ let selectedPiece = null; // Stores { piece: Piece, row: number, col: number }
 let gameStatus = GameStatus.INIT;
 let validMoves = []; // Stores coordinates {r, c} of valid moves for the selected piece
 let isGameOver = false;
+let isAiThinking = false; // Flag to prevent clicks during AI turn
 // --- NEW STATE VARIABLES ---
 let lastMove = { start: null, end: null }; // To highlight the last move
 let capturedByP1 = []; // Pieces Player 1 captured (type strings)
 let capturedByP2 = []; // Pieces Player 2 captured (type strings)
+// --- AI Configuration ---
+const AI_PLAYER = Player.PLAYER2; // Or Player.PLAYER1 if AI plays first
+const AI_DIFFICULTY = 3; // Search depth (adjust as needed)
+const AI_DELAY = 500; // Milliseconds delay before AI moves (for UX)
 // --- END NEW STATE VARIABLES ---
 
 // --- Core Functions ---
@@ -59,6 +65,7 @@ function initGame() {
     // --- SETUP UI LISTENERS (Run once per full page load) ---
     // Check if listeners are already attached to prevent duplicates if initGame is called again for reset
     const resetButton = document.getElementById('reset-button');
+
     if (resetButton && !resetButton.hasAttribute('data-listener-attached')) {
         setupUIListeners();
         resetButton.setAttribute('data-listener-attached', 'true');
@@ -78,7 +85,8 @@ function setupUIListeners() {
     const resetButton = document.getElementById('reset-button');
     const langSelect = document.getElementById('lang-select');
     const langLabel = document.getElementById('lang-select-label'); // Optional label
-
+    const h1TitleElement = document.getElementById('game-title');
+    
     // Reset Button
     if (resetButton) {
         resetButton.textContent = getString('resetButton'); // Set initial text
@@ -100,6 +108,14 @@ function setupUIListeners() {
             if (success) {
                 console.log(`Language loaded: ${newLangCode}`);
                 // Update all localizable UI elements
+                try {
+                    document.title = getString('gameTitle'); // Update browser tab title
+                    if (h1TitleElement) {
+                        h1TitleElement.textContent = getString('gameTitle'); // Update H1 heading
+                    }
+                 } catch(e) {
+                     console.error("Error updating game titles:", e);
+                 }
                 if(resetButton) resetButton.textContent = getString('resetButton');
                 if(langLabel) langLabel.textContent = getString('languageLabel');
                 // Update the main game status message based on current state
@@ -122,8 +138,8 @@ function setupUIListeners() {
  * Handles clicks on squares of the game board.
  */
 function handleSquareClick(row, col) {
-    if (isGameOver || gameStatus !== GameStatus.ONGOING) {
-        console.log("Game is over or not ongoing. Input ignored.");
+    if (isGameOver || currentPlayer !== Player.getOpponent(AI_PLAYER) || isAiThinking) {
+        console.log("Game is over or not player turn. Input ignored.");
         return;
     }
 
@@ -334,8 +350,74 @@ function switchPlayer() {
     }
     updateGameStatusUI(); // Update to show the new player's turn
     console.log(`Turn switched. Player ${currentPlayer}'s Turn.`);
-    // If AI's turn, trigger AI move here (Phase 4)
-    // triggerAiMoveIfNeeded();
+    if (currentPlayer === AI_PLAYER) {
+        triggerAiTurn();
+    }
+}
+/**
+ * Initiates the AI's turn.
+ */
+function triggerAiTurn() {
+    if (isGameOver || isAiThinking) {
+        return; // Don't trigger if game over or already thinking
+    }
+
+    isAiThinking = true;
+    // (Optional: Disable board clicks here if you want explicit disabling)
+    // e.g., document.getElementById('board').style.pointerEvents = 'none';
+
+    // Update status to show AI is thinking (add 'ai_thinking' key to lang files)
+    renderUpdateStatus('ai_thinking');
+
+    // Use setTimeout to allow the UI to update and add a small delay
+    setTimeout(() => {
+        // --- Core AI Call ---
+        const bestMove = findBestMove(board, AI_PLAYER, AI_DIFFICULTY);
+
+        // --- Process AI Move ---
+        if (bestMove && !isGameOver) { // Check isGameOver again in case something changed
+            // Get the actual piece object from the board (needed for move/capture functions)
+            const pieceToMove = board.getPiece(bestMove.startRow, bestMove.startCol);
+
+            if (pieceToMove) {
+                // Determine if it's a capture or a simple move
+                const targetSquare = board.getSquareData(bestMove.endRow, bestMove.endCol);
+                const isCapture = targetSquare.piece !== null; // Check if destination has a piece
+                isAiThinking = false;
+                // --- Reuse existing move/capture functions ---
+                // These functions already handle board update, rendering,
+                // game end checks, and switching the player *back* to human.
+                if (isCapture) {
+                    console.log(`AI Action: Capturing with ${pieceToMove.type} at (${bestMove.endRow}, ${bestMove.endCol})`);
+                    capturePiece(bestMove.startRow, bestMove.startCol, bestMove.endRow, bestMove.endCol);
+                } else {
+                    console.log(`AI Action: Moving ${pieceToMove.type} to (${bestMove.endRow}, ${bestMove.endCol})`);
+                    movePiece(bestMove.startRow, bestMove.startCol, bestMove.endRow, bestMove.endCol);
+                }
+                 // NOTE: finalizeMoveAndUpdate() will be called inside movePiece/capturePiece,
+                 // which will switch the player back to human and update the status.
+
+            } else {
+                console.error("AI Error: Could not find piece on board for the best move:", bestMove);
+                isAiThinking = false; // Reset flag on error
+                // Maybe switch back to human or declare an AI error?
+                 switchPlayer();
+                 updateGameStatusUI()
+            }
+
+        } else if (!bestMove) {
+            console.warn("AI could not find a valid move (Stalemate or Error).");
+            // Handle stalemate? For now, just let the turn pass back?
+            isAiThinking = false; // Reset flag
+             switchPlayer(); // Switch back to human
+             updateGameStatusUI() // Update status for human turn
+        }
+
+        // (Optional: Re-enable board clicks if you disabled them earlier)
+        // e.g., document.getElementById('board').style.pointerEvents = 'auto';
+        // The isAiThinking flag is reset within finalizeMoveAndUpdate when it becomes human turn.
+
+    }, AI_DELAY); // Wait before executing the AI move
 }
 
 /**
