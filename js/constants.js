@@ -43,4 +43,4 @@ export const GameStatus = {
 };
 
 export const aiPlayer = Player.PLAYER2;
-export const aiDifficulty = 2;
+export const aiDifficulty = 4;  //seems to be the most effective depth for the current heuristis 

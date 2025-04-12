@@ -138,7 +138,7 @@ function minimax(board, depth, alpha, beta, isMaximizingPlayer, aiPlayer) {
             const evaluation = minimax(childBoard, depth - 1, alpha, beta, false, aiPlayer); // Recursive call for minimizing player
             maxEval = Math.max(maxEval, evaluation);
             alpha = Math.max(alpha, evaluation); // Update alpha
-            if (beta <= alpha) {
+            if (beta < alpha) {
                 break; // Beta cut-off (opponent won't allow this branch)
             }
         }
@@ -154,7 +154,7 @@ function minimax(board, depth, alpha, beta, isMaximizingPlayer, aiPlayer) {
             const evaluation = minimax(childBoard, depth - 1, alpha, beta, true, aiPlayer); // Recursive call for maximizing player
             minEval = Math.min(minEval, evaluation);
             beta = Math.min(beta, evaluation); // Update beta
-            if (beta <= alpha) {
+            if (beta < alpha) {
                 break; // Alpha cut-off (AI won't choose the earlier path leading here)
             }
         }
