@@ -11,6 +11,7 @@
     "statusGameOver": "Kết thúc! {winnerName} ({winnerColor}) Thắng!",
     "statusDraw": "Kết thúc! Hòa!",
     "statusAIThinking": "Máy ({color}) đang suy nghĩ...",
+    "statusAnimating": "Đang di chuyển...",
     "statusAITimedOut": "Máy hết thời gian!",
     "statusAIError": "Lỗi Máy!",
     "statusAINoMoves": "Máy không còn nước đi!",
@@ -25,5 +26,7 @@
     "capturedByPlayer1Label": "Đỏ bắt được:",
     "capturedNone": "Không có",
     "moveHistoryLabel": "Lịch sử Nước đi",
-    "turnLabel": "Lượt:"
+    "turnLabel": "Lượt:",
+    "switchToVn": "Tiếng Việt",
+    "switchToEn": "English"
 }

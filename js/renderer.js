@@ -138,16 +138,22 @@ export function updateStatus(messageKey, params = {}) {
  */
 export function updateTurnIndicator(currentPlayer, gameMode, isGameOver = false) {
     if (turnInfoLabelElem && turnElement) {
-        // Update the static "Turn:" label part via localization if needed
+        // ****** MODIFIED: Localize the static "Turn:" part ******
         const turnLabelText = getString('turnLabel');
         // Find the text node within turn-info, careful not to overwrite the span
+        let foundTextNode = false;
         for (const node of turnInfoLabelElem.childNodes) {
+            // Check if it's a text node and contains the colon (or just update first text node)
             if (node.nodeType === Node.TEXT_NODE && node.textContent.includes(':')) {
                  node.textContent = ` ${turnLabelText} `; // Add spaces for separation
+                 foundTextNode = true;
                  break;
             }
         }
-
+        // Fallback if the specific text node wasn't found (e.g., if structure changed)
+        if (!foundTextNode && turnInfoLabelElem.firstChild?.nodeType === Node.TEXT_NODE) {
+             turnInfoLabelElem.firstChild.textContent = ` ${turnLabelText} `;
+        }
 
         if (isGameOver) {
             turnElement.textContent = "---";

@@ -5,32 +5,32 @@ import * as rules from './rules.js';
 import * as renderer from './renderer.js';
 import * as ai from './ai.js';
 import { Player, GameStatus, DEFAULT_AI_PLAYER, DEFAULT_AI_TARGET_DEPTH, DEFAULT_AI_TIME_LIMIT_MS, MIN_AI_TIME_LIMIT_MS, ANIMATION_DURATION } from './constants.js';
-import { getString, loadLanguage, getCurrentLanguage } from './localization.js';
+// ****** MODIFIED Import: Added toggleLanguage ******
+import { getString, loadLanguage, getCurrentLanguage, toggleLanguage } from './localization.js';
 
 // --- Game State Variables ---
-let board = null; // Board instance
+let board = null;
 let currentPlayer = Player.PLAYER0;
-let selectedPiece = null; // { piece: Piece, row: number, col: number }
-let possibleMoves = []; // Array of {row, col} for selected piece
+let selectedPiece = null;
+let possibleMoves = [];
 let gameStatus = GameStatus.INIT;
 let isGameOver = false;
 let winner = Player.NONE;
-let isAnimating = false; // Prevent input during animation
-let isAiThinking = false; // Prevent input during AI calculation
-let gameMode = 'PVA'; // 'PVA' or 'PVP'
+let isAnimating = false;
+let isAiThinking = false;
+let gameMode = 'PVA';
 let aiPlayer = DEFAULT_AI_PLAYER;
 let aiTargetDepth = DEFAULT_AI_TARGET_DEPTH;
 let aiTimeLimitMs = DEFAULT_AI_TIME_LIMIT_MS;
 let lastAiDepthAchieved = 0;
-let currentZobristKey = 0n; // Current board hash
+let currentZobristKey = 0n;
 
-// History and Captured Pieces
-let moveHistoryLog = []; // Array of { piece, fromRow, fromCol, toRow, toCol, capturedPiece }
-let capturedByPlayer0 = []; // Pieces captured BY Player 0 (Blue) - these are Player 1's (Red) pieces
-let capturedByPlayer1 = []; // Pieces captured BY Player 1 (Red) - these are Player 0's (Blue) pieces
+let moveHistoryLog = [];
+let capturedByPlayer0 = [];
+let capturedByPlayer1 = [];
 
-// --- DOM Element References (for controls) ---
-let gameModeSelect, difficultySelect, timeLimitInput, resetButton, aiControlsContainer;
+// --- DOM Element References (cached after setupUIListeners) ---
+let gameModeSelect, difficultySelect, timeLimitInput, resetButton, aiControlsContainer, langToggleButton;
 
 
 /**
@@ -42,7 +42,7 @@ export function initGame() {
     isAnimating = false;
     isAiThinking = false;
     winner = Player.NONE;
-    currentPlayer = Player.PLAYER0; // Player 0 (Blue) starts
+    currentPlayer = Player.PLAYER0;
     selectedPiece = null;
     possibleMoves = [];
     moveHistoryLog = [];
@@ -50,46 +50,42 @@ export function initGame() {
     capturedByPlayer1 = [];
     lastAiDepthAchieved = 0;
 
-    // Create and initialize the board
-    board = new Board(); // Creates state with pieces and terrain
+    board = new Board();
 
-    // Initialize AI (Zobrist)
-    if (typeof BigInt === 'function') { // Only init if BigInt is supported
+    if (typeof BigInt === 'function') {
         ai.initializeZobrist();
         currentZobristKey = ai.computeZobristKey(board, currentPlayer);
         console.log("Initial Zobrist Key:", currentZobristKey);
     } else {
         console.warn("BigInt not supported, Zobrist hashing disabled.");
-        currentZobristKey = 0n; // Or handle differently
+        currentZobristKey = 0n;
     }
-
 
     gameStatus = GameStatus.ONGOING;
 
-    // Get control elements (if not already done) - should be called after DOM loaded
-    // This is called from main.js which waits for DOMContentLoaded
-    gameModeSelect = document.getElementById('game-mode');
-    difficultySelect = document.getElementById('difficulty');
-    timeLimitInput = document.getElementById('time-limit');
-    resetButton = document.getElementById('reset-button');
-    aiControlsContainer = document.getElementById('ai-controls');
-
+    // Get control elements refs if not already set
+    gameModeSelect = gameModeSelect || document.getElementById('game-mode');
+    difficultySelect = difficultySelect || document.getElementById('difficulty');
+    timeLimitInput = timeLimitInput || document.getElementById('time-limit');
+    resetButton = resetButton || document.getElementById('reset-button');
+    aiControlsContainer = aiControlsContainer || document.getElementById('ai-controls');
+    langToggleButton = langToggleButton || document.getElementById('lang-toggle-button'); // Get ref here too
 
     // Set initial control values from constants/state
-    gameMode = gameModeSelect.value; // Read initial mode
-    aiPlayer = DEFAULT_AI_PLAYER; // AI is always P1 for now
-    aiTargetDepth = parseInt(difficultySelect.value, 10);
-    aiTimeLimitMs = parseInt(timeLimitInput.value, 10);
+    if (gameModeSelect) gameMode = gameModeSelect.value;
+    aiPlayer = DEFAULT_AI_PLAYER;
+    if (difficultySelect) aiTargetDepth = parseInt(difficultySelect.value, 10);
+    if (timeLimitInput) aiTimeLimitMs = parseInt(timeLimitInput.value, 10);
     updateAiControlsVisibility();
 
-
     // Initial Render
-    renderer.renderCoordinates(); // Render A1, B2 etc. labels once
+    renderer.renderCoordinates();
     renderer.renderBoard(board, selectedPiece, possibleMoves);
     renderer.renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
     renderer.renderMoveHistory(moveHistoryLog);
     renderer.updateAiDepthDisplay(lastAiDepthAchieved);
-    updateGameStatusUI(); // Update status message and turn indicator
+    updateAllLocalizableElements(); // Update text based on initial language
+    updateGameStatusUI(); // Set initial status message
 
     console.log("Game initialized. Player 0's turn.");
 }
@@ -98,15 +94,16 @@ export function initGame() {
  * Sets up event listeners for UI controls. Called once by main.js.
  */
 export function setupUIListeners() {
-     // Get references again just in case initGame wasn't called yet, though it should be
+    // Get references to all control elements
     gameModeSelect = document.getElementById('game-mode');
     difficultySelect = document.getElementById('difficulty');
     timeLimitInput = document.getElementById('time-limit');
     resetButton = document.getElementById('reset-button');
     aiControlsContainer = document.getElementById('ai-controls');
+    // ****** Get Language Button Reference ******
+    langToggleButton = document.getElementById('lang-toggle-button');
 
-
-    if (!gameModeSelect || !difficultySelect || !timeLimitInput || !resetButton) {
+    if (!gameModeSelect || !difficultySelect || !timeLimitInput || !resetButton || !langToggleButton) { // Check lang button too
          console.error("Game Error: Control elements not found! Cannot set up listeners.");
          return;
     }
@@ -116,15 +113,13 @@ export function setupUIListeners() {
         gameMode = event.target.value;
         console.log("Game Mode changed to:", gameMode);
         updateAiControlsVisibility();
-        // Optionally reset the game when mode changes? Or just update UI?
-         resetGame(); // Resetting seems safer
+        resetGame();
     });
 
     // AI Difficulty Change
     difficultySelect.addEventListener('change', (event) => {
         aiTargetDepth = parseInt(event.target.value, 10);
         console.log("AI Target Depth set to:", aiTargetDepth);
-         // No reset needed, just affects next AI move
     });
 
     // AI Time Limit Change
@@ -132,34 +127,29 @@ export function setupUIListeners() {
         let value = parseInt(event.target.value, 10);
         if (isNaN(value) || value < MIN_AI_TIME_LIMIT_MS) {
             value = MIN_AI_TIME_LIMIT_MS;
-            event.target.value = value; // Correct input field if invalid
+            event.target.value = value;
         }
         aiTimeLimitMs = value;
         console.log("AI Time Limit set to:", aiTimeLimitMs, "ms");
-         // No reset needed
     });
-
 
     // Reset Button
     resetButton.addEventListener('click', resetGame);
 
+    // ****** Language Toggle Button Listener ******
+    langToggleButton.addEventListener('click', async () => {
+        const success = await toggleLanguage(); // Attempt to toggle and load
+        if (success) {
+            updateAllLocalizableElements(); // Update UI text if load was successful
+        } else {
+            console.error("Failed to switch language.");
+            // Optionally show an error message to the user
+        }
+    });
+    // ******************************************
+
     // Board Click Listener (using delegation via renderer)
     renderer.addBoardEventListeners(handleSquareClick);
-
-    // Language Selector (Example - Assuming you add one like in original structure)
-    // const langSelect = document.getElementById('lang-select');
-    // if (langSelect) {
-    //     langSelect.addEventListener('change', async (event) => {
-    //         const langCode = event.target.value;
-    //         await loadLanguage(langCode);
-    //         // Update all localizable UI elements after language change
-    //         updateAllLocalizableElements();
-    //         // Re-render elements that depend on localized strings
-    //         renderer.renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
-    //         renderer.renderMoveHistory(moveHistoryLog);
-    //         updateGameStatusUI();
-    //     });
-    // }
 
     updateAllLocalizableElements(); // Set initial text for buttons etc.
 }
@@ -167,7 +157,11 @@ export function setupUIListeners() {
 /** Resets the game state and UI */
 function resetGame() {
      console.log("Resetting game...");
-     initGame(); // Re-initialize everything
+     // Ensure controls are reset to defaults visually if needed before init
+     if (difficultySelect) difficultySelect.value = DEFAULT_AI_TARGET_DEPTH.toString();
+     if (timeLimitInput) timeLimitInput.value = DEFAULT_AI_TIME_LIMIT_MS.toString();
+     if (gameModeSelect) gameModeSelect.value = 'PVA'; // Default mode?
+     initGame();
 }
 
 /** Updates visibility of AI-specific controls based on game mode */
@@ -179,11 +173,21 @@ function updateAiControlsVisibility() {
 
 /** Update UI elements that depend on loaded language */
 function updateAllLocalizableElements() {
-     document.title = getString('gameTitle'); // Example: Update page title
-     if(document.querySelector('h1')) document.querySelector('h1').textContent = getString('gameTitle'); // Update H1
+     console.log("Updating localizable elements for lang:", getCurrentLanguage());
+     document.title = getString('gameTitle');
+     const h1 = document.querySelector('h1');
+     if(h1) h1.textContent = getString('gameTitle');
 
      if(resetButton) resetButton.textContent = getString('resetButton');
-     // Update labels for controls
+
+     // ****** Update Language Button Text ******
+     // Set text to the language it will SWITCH TO
+     if(langToggleButton) {
+         const nextLang = getCurrentLanguage() === 'en' ? 'vn' : 'en';
+         langToggleButton.textContent = getString(nextLang === 'en' ? 'switchToEn' : 'switchToVn');
+     }
+     // ****************************************
+
      const modeLabel = document.querySelector('label[for="game-mode"]');
      if(modeLabel) modeLabel.textContent = getString('gameModeLabel');
      const diffLabel = document.getElementById('ai-difficulty-control')?.querySelector('label');
@@ -192,9 +196,7 @@ function updateAllLocalizableElements() {
      if(timeLabel) timeLabel.textContent = getString('aiTimeLimitLabel');
      const depthAchievedSpan = document.querySelector('.ai-info');
      if (depthAchievedSpan) {
-         // Keep the number span separate
          const labelPart = getString('aiDepthAchievedLabel');
-         // Find the text node before the span
          for(const node of depthAchievedSpan.childNodes) {
              if (node.nodeType === Node.TEXT_NODE) {
                  node.textContent = `${labelPart} `;
@@ -203,14 +205,14 @@ function updateAllLocalizableElements() {
          }
      }
 
-     // Update options in select dropdowns? (More complex, maybe not needed if values are stable)
-     // Example: gameModeSelect options
-     const pvaOption = gameModeSelect.querySelector('option[value="PVA"]');
-     if (pvaOption) pvaOption.textContent = getString('gameModePVA');
-     const pvpOption = gameModeSelect.querySelector('option[value="PVP"]');
-     if (pvpOption) pvpOption.textContent = getString('gameModePVP');
+     if (gameModeSelect) {
+         const pvaOption = gameModeSelect.querySelector('option[value="PVA"]');
+         if (pvaOption) pvaOption.textContent = getString('gameModePVA');
+         const pvpOption = gameModeSelect.querySelector('option[value="PVP"]');
+         if (pvpOption) pvpOption.textContent = getString('gameModePVP');
+     }
 
-     // Re-render components that show localized text
+      // Re-render components that show localized text
       renderer.renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
       renderer.renderMoveHistory(moveHistoryLog);
       updateGameStatusUI(); // Update status message and turn indicator
@@ -224,50 +226,38 @@ function updateAllLocalizableElements() {
  */
 function handleSquareClick(row, col) {
     // Ignore clicks if game over, animating, or AI turn in PVA mode
-    if (isGameOver || isAnimating || (gameMode === 'PVA' && currentPlayer === aiPlayer && !isAiThinking /* allow clicks if AI is done thinking but not moved? No. */)) {
+    if (isGameOver || isAnimating || (gameMode === 'PVA' && currentPlayer === aiPlayer)) {
         return;
     }
 
     const clickedSquare = board.getSquareData(row, col);
-    if (!clickedSquare) return; // Clicked outside board? Should not happen with delegation.
+    if (!clickedSquare) return;
 
     const clickedPiece = clickedSquare.piece;
 
     if (selectedPiece) {
-        // Piece already selected, check if clicked square is a valid move
         if (possibleMoves.some(move => move.row === row && move.col === col)) {
-            // Valid move destination clicked
-            const pieceToMove = selectedPiece.piece; // The actual piece object
+            const pieceToMove = selectedPiece.piece;
             const fromRow = selectedPiece.row;
             const fromCol = selectedPiece.col;
-
-            // Deselect first visually (will be re-rendered after move)
-            // deselectPiece(); NO - do this *after* makeMove starts
             makeMove(pieceToMove, fromRow, fromCol, row, col);
-
         } else {
-            // Clicked somewhere else - deselect or select another piece
             const previouslySelectedRow = selectedPiece.row;
             const previouslySelectedCol = selectedPiece.col;
-            deselectPiece(); // Clear selection and highlights
-
-            // If clicked on another piece of the current player, select it
+            deselectPiece();
             if (clickedPiece && clickedPiece.player === currentPlayer) {
-                 // Avoid re-selecting the same piece immediately after deselecting
                 if(!(row === previouslySelectedRow && col === previouslySelectedCol)){
                     selectPiece(row, col);
                 } else {
-                     renderer.renderBoard(board, null, []); // Re-render without selection
+                     renderer.renderBoard(board, null, []);
                      updateGameStatusUI();
                 }
             } else {
-                 // Clicked on empty square or opponent piece, just deselect is enough
-                 renderer.renderBoard(board, null, []); // Re-render without selection
+                 renderer.renderBoard(board, null, []);
                  updateGameStatusUI();
             }
         }
     } else {
-        // No piece selected, check if clicked on own piece
         if (clickedPiece && clickedPiece.player === currentPlayer) {
             selectPiece(row, col);
         }
@@ -284,25 +274,20 @@ function selectPiece(row, col) {
     const piece = board.getPiece(row, col);
     if (!piece || piece.player !== currentPlayer) return;
 
-    // Deselect previous if any (shouldn't be needed with current flow, but safe)
     deselectPiece();
 
     selectedPiece = { piece, row, col };
     possibleMoves = rules.getPossibleMoves(piece, row, col, board);
 
-    // Re-render board with highlights
     renderer.renderBoard(board, selectedPiece, possibleMoves);
-    updateGameStatusUI(); // Update status message
+    updateGameStatusUI();
 }
 
-/**
- * Clears the current piece selection and highlights.
- */
+/** Clears the current piece selection and highlights. */
 function deselectPiece() {
     if (selectedPiece) {
         selectedPiece = null;
         possibleMoves = [];
-         // Don't re-render here, let the caller handle it or do it in handleSquareClick fallback
     }
 }
 
@@ -320,25 +305,21 @@ async function makeMove(piece, fromRow, fromCol, toRow, toCol) {
         return;
     }
 
-    const targetPiece = board.getPiece(toRow, toCol); // Piece being captured (if any)
+    const targetPiece = board.getPiece(toRow, toCol);
+    const capturedPiece = targetPiece ? new Piece(targetPiece.type, targetPiece.player, targetPiece.row, targetPiece.col) : null;
+    const movedPieceForHash = new Piece(piece.type, piece.player, piece.row, piece.col);
 
-    // --- Pre-computation for history/hash ---
-    const capturedPiece = targetPiece ? new Piece(targetPiece.type, targetPiece.player, targetPiece.row, targetPiece.col) : null; // Clone for log
-    const movedPieceForHash = new Piece(piece.type, piece.player, piece.row, piece.col); // Clone piece state *before* move for hash
-
-    // --- Start Animation ---
     isAnimating = true;
-    deselectPiece(); // Clear selection state now
-    renderer.renderBoard(board, null, []); // Render board without selection/moves before animation
-    updateGameStatusUI(); // Show "Moving..." or similar? (Handled by renderer check)
+    deselectPiece();
+    renderer.renderBoard(board, null, []);
+    // updateGameStatusUI(); // Status updated by renderer check
 
     await renderer.animateMove(fromRow, fromCol, toRow, toCol, ANIMATION_DURATION);
 
-    // --- Update Board State (After Animation) ---
-    // Must update piece's internal row/col BEFORE setting it on board
+    // --- Update Board State ---
     piece.setPosition(toRow, toCol);
-    board.setPiece(toRow, toCol, piece); // Place moving piece
-    board.setPiece(fromRow, fromCol, null); // Clear original square
+    board.setPiece(toRow, toCol, piece);
+    board.setPiece(fromRow, fromCol, null);
 
     if (capturedPiece) {
         if (piece.player === Player.PLAYER0) {
@@ -348,24 +329,19 @@ async function makeMove(piece, fromRow, fromCol, toRow, toCol) {
         }
     }
 
-     // --- Update Zobrist Key ---
-     if (typeof BigInt === 'function' && currentZobristKey !== 0n) {
+    if (typeof BigInt === 'function' && currentZobristKey !== 0n) {
          currentZobristKey = ai.updateZobristKey(currentZobristKey, currentPlayer, movedPieceForHash, fromRow, fromCol, toRow, toCol, capturedPiece);
-         // console.log("Zobrist Key After Move:", currentZobristKey); // Debug
-     }
+    }
 
-    // --- Update History Log ---
     moveHistoryLog.push({ piece: piece, fromRow, fromCol, toRow, toCol, capturedPiece });
 
+    isAnimating = false;
 
-    // --- Post-Move Updates (Render, Check Win, Switch Player) ---
-    isAnimating = false; // Animation finished
-
-    renderer.renderBoard(board, null, []); // Render final board state
+    renderer.renderBoard(board, null, []);
     renderer.renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
     renderer.renderMoveHistory(moveHistoryLog);
 
-    checkGameEndAndUpdate(); // Checks win condition and switches player if ongoing
+    checkGameEndAndUpdate();
 }
 
 
@@ -378,13 +354,12 @@ function checkGameEndAndUpdate() {
         gameStatus = currentStatus;
         if (currentStatus === GameStatus.PLAYER0_WINS) winner = Player.PLAYER0;
         else if (currentStatus === GameStatus.PLAYER1_WINS) winner = Player.PLAYER1;
-        else winner = Player.NONE; // Draw
+        else winner = Player.NONE;
 
         console.log(`Game Over! Winner: ${winner === Player.NONE ? 'Draw' : `Player ${winner}`}`);
-        updateGameStatusUI(); // Display final game over message
+        updateGameStatusUI();
 
     } else {
-        // Game is ongoing, switch player
         switchPlayer();
     }
 }
@@ -392,14 +367,8 @@ function checkGameEndAndUpdate() {
 /** Switches the current player and triggers AI if necessary. */
 function switchPlayer() {
     if (isGameOver) return;
-
     currentPlayer = Player.getOpponent(currentPlayer);
-
-     // Zobrist key already updated in makeMove which includes the turn switch bit flip
-
-    updateGameStatusUI(); // Update turn indicator and status message
-
-    // Trigger AI turn if applicable
+    updateGameStatusUI();
     if (gameMode === 'PVA' && currentPlayer === aiPlayer && !isGameOver) {
         triggerAiTurn();
     }
@@ -409,7 +378,7 @@ function switchPlayer() {
 function updateGameStatusUI() {
      renderer.updateTurnIndicator(currentPlayer, gameMode, isGameOver);
 
-     let messageKey = 'statusSelecting'; // Default
+     let messageKey = 'statusSelecting';
      let params = {
          playerName: getString(currentPlayer === Player.PLAYER0 ? 'player0Name' : (gameMode === 'PVP' ? 'player1Name' : 'player1NameAI')),
          color: getString(currentPlayer === Player.PLAYER0 ? 'player0Color' : 'player1Color')
@@ -426,18 +395,17 @@ function updateGameStatusUI() {
                  winnerColor: getString(winner === Player.PLAYER0 ? 'player0Color' : 'player1Color')
              };
          }
-     } else if (isAnimating) {
-         // Status during animation? Could override player turn message.
-         // messageKey = 'statusAnimating'; // If needed
-     } else if (isAiThinking) {
+     } else if (isAiThinking) { // Check isAiThinking before isAnimating
          messageKey = 'statusAIThinking';
          params = { color: getString(aiPlayer === Player.PLAYER0 ? 'player0Color' : 'player1Color') };
+     } else if (isAnimating) {
+         // Let renderer handle this or define a key like 'statusAnimating'
+          messageKey = 'statusAnimating'; // Add this key to JSON if needed
+          params = {};
      } else if (selectedPiece) {
          messageKey = 'statusMoving';
-         params.pieceName = selectedPiece.piece.name;
-     } else {
-         // Default 'statusSelecting' is fine
-     }
+         params.pieceName = selectedPiece.piece.name; // Piece names aren't localized here, but could be
+     } // else 'statusSelecting' is default
 
      renderer.updateStatus(messageKey, params);
 }
@@ -449,52 +417,50 @@ function triggerAiTurn() {
     }
 
     isAiThinking = true;
-    lastAiDepthAchieved = 0; // Reset before AI runs
-    renderer.updateAiDepthDisplay(lastAiDepthAchieved); // Show 0 while thinking
+    lastAiDepthAchieved = 0;
+    renderer.updateAiDepthDisplay(lastAiDepthAchieved);
     updateGameStatusUI(); // Show "AI is thinking..."
 
-    // Use setTimeout to allow UI update before potentially blocking AI calculation
     setTimeout(() => {
         try {
             const aiResult = ai.findBestMove(board, aiPlayer, aiTargetDepth, aiTimeLimitMs);
-
-            isAiThinking = false; // Finished thinking
-
-             // Update depth display *after* AI finishes
-             lastAiDepthAchieved = aiResult.depthAchieved;
-             renderer.updateAiDepthDisplay(lastAiDepthAchieved);
-
+            isAiThinking = false;
+            lastAiDepthAchieved = aiResult.depthAchieved;
+            renderer.updateAiDepthDisplay(lastAiDepthAchieved);
 
             if (aiResult.move && aiResult.move.piece) {
-                // Double-check piece still exists on board before moving
                  const pieceOnBoard = board.getPiece(aiResult.move.fromRow, aiResult.move.fromCol);
                  if (pieceOnBoard && pieceOnBoard.type === aiResult.move.piece.type && pieceOnBoard.player === aiResult.move.piece.player) {
-                      // Use the piece instance from the current board state for the move
                      makeMove(pieceOnBoard, aiResult.move.fromRow, aiResult.move.fromCol, aiResult.move.toRow, aiResult.move.toCol);
                  } else {
                       console.error("AI Error: Piece mismatch after search!", { aiMove: aiResult.move, boardPiece: pieceOnBoard });
                       handleAiErrorOrNoMove("statusAIError");
                  }
-
             } else {
                  console.error("AI Error: AI did not return a valid move.");
-                 handleAiErrorOrNoMove("statusAINoMoves"); // Could be no moves or an error
+                 // Check if it was genuinely no moves or an error during search
+                 const possibleAiMoves = rules.getAllPossibleMovesForPlayer(board, aiPlayer);
+                 if (possibleAiMoves.length === 0) {
+                     handleAiErrorOrNoMove("statusAINoMoves");
+                 } else {
+                    handleAiErrorOrNoMove("statusAIError"); // Assume error if moves existed but none returned
+                 }
             }
         } catch (error) {
             isAiThinking = false;
             console.error("AI Error: Exception during AI move calculation:", error);
             handleAiErrorOrNoMove("statusAIError");
         }
-    }, 50); // Small delay to ensure UI updates
+    }, 50);
 }
 
 /** Handles game over state when AI fails or has no moves */
 function handleAiErrorOrNoMove(statusKey) {
      isGameOver = true;
-     gameStatus = (aiPlayer === Player.PLAYER0) ? GameStatus.PLAYER1_WINS : GameStatus.PLAYER0_WINS; // Opponent wins
+     gameStatus = (aiPlayer === Player.PLAYER0) ? GameStatus.PLAYER1_WINS : GameStatus.PLAYER0_WINS;
      winner = Player.getOpponent(aiPlayer);
      renderer.updateStatus(statusKey, {color: getString(aiPlayer === Player.PLAYER0 ? 'player0Color' : 'player1Color')});
-     renderer.updateTurnIndicator(currentPlayer, gameMode, isGameOver); // Update turn display to "---"
-     renderer.renderBoard(board, null, []); // Final render
-     console.log(`Game Over! Player ${winner} wins due to AI issue.`);
+     renderer.updateTurnIndicator(currentPlayer, gameMode, isGameOver);
+     renderer.renderBoard(board, null, []);
+     console.log(`Game Over! Player ${winner} wins due to AI issue (${statusKey}).`);
 }

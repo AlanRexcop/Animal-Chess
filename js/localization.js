@@ -56,7 +56,7 @@ export function getString(key, params = {}) {
     for (const paramName in params) {
         const placeholder = `{${paramName}}`;
         // Use a global regex replace
-        str = str.replace(new RegExp(`\\${placeholder}`, 'g'), params[paramName]);
+        str = str.replace(new RegExp(`\\${placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}`, 'g'), params[paramName]);
     }
 
     return str;
@@ -68,4 +68,17 @@ export function getString(key, params = {}) {
  */
 export function getCurrentLanguage() {
     return currentLangCode;
+}
+
+
+/**
+ * Toggles the language between the supported languages (currently 'en' and 'vn').
+ * Loads the new language file.
+ * @returns {Promise<boolean>} True if the new language was loaded successfully.
+ */
+export async function toggleLanguage() {
+    const currentLang = getCurrentLanguage();
+    const nextLang = currentLang === 'en' ? 'vn' : 'en';
+    console.log(`Toggling language from ${currentLang} to ${nextLang}`);
+    return await loadLanguage(nextLang);
 }

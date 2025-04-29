@@ -11,6 +11,7 @@
     "statusGameOver": "Game Over! {winnerName} ({winnerColor}) Wins!",
     "statusDraw": "Game Over! It's a Draw!",
     "statusAIThinking": "AI ({color}) is thinking...",
+    "statusAnimating": "Moving...",
     "statusAITimedOut": "AI timed out!",
     "statusAIError": "AI Error!",
     "statusAINoMoves": "AI has no moves!",
@@ -25,5 +26,7 @@
     "capturedByPlayer1Label": "Captured by Red:",
     "capturedNone": "None",
     "moveHistoryLabel": "Move History",
-    "turnLabel": "Turn:"
+    "turnLabel": "Turn:",
+    "switchToVn": "Tiếng Việt",
+    "switchToEn": "English"
 }
