@@ -1,46 +1,70 @@
+// js/constants.js
+
 export const BOARD_ROWS = 9;
 export const BOARD_COLS = 7;
 
+// Terrain Types (Match CSS/Setup Logic)
 export const TerrainType = {
-    NORMAL: 'NORMAL',
-    RIVER: 'RIVER',
-    TRAP_P1: 'TRAP_P1',
-    TRAP_P2: 'TRAP_P2',
-    DEN_P1: 'DEN_P1',
-    DEN_P2: 'DEN_P2'
+    LAND: 'land',
+    WATER: 'water',
+    TRAP: 'trap',
+    PLAYER0_DEN: 'player0-den', // Blue Den (Bottom)
+    PLAYER1_DEN: 'player1-den', // Red Den (Top)
 };
 
+// Player Identifiers (Match AI/Game Logic: 0 for Blue, 1 for Red)
 export const Player = {
-    NONE: 0,
-    PLAYER1: 1,
-    PLAYER2: 2,
-    getOpponent: function (player) {
-        if (player === this.PLAYER1) return this.PLAYER2;
-        if (player === this.PLAYER2) return this.PLAYER1;
-        return this.NONE;
-    }
+    PLAYER0: 0, // Typically Human (Blue)
+    PLAYER1: 1, // Typically AI/Human (Red)
+    NONE: -1,
+    getOpponent: (player) => (player === Player.PLAYER0 ? Player.PLAYER1 : Player.PLAYER0),
 };
 
-export const AnimalRanks = {
-    'rat': 1,
-    'cat': 2,
-    'dog': 3,
-    'wolf': 4,
-    'leopard': 5,
-    'tiger': 6,
-    'lion': 7,
-    'elephant': 8
+// Piece Definitions (Combine rank, symbol, name, AI value)
+// Using lowercase keys for easier lookup from piece type strings
+export const PieceData = {
+    rat:      { rank: 1, name: 'Rat',      symbol: '🐀', value: 100 },
+    cat:      { rank: 2, name: 'Cat',      symbol: '🐈', value: 200 },
+    dog:      { rank: 3, name: 'Dog',      symbol: '🐕', value: 300 },
+    wolf:     { rank: 4, name: 'Wolf',     symbol: '🐺', value: 400 },
+    leopard:  { rank: 5, name: 'Leopard',  symbol: '🐆', value: 500 },
+    tiger:    { rank: 6, name: 'Tiger',    symbol: '🐅', value: 700 },
+    lion:     { rank: 7, name: 'Lion',     symbol: '🦁', value: 800 },
+    elephant: { rank: 8, name: 'Elephant', symbol: '🐘', value: 650 }, // Note: Elephant value adjusted
+};
+export const PieceTypes = Object.keys(PieceData); // ['rat', 'cat', ...]
+
+// Den Locations (Based on Player IDs)
+export const Dens = {
+    [Player.PLAYER0]: { row: BOARD_ROWS - 1, col: 3 }, // Bottom Den
+    [Player.PLAYER1]: { row: 0, col: 3 },              // Top Den
 };
 
-export const AnimalTypes = Object.keys(AnimalRanks);
+// Trap Locations (Helper array)
+export const TrapLocations = [
+    { r: 0, c: 2 }, { r: 0, c: 4 }, { r: 1, c: 3 }, // Near Player 1 Den
+    { r: BOARD_ROWS - 1, c: 2 }, { r: BOARD_ROWS - 1, c: 4 }, { r: BOARD_ROWS - 2, c: 3 }, // Near Player 0 Den
+];
 
+// Game Status
 export const GameStatus = {
-    INIT: 'Initializing',
-    ONGOING: 'Ongoing',
-    P1_WINS: 'Player 1 Wins!',
-    P2_WINS: 'Player 2 Wins!',
-    DRAW: 'Draw'
+    INIT: 'init',
+    ONGOING: 'ongoing',
+    PLAYER0_WINS: 'player0_wins',
+    PLAYER1_WINS: 'player1_wins',
+    DRAW: 'draw', // Consider adding if needed
 };
 
-export const aiPlayer = Player.PLAYER2;
-export const aiDifficulty = 4;  //seems to be the most effective depth for the current heuristis 
+// AI Constants
+export const DEFAULT_AI_PLAYER = Player.PLAYER1; // AI is usually Player 1 (Red)
+export const DEFAULT_AI_TARGET_DEPTH = 6;
+export const DEFAULT_AI_TIME_LIMIT_MS = 5000;
+export const MIN_AI_TIME_LIMIT_MS = 100;
+export const WIN_SCORE = 20000; // Score for definite win
+export const LOSE_SCORE = -20000; // Score for definite loss
+export const ZOBRIST_HASH_FLAGS = {
+    EXACT: 0,
+    LOWERBOUND: 1, // Alpha cutoff
+    UPPERBOUND: 2, // Beta cutoff
+};
+export const ANIMATION_DURATION = 300; // ms

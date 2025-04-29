@@ -1,356 +1,483 @@
-/* css/style.css */
-
-/* Basic body styling (optional, adjust as needed) */
 body {
-  font-family: sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #f0f0f0;
-  margin: 0;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    min-height: 100vh;
+    box-sizing: border-box;
+    background-image: url('https://upload.wikimedia.org/wikipedia/commons/archive/5/59/20230311125900%21Minecraft_missing_texture_block.svg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #cccccc; /* Fallback */
 }
 
-/* Main game container */
-#game-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-}
-
-/* Game Title */
 h1 {
-  margin-bottom: 15px;
-  color: #333;
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+    background-color: rgba(255, 255, 255, 0.6);
+    padding: 5px 10px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* Board Grid Container */
-#board {
-  display: grid;
-  /* 9 rows, 7 columns */
-  grid-template-rows: repeat(9, 60px);    /* Adjust 60px square size as needed */
-  grid-template-columns: repeat(7, 60px);
-  gap: 1px; /* Creates thin lines between squares */
-  border: 3px solid #444; /* Dark border around the whole board */
-  background-color: #5a8a5a; /* Color shown in the gaps */
-  user-select: none; /* Prevent text selection on the board */
-  position: relative; /* For potential absolute positioning of overlays */
+#game-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(233, 233, 233, 0.9);
+    padding: 10px 15px; /* Slightly more padding */
+    border-radius: 8px;
+    margin-bottom: 15px;
+    width: 95%;
+    max-width: 850px;
+    box-sizing: border-box;
+    gap: 15px 20px; /* Row gap, column gap */
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
-/* Basic Square Styling */
+/* --- Group AI controls together --- */
+#ai-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 15px; /* Gap within the AI controls group */
+    align-items: center;
+    justify-content: center; /* Center items if they wrap */
+    padding: 5px 0; /* Optional padding */
+}
+
+
+#game-controls label,
+#game-controls select,
+#game-controls button,
+#game-controls .ai-info,
+#game-controls input[type="number"] /* Style new input */
+{
+    font-size: 14px;
+    color: #222;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+#game-controls select,
+#game-controls input[type="number"] {
+    background-color: #fff;
+}
+#game-controls button {
+    background-color: #ddd;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+#game-controls button:hover {
+    background-color: #ccc;
+}
+#game-controls .ai-info { /* Remove border/padding from span */
+    border: none;
+    padding: 0;
+    margin-left: 5px; /* Add some space */
+}
+
+#ai-difficulty-control,
+#ai-time-limit-control /* Style new control group */
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Adjust width of number input */
+#time-limit {
+    width: 70px;
+}
+
+
+#game-layout {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 98%;
+    max-width: 850px;
+    gap: 15px;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* --- Column Wrappers --- */
+#left-panel, #right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 180px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+#main-game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* --- Board and Coordinates --- */
+#board-container {
+    position: relative;
+    width: calc(420px + 2 * 20px);
+    height: calc(540px + 2 * 20px);
+    padding: 3px; /* Keep 20px padding for labels */
+    box-sizing: content-box;
+    margin-bottom: 10px;
+}
+
+.coord-labels {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.75em;
+    color: #555;
+    font-weight: bold;
+    pointer-events: none;
+    background-color: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+}
+.coord-labels span {
+    display: inline-block;
+    text-align: center;
+    flex-grow: 1;
+}
+
+.col-labels {
+    left: 20px;
+    right: 20px;
+    height: 20px;
+}
+#col-labels-top { top: 0; }
+#col-labels-bottom { bottom: 0; }
+.col-labels span {
+     width: 60px;
+     flex-grow: 0;
+     line-height: 20px;
+}
+
+
+.row-labels {
+    top: 20px;
+    bottom: 20px;
+    width: 20px;
+    flex-direction: column;
+}
+#row-labels-left { left: 0; }
+#row-labels-right { right: 0; }
+.row-labels span {
+     height: 60px;
+     flex-grow: 0;
+     line-height: 60px;
+     text-orientation: mixed;
+}
+
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(7, 60px);
+    grid-template-rows: repeat(9, 60px);
+    border: 3px solid #555;
+    width: 420px;
+    height: 540px;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background-color: rgba(204, 204, 204, 0.8);
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    margin-bottom: 0;
+}
+
 .square {
-  /* width/height implicitly set by grid template */
-  background-color: #a0d8a0; /* Default light green for NORMAL terrain */
-  border: 1px solid #81c784; /* Slightly darker green border for squares */
-  box-sizing: border-box; /* Include border in size calculation */
-  cursor: pointer; /* Indicate clickable squares */
-  position: relative; /* Positioning context for pieces inside */
-  display: flex; /* For centering pieces */
-  justify-content: center;
-  align-items: center;
+    width: 60px; height: 60px;
+    border: 1px solid #bbb;
+    box-sizing: border-box; display: flex; justify-content: center; align-items: center;
+    cursor: pointer; position: relative;
+    transition: background-color 0.2s ease;
 }
-
-.square:hover {
-  /* Optional: Subtle hover effect */
-  /* background-color: #b2dfdb; */
-  outline: 1px solid gold; /* Example hover */
-}
-
-
-/* --- Terrain Styling --- */
-
-/* River Squares */
-.square.river {
-  background-color: #64b5f6; /* Light blue for water */
-  border-color: #1e88e5; /* Darker blue border */
-  cursor: default; /* Usually non-clickable unless moving Rat */
-}
-.square.river:hover {
-  outline: none; /* No hover outline on river unless moving valid piece */
-}
+.land { background-color: rgba(144, 238, 144, 0.85); }
+.water { background-color: rgba(173, 216, 230, 0.85); }
+.trap { background-color: rgba(255, 182, 193, 0.85); }
+.player0-den { background-color: rgba(210, 180, 255, 0.85); border: 2px dashed #0000FF;}
+.player1-den { background-color: rgba(255, 218, 185, 0.85); border: 2px dashed #FF0000; }
 
 
-/* Trap Squares */
-/* NOTE: renderer.js needs to add 'trap-p1' or 'trap-p2' based on location */
-.square.trap {
-  background-color: #bdbdbd; /* Neutral greyish background for traps */
-  /* Optional: Add a subtle background pattern or icon later */
-}
-
-.square.trap_p1 { /* Trap belonging to Player 1 (Blue - typically bottom traps) */
-  border: 2px dashed #007bff; /* Dashed blue border */
-  /* Optional: Add an icon or symbol */
-  background-image: url('../assets/images/trap_p1.png'); 
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 50%;
-}
-
-.square.trap_p2 { /* Trap belonging to Player 2 (Red - typically top traps) */
-  border: 2px dashed #dc3545; /* Dashed red border */
-  background-image: url('../assets/images/trap_p2.png'); 
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 50%;
-}
-
-
-/* Den Squares */
-/* NOTE: renderer.js needs to add 'den-p1' or 'den-p2' based on location */
-.square.den {
-  background-color: #e7e2e2; /* Very light gray */
-  border: 3px solid #bdbdbd; /* Solid gray border */
-  
-}
-
-.square.den_p1 { /* Den belonging to Player 1 (Blue - typically bottom den) */
-  background-color: #e3f2fd; /* Very light blue */
-  border: 3px solid #007bff; /* Solid blue border */
-  background-image: url('../assets/images/den_p1.png'); 
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 50%;
-}
-
-.square.den_p2 { /* Den belonging to Player 2 (Red - typically top den) */
-  background-color: #fce4e4; /* Very light red */
-  border: 3px solid #dc3545; /* Solid red border */
-  background-image: url('../assets/images/den_p2.png'); 
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 50%;
-}
-
-
-/* Status Display */
-#status {
-  margin-top: 15px;
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #333;
-  min-height: 1.5em; /* Prevent layout shifts */
-  text-align: center;
-}
-
-/* Controls Area (placeholder) */
-#controls {
-  margin-top: 15px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* --- Piece Styling --- */
-
-/* Base style for all pieces */
 .piece {
-  width: 85%;  /* Adjust percentage for desired size within the square (e.g., 80%-90%) */
-  height: 85%;
-  border-radius: 50%; /* Make it circular */
-  box-sizing: border-box; /* Include border in size calculation */
-  pointer-events: none; /* Clicks should register on the square underneath */
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 45px; height: 45px; line-height: 45px; font-size: 32px; border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    text-align: center; z-index: 2; cursor: pointer; user-select: none;
+    transition: transform 0.3s ease-out;
+    box-sizing: border-box;
+}
+.player0 { color: blue; border: 2px solid blue; }
+.player1 { color: red;  border: 2px solid red;}
 
-  /* Background image settings */
-  background-size: contain; /* Scale image down to fit within the element */
-  background-repeat: no-repeat; /* Prevent image tiling */
-  background-position: center; /* Center the image */
+.selected { outline: 3px solid gold !important; outline-offset: -3px; z-index: 3;}
+.possible-move { background-color: rgba(255, 255, 0, 0.5) !important; z-index: 1;}
+.capture-move { background-color: rgba(255, 0, 0, 0.5) !important; z-index: 1;}
 
-  /* Default subtle border (optional) */
-  /* border: 1px solid rgba(0, 0, 0, 0.1); */
-
-  /* Add a very subtle inner shadow for depth (optional) */
-  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+/* --- Side Panels Common Style --- */
+.captured-panel, #move-history {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-sizing: border-box;
 }
 
-/* Player-specific borders */
-.piece.player1 { /* Player 1 (Blue) */
-  border: 4px solid #0056b3; /* Solid, slightly darker blue border */
-  background-color: #e7f5ff; /* Optional: Very light blue background tint */
+/* --- Specific Side Panel Items --- */
+#captured-pieces-player0, #captured-pieces-player1 {
+     min-height: 80px;
 }
 
-.piece.player2 { /* Player 2 (Red) */
-  border: 4px solid #c82333; /* Solid, slightly darker red border */
-  background-color: #ffeeee; /* Optional: Very light red background tint */
+.captured-panel h2, #move-history h2 {
+    font-size: 1em;
+    margin-top: 0;
+    margin-bottom: 8px;
+    text-align: center;
+    color: #444;
 }
 
-/* Specific animal background images */
-/* Assumes images are named like 'rat.png', 'cat.png', etc. */
-/* Path is relative to the CSS file location (css/style.css) */
-
-.piece.rat {
-  background-image: url('../assets/images/rat.webp');
+.pieces-container {
+    display: flex; /* Added this back */
+    flex-wrap: wrap; /* Added this back */
+    gap: 4px; /* Added this back */
+    min-height: 30px;
+    align-content: flex-start;
 }
 
-.piece.cat {
-  background-image: url('../assets/images/cat.webp');
+.captured-piece {
+    font-size: 22px;
+    height: 25px;
+    line-height: 23px;
+    text-align: center;
+    border-radius: 4px;
+    box-sizing: border-box;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+.captured-piece.player0 { border: 1px solid blue; }
+.captured-piece.player1 { border: 1px solid red; }
+
+#move-history {
+    flex-grow: 1;
+    min-height: 150px;
+    max-height: 350px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.piece.dog {
-  background-image: url('../assets/images/dog.webp');
+#move-list {
+    list-style: decimal;
+    margin: 0;
+    padding: 0 0 0 25px;
+    font-size: 0.85em;
+    flex-grow: 1;
+    overflow-y: auto;
+    background-color: rgba(253, 253, 253, 0.9);
+    border: 1px solid #eee;
+    border-radius: 3px;
 }
 
-.piece.wolf {
-  background-image: url('../assets/images/wolf.webp');
+#move-list li {
+    padding: 3px 0;
+    border-bottom: 1px solid #f0f0f0;
+    line-height: 1.4;
+    color: #333;
+}
+#move-list li:last-child {
+    border-bottom: none;
 }
 
-.piece.leopard {
-  background-image: url('../assets/images/leopard.webp');
+.piece-hist {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    border-radius: 3px;
+    font-size: 1.1em;
+    margin-right: 3px;
+    padding: 0px 2px;
+    box-sizing: border-box;
+    background-color: transparent;
+    box-shadow: none;
+    border-width: 1px;
+    position: relative;
+    top: -1px;
+}
+.piece-hist.player0 { border-color: blue; color: blue;}
+.piece-hist.player1 { border-color: red; color: red;}
+
+
+/* --- Game Rules Panel (Moved Below Layout) --- */
+#game-rules {
+    background-color: rgba(255, 255, 255, 0.85);
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 15px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+    width: 95%;
+    max-width: 850px;
+    margin: 20px auto 0 auto;
+    font-size: 0.9em;
+    max-height: 400px;
+    overflow-y: auto;
+    line-height: 1.5;
 }
 
-.piece.tiger {
-  background-image: url('../assets/images/tiger.webp');
+#game-rules h2 {
+     font-size: 1.1em;
+     margin-top: 0;
+     margin-bottom: 12px;
+     text-align: center;
+     color: #333;
 }
 
-.piece.lion {
-  background-image: url('../assets/images/lion.webp');
+#game-rules ul {
+    margin: 0;
+    padding-left: 20px;
+}
+#game-rules ul ul {
+    padding-left: 15px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+#game-rules li {
+    margin-bottom: 8px;
+    color: #444;
+}
+#game-rules strong {
+    color: #111;
 }
 
-.piece.elephant {
-  background-image: url('../assets/images/elephant.webp');
+
+/* Status and Turn styling */
+#status {
+    font-size: 1em;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.7);
+    color: #111;
+    text-align: center;
+    min-height: 1.2em;
+    width: 95%;
+    max-width: calc(420px + 2 * 20px);
+    padding: 4px 8px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    margin: 0 auto;
 }
 
-/* --- UI Feedback Styling (Add later or now) --- */
-
-/* Style for the selected piece */
-.selected-piece {
-  outline: 3px solid gold; /* Gold outline */
-  outline-offset: 2px; /* Small gap between border and outline */
-  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2), 0 0 10px gold; /* Existing shadow + gold glow */
+.turn-info {
+     font-size: 0.9em;
+     font-weight: bold;
+     text-align: center;
+     margin-top: 10px;
+     padding: 5px;
+     background-color: rgba(233, 233, 233, 0.9);
+     border-radius: 4px;
+     color: #333;
 }
 
-/* Style for squares indicating a valid move */
-.valid-move::after {
-   content: '';
-   position: absolute;
-   top: 50%;
-   left: 50%;
-   transform: translate(-50%, -50%);
-   width: 25%; /* Size relative to the square */
-   height: 25%;
-   background-color: rgba(0, 200, 0, 0.6); /* Semi-transparent green */
-   border: 1px solid rgba(0, 100, 0, 0.8);
-   border-radius: 50%;
-   pointer-events: none; /* Don't interfere with clicks */
-   z-index: 10;
+/* Responsive adjustments */
+@media (max-width: 880px) {
+    #game-layout {
+        flex-direction: column;
+        align-items: center;
+        max-width: 100%;
+        gap: 10px;
+    }
+    #left-panel, #right-panel {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        min-width: 95%;
+        width: 95%;
+        max-width: calc(420px + 2 * 20px);
+        gap: 8px;
+    }
+    .captured-panel, #move-history {
+        flex-basis: calc(50% - 10px);
+        flex-grow: 1;
+        min-width: 150px;
+    }
+     #move-history {
+         max-height: 200px;
+     }
+     #move-list { font-size: 0.8em; }
+     .piece-hist { font-size: 1em; }
+     h1 { font-size: 1.5em; }
 }
 
-/* Style for square holding the selected piece (optional) */
-.selected-square {
-  background-color: #fff9c4; /* Light yellow highlight */
+@media (max-width: 520px) {
+     #board-container {
+         width: calc(350px + 2 * 15px);
+         height: calc(450px + 2 * 15px);
+         padding: 15px; /* Match smaller padding */
+         margin-bottom: 8px;
+     }
+     #game-board {
+        grid-template-columns: repeat(7, 50px);
+        grid-template-rows: repeat(9, 50px);
+        width: 350px;
+        height: 450px;
+        top: 15px;
+        left: 15px;
+     }
+     .coord-labels { font-size: 0.7em; }
+     .col-labels { left: 15px; right: 15px; height: 15px; }
+     #col-labels-top { top: 0; }
+     #col-labels-bottom { bottom: 0; }
+     .col-labels span { width: 50px; line-height: 15px; }
+     .row-labels { top: 15px; bottom: 15px; width: 15px; }
+     #row-labels-left { left: 0; }
+     #row-labels-right { right: 0; }
+     .row-labels span { height: 50px; line-height: 50px; }
+
+
+    .square { width: 50px; height: 50px; }
+    .piece { width: 38px; height: 38px; line-height: 38px; font-size: 26px; border-width: 1px; }
+    .player0 { border-color: blue; }
+    .player1 { border-color: red; }
+
+    #game-controls { gap: 8px; padding: 8px; }
+    #ai-controls { gap: 5px 10px; } /* Adjust gap for AI controls */
+
+    #game-layout {
+        padding: 10px;
+        width: 100%;
+    }
+    #left-panel, #right-panel {
+         gap: 5px;
+         max-width: calc(350px + 2 * 15px);
+         width: 100%;
+    }
+     .captured-panel, #move-history {
+         flex-basis: 100%;
+         min-width: unset;
+     }
+     #move-history {
+        max-height: 150px;
+        min-height: 100px;
+     }
+     #game-rules {
+        font-size: 0.85em;
+        padding: 10px 15px;
+        width: 98%;
+     }
+     #move-list { font-size: 0.75em; padding-left: 20px;}
+     .piece-hist { font-size: 0.9em; }
+     h1 { font-size: 1.3em; }
+     #status { width: 90%; font-size: 0.9em; max-width: calc(350px + 2 * 15px); }
 }
-/* css/style.css */
-
-/* Add these styles */
-.square.selected {
-  outline: 3px solid gold; /* Highlight selected square */
-  outline-offset: -3px;
-  background-color: rgba(255, 215, 0, 0.2); /* Optional background tint */
-}
-
-/* Style for the potential move target squares */
-.square.valid-move::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px; /* Adjust size as needed */
-  height: 20px; /* Adjust size as needed */
-  background-color: rgba(0, 255, 0, 0.4); /* Semi-transparent green */
-  border: 1px solid rgba(0, 100, 0, 0.6);
-  border-radius: 50%;
-  pointer-events: none; /* Allow clicks to pass through */
-  z-index: 10;
-}
-
-/* ===================================== */
-/* == Phase 3: UI/UX Enhancements == */
-/* ===================================== */
-
-/* --- Last Move Highlighting --- */
-
-/* Style for the square where the last move STARTED */
-.square.last-move-start {
-  /* Using outline as it doesn't affect element dimensions/layout */
-  outline: 3px solid rgba(80, 200, 120, 0.8); /* A noticeable green, slightly transparent */
-  outline-offset: -3px; /* Draws the outline inside the border */
-  box-shadow: inset 0 0 0 3px rgba(80, 200, 120, 0.8); /* Alternative/Fallback using inset shadow */
-  z-index: 5; /* Ensure highlight is potentially above basic square styles */
-  position: relative; /* Needed for z-index to potentially work depending on other styles */
-}
-
-/* Style for the square where the last move ENDED (move or capture) */
-.square.last-move-end {
-  outline: 3px solid rgba(70, 130, 180, 0.8); /* A noticeable steel blue, slightly transparent */
-  outline-offset: -3px;
-  box-shadow: inset 0 0 0 3px rgba(70, 130, 180, 0.8); /* Alternative/Fallback */
-  z-index: 5;
-  position: relative;
-}
-
-/* You might want to ensure these highlights appear above piece elements if pieces use z-index */
-/* If pieces overlap the edge slightly, you might need adjustments */
-
-
-/* --- Captured Pieces Display --- */
-
-/* The main container holding both players' captured pieces */
-.captured-pieces-area {
-  display: flex;            /* Arrange player sections side-by-side */
-  justify-content: space-around; /* Space out the player sections */
-  align-items: flex-start; /* Align items at the top */
-  margin-top: 20px;         /* Space above this area */
-  padding: 10px;            /* Padding inside the area */
-  border: 1px solid #ccc;   /* Optional border for the whole area */
-  border-radius: 5px;       /* Optional rounded corners */
-  min-height: 50px;         /* Ensure it has some height even when empty */
-  background-color: #f8f8f8; /* Optional subtle background */
-}
-
-/* Styling for each player's individual captured pieces section */
-#captured-p1,
-#captured-p2 {
-  flex-basis: 45%;        /* Each section takes up roughly half the space */
-  padding: 8px;
-  border: 1px dashed #ddd; /* Optional border for individual sections */
-  min-height: 30px;
-  font-size: 0.9em;
-  color: #333;
-  word-wrap: break-word; /* Allow text (piece names) to wrap */
-}
-
-#captured-p1 {
-  /* Specific styles for Player 1's captured area if needed */
-  /* Example: background-color: #eef; */
-}
-
-#captured-p2 {
-  /* Specific styles for Player 2's captured area if needed */
-  /* Example: background-color: #fee; */
-}
-
-/* (Optional) Styling for individual captured piece icons if you render them as elements */
-.captured-piece-icon {
-  display: inline-block; /* Display icons next to each other */
-  width: 20px;           /* Small icon size */
-  height: 20px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  margin: 0 3px 3px 0;   /* Small spacing around icons */
-  vertical-align: middle; /* Align icons nicely with text if any */
-  border: 1px solid #eee; /* Tiny border around icon */
-  border-radius: 3px;
-}
-
-/* Add specific background images if using icons (requires JS to add these classes) */
-/* Example:
-.captured-piece-icon.rat { background-image: url('../assets/images/rat.png'); }
-.captured-piece-icon.cat { background-image: url('../assets/images/cat.png'); }
-... etc ...
-*/
-
-/* ===================================== */
-/* == End Phase 3 CSS == */
-/* ===================================== */

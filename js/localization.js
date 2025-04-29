@@ -1,71 +1,71 @@
-/**
- * Stores the currently loaded language data (parsed JSON).
- * @type {Object.<string, string>}
- */
+// js/localization.js
+
 let currentLanguageData = {};
+const supportedLanguages = ['en', 'vn']; // Add more as needed
+let currentLangCode = 'en'; // Default
 
 /**
- * Loads language data from a JSON file asynchronously.
- * Fetches the file corresponding to the langCode, parses it,
- * and stores it in the currentLanguageData variable.
- *
- * @param {string} [langCode='en'] - The language code (e.g., 'en', 'es') corresponding to the JSON file name.
- * @returns {Promise<boolean>} - True if the language loaded successfully, false otherwise.
+ * Asynchronously fetches and loads language data from a JSON file.
+ * @param {string} langCode - e.g., 'en', 'vn'
+ * @returns {Promise<boolean>} True if successful, false otherwise.
  */
-export async function loadLanguage(langCode = 'en') {
-    const filePath = `lang/${langCode}.json`;
-    console.log(`Attempting to load language file: ${filePath}`); // Debug log
+export async function loadLanguage(langCode) {
+    if (!supportedLanguages.includes(langCode)) {
+        console.warn(`Unsupported language code: ${langCode}. Falling back to 'en'.`);
+        langCode = 'en';
+    }
 
     try {
-        const response = await fetch(filePath);
-
+        const response = await fetch(`lang/${langCode}.json`);
         if (!response.ok) {
-            // Handles HTTP errors (like 404 Not Found)
-            throw new Error(`HTTP error! status: ${response.status} for ${filePath}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        const data = await response.json();
-        currentLanguageData = data;
-        console.log(`Successfully loaded language: ${langCode}`); // Debug log
+        currentLanguageData = await response.json();
+        currentLangCode = langCode;
+        document.documentElement.lang = langCode; // Set HTML lang attribute
+        console.log(`Language '${langCode}' loaded successfully.`);
         return true;
-
     } catch (error) {
-        // Catches fetch errors (network issues) or JSON parsing errors
-        console.error(`Failed to load language file '${filePath}':`, error);
-        // Optionally fallback to English or keep previous language data?
-        // For now, we just signal failure.
+        console.error(`Failed to load language file for '${langCode}':`, error);
+        // Optionally load fallback English data if primary load fails
+        if (langCode !== 'en') {
+            console.warn("Attempting to load English fallback...");
+            return await loadLanguage('en');
+        }
+        currentLanguageData = {}; // Clear data on failure
         return false;
     }
 }
 
 /**
- * Retrieves a localized string by its key, replacing placeholders.
- * Placeholders in the string should be like {paramName}.
- *
- * @param {string} key - The key corresponding to the string in the loaded language file.
- * @param {Object.<string, string|number>} [params={}] - An object containing key-value pairs for placeholders.
- * @returns {string} - The processed string with placeholders replaced, or a fallback message if the key is not found.
+ * Retrieves a localized string based on a key.
+ * Replaces placeholders like {paramName} with values from the params object.
+ * @param {string} key - The key for the string (e.g., "gameTitle", "playerTurn").
+ * @param {object} [params={}] - Optional object with placeholder values.
+ * @returns {string} The localized string or a fallback message.
  */
 export function getString(key, params = {}) {
-    const template = currentLanguageData[key];
+    let str = currentLanguageData[key];
 
-    if (template === undefined) {
-        // Key not found in the current language data
-        console.warn(`Localization key not found: "${key}"`);
-        // Return the key itself or a more descriptive error string
-        return `[Missing Key: ${key}]`;
+    if (str === undefined || str === null) {
+        console.warn(`Localization key not found: ${key} (Lang: ${currentLangCode})`);
+        return `[${key}]`; // Return the key as a fallback indicator
     }
 
-    // Replace placeholders like {paramName} with values from the params object
-    let processedString = template;
+    // Replace placeholders
     for (const paramName in params) {
-        // Use a RegExp with the 'g' flag to replace all occurrences globally
-        // Escape curly braces as they have special meaning in RegExp
-        const placeholderRegex = new RegExp(`\\{${paramName}\\}`, 'g');
-        processedString = processedString.replace(placeholderRegex, params[paramName]);
+        const placeholder = `{${paramName}}`;
+        // Use a global regex replace
+        str = str.replace(new RegExp(`\\${placeholder}`, 'g'), params[paramName]);
     }
 
-    return processedString;
+    return str;
 }
 
-// No constants needed to be imported for this specific module's functionality.
+/**
+ * Gets the currently loaded language code.
+ * @returns {string}
+ */
+export function getCurrentLanguage() {
+    return currentLangCode;
+}

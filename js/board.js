@@ -1,144 +1,201 @@
-import { BOARD_ROWS, BOARD_COLS, TerrainType, Player } from './constants.js';
+// js/board.js
+import { BOARD_ROWS, BOARD_COLS, TerrainType, Player, PieceData, Dens, TrapLocations } from './constants.js';
 import { Piece } from './piece.js';
 
+/**
+ * Represents the game board state (terrain and pieces).
+ */
 export class Board {
     constructor() {
-        /** @type {Array<Array<{piece: Piece|null, terrain: string}>>} */
-        this.state = [];
+        this.state = []; // 2D array of { piece: Piece | null, terrain: TerrainType }
+        this.initBoard();
     }
 
-    // ========================
-    //  Core Board Setup
-    // ========================
-    
     /**
-     * Initializes game board with terrain and starting pieces
+     * Initializes the board with terrain and starting pieces.
      */
     initBoard() {
-        this._createEmptyBoard();
-        this._setupTerrain();
+        this.state = [];
+        for (let r = 0; r < BOARD_ROWS; r++) {
+            this.state.push(Array(BOARD_COLS).fill(null));
+            for (let c = 0; c < BOARD_COLS; c++) {
+                this.state[r][c] = {
+                    piece: null,
+                    terrain: this._getTerrainType(r, c)
+                };
+            }
+        }
         this._setupInitialPieces();
     }
-    // ========================
-    //  Terrain Configuration
-    // ========================
-    
-    _setupTerrain() {
-        // River setup
-        const RIVER_REGIONS = [
-            { rows: [3,4,5], cols: [1,2,4,5] }
-        ];
-        
-        RIVER_REGIONS.forEach(region => {
-            region.rows.forEach(r => region.cols.forEach(c => 
-                this._setTerrainSafe(r, c, TerrainType.RIVER)
-            ));
-        });
 
-        // Player dens
-        this._setTerrainSafe(0, 3, TerrainType.DEN_P2);
-        this._setTerrainSafe(8, 3, TerrainType.DEN_P1);
-
-        // Traps
-        const TRAPS = {
-            [Player.PLAYER1]: [[8,2], [8,4], [7,3]],
-            [Player.PLAYER2]: [[0,2], [0,4], [1,3]]
-        };
-
-        TRAPS[Player.PLAYER1].forEach(([r,c]) => 
-            this._setTerrainSafe(r, c, TerrainType.TRAP_P1));
-        TRAPS[Player.PLAYER2].forEach(([r,c]) => 
-            this._setTerrainSafe(r, c, TerrainType.TRAP_P2));
+    /**
+     * Determines the terrain type for a given square.
+     * @param {number} r Row index
+     * @param {number} c Column index
+     * @returns {TerrainType}
+     * @private
+     */
+    _getTerrainType(r, c) {
+        if (r === Dens[Player.PLAYER0].row && c === Dens[Player.PLAYER0].col) return TerrainType.PLAYER0_DEN;
+        if (r === Dens[Player.PLAYER1].row && c === Dens[Player.PLAYER1].col) return TerrainType.PLAYER1_DEN;
+        if (TrapLocations.some(trap => trap.r === r && trap.c === c)) return TerrainType.TRAP;
+        // Water definition from original script.js
+        if (r >= 3 && r <= 5 && (c === 1 || c === 2 || c === 4 || c === 5)) return TerrainType.WATER;
+        return TerrainType.LAND;
     }
 
-    // ========================
-    //  Piece Management
-    // ========================
-    
+    /**
+     * Places the initial pieces on the board.
+     * @private
+     */
     _setupInitialPieces() {
-        const STARTING_POSITIONS = {
-            [Player.PLAYER1]: [
-                ['lion', 8,6], ['tiger',8,0], ['dog',7,5],
-                ['cat',7,1], ['rat',6,6], ['leopard',6,4],
-                ['wolf',6,2], ['elephant',6,0]
-            ],
-            [Player.PLAYER2]: [
-                ['lion',0,0], ['tiger',0,6], ['dog',1,1],
-                ['cat',1,5], ['rat',2,0], ['leopard',2,2],
-                ['wolf',2,4], ['elephant',2,6]
-            ]
-        };
+        // Initial positions from original script.js (adapted to Piece class)
+        const initialPositions = [
+            // Player 1 (Red, Top)
+            { type: 'lion',     r: 0, c: 0, pl: Player.PLAYER1 },
+            { type: 'tiger',    r: 0, c: 6, pl: Player.PLAYER1 },
+            { type: 'dog',      r: 1, c: 1, pl: Player.PLAYER1 },
+            { type: 'cat',      r: 1, c: 5, pl: Player.PLAYER1 },
+            { type: 'rat',      r: 2, c: 0, pl: Player.PLAYER1 },
+            { type: 'leopard',  r: 2, c: 2, pl: Player.PLAYER1 },
+            { type: 'wolf',     r: 2, c: 4, pl: Player.PLAYER1 },
+            { type: 'elephant', r: 2, c: 6, pl: Player.PLAYER1 },
+            // Player 0 (Blue, Bottom)
+            { type: 'lion',     r: 8, c: 6, pl: Player.PLAYER0 },
+            { type: 'tiger',    r: 8, c: 0, pl: Player.PLAYER0 },
+            { type: 'dog',      r: 7, c: 5, pl: Player.PLAYER0 },
+            { type: 'cat',      r: 7, c: 1, pl: Player.PLAYER0 },
+            { type: 'rat',      r: 6, c: 6, pl: Player.PLAYER0 },
+            { type: 'leopard',  r: 6, c: 4, pl: Player.PLAYER0 },
+            { type: 'wolf',     r: 6, c: 2, pl: Player.PLAYER0 },
+            { type: 'elephant', r: 6, c: 0, pl: Player.PLAYER0 },
+        ];
 
-        Object.entries(STARTING_POSITIONS).forEach(([player, pieces]) => 
-            pieces.forEach(([type, row, col]) => 
-                this.setPiece(row, col, new Piece(type, parseInt(player), row, col))
-        ));
+        initialPositions.forEach(pos => {
+            if (this.isValidCoordinate(pos.r, pos.c)) {
+                this.state[pos.r][pos.c].piece = new Piece(pos.type, pos.pl, pos.r, pos.c);
+            } else {
+                console.error("Invalid initial position:", pos);
+            }
+        });
     }
 
-    // ========================
-    //  Board State Accessors
-    // ========================
-
-    /** @param {number} row @param {number} col @returns {boolean} */
+    /**
+     * Checks if the coordinates are within the board bounds.
+     * @param {number} row
+     * @param {number} col
+     * @returns {boolean}
+     */
     isValidCoordinate(row, col) {
         return row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS;
     }
 
-    /** @param {number} row @param {number} col @returns {Object|null} */
+    /**
+     * Gets the data for a square.
+     * @param {number} row
+     * @param {number} col
+     * @returns {{piece: Piece | null, terrain: TerrainType} | null} Returns null if coords are invalid.
+     */
     getSquareData(row, col) {
         return this.isValidCoordinate(row, col) ? this.state[row][col] : null;
     }
 
-    /** @param {number} row @param {number} col @returns {Piece|null} */
+    /**
+     * Gets the piece at a given coordinate.
+     * @param {number} row
+     * @param {number} col
+     * @returns {Piece | null} Returns null if no piece or invalid coords.
+     */
     getPiece(row, col) {
-        return this.getSquareData(row, col)?.piece || null;
+        const square = this.getSquareData(row, col);
+        return square ? square.piece : null;
     }
 
-    /** @param {number} row @param {number} col @returns {string|null} */
+    /**
+     * Gets the terrain type at a given coordinate.
+     * @param {number} row
+     * @param {number} col
+     * @returns {TerrainType | null} Returns null if invalid coords.
+     */
     getTerrain(row, col) {
-        return this.getSquareData(row, col)?.terrain || null;
+        const square = this.getSquareData(row, col);
+        return square ? square.terrain : null;
     }
 
-    /** @param {number} row @param {number} col @param {Piece|null} piece */
+    /**
+     * Sets or removes a piece at the given coordinates.
+     * Updates the piece's internal row/col if a piece is provided.
+     * @param {number} row
+     * @param {number} col
+     * @param {Piece | null} piece The piece to place, or null to clear the square.
+     */
     setPiece(row, col, piece) {
         if (this.isValidCoordinate(row, col)) {
             this.state[row][col].piece = piece;
-            if (piece) [piece.row, piece.col] = [row, col];
+            if (piece) {
+                piece.setPosition(row, col); // Update piece's internal state
+            }
+        } else {
+             console.error(`Attempted to set piece at invalid coordinate: ${row}, ${col}`);
         }
     }
 
-    /** @param {number} row @param {number} col @returns {boolean} */
+    /**
+     * Checks if a square is empty (has no piece).
+     * @param {number} row
+     * @param {number} col
+     * @returns {boolean} True if empty or invalid coords.
+     */
     isEmpty(row, col) {
-        return !this.getPiece(row, col);
+        return this.getPiece(row, col) === null;
     }
 
-    /** @returns {Array<Array<{piece:Piece|null, terrain:string}>>} */
-    getState() {
-        return this.state;
-    }
-
-    // ========================
-    //  Private Helpers
-    // ========================
-    
-    _createEmptyBoard() {
-        this.state = Array.from({length: BOARD_ROWS}, () => 
-            Array(BOARD_COLS).fill().map(() => ({
-                piece: null,
-                terrain: TerrainType.NORMAL
+    /**
+     * Creates a deep copy of the board state. Essential for AI simulation.
+     * @returns {Array<Array<{piece: Piece | null, terrain: TerrainType}>>} A new 2D array with cloned pieces.
+     */
+    cloneState() {
+         return this.state.map(row =>
+            row.map(cell => ({
+                terrain: cell.terrain,
+                piece: cell.piece ? new Piece(cell.piece.type, cell.piece.player, cell.piece.row, cell.piece.col) : null
             }))
         );
     }
 
-    _setTerrainSafe(row, col, terrain) {
-        if (this.isValidCoordinate(row, col)) {
-            this.state[row][col].terrain = terrain;
-        }
+    /**
+     * Creates a new Board instance with a cloned state from this board.
+     * @returns {Board} A new Board object.
+     */
+    clone() {
+        const newBoard = new Board(); // Create a new instance
+        newBoard.state = this.cloneState(); // Replace its state with a clone of the current state
+        return newBoard;
     }
 
-    _validateCoordinates(row, col) {
-        if (!this.isValidCoordinate(row, col)) {
-            throw new Error(`Invalid board coordinates: [${row},${col}]`);
+    /**
+     * Returns the entire 2D board state array.
+     * Use cautiously, prefer specific getters/setters.
+     * @returns {Array<Array<{piece: Piece | null, terrain: TerrainType}>>}
+     */
+    getState() {
+        return this.state;
+    }
+
+    /**
+     * Counts the number of pieces for a given player.
+     * @param {Player} player
+     * @returns {number}
+     */
+    getPieceCount(player) {
+        let count = 0;
+        for (let r = 0; r < BOARD_ROWS; r++) {
+            for (let c = 0; c < BOARD_COLS; c++) {
+                if (this.state[r][c].piece?.player === player) {
+                    count++;
+                }
+            }
         }
+        return count;
     }
 }

@@ -1,70 +1,58 @@
 // js/main.js
-
-// Import the main game initialization function
-import { initGame } from './game.js';
-// Import the function to load language data
+import { initGame, setupUIListeners } from './game.js';
 import { loadLanguage, getString } from './localization.js';
 
 /**
- * Asynchronous function to set up and start the application.
- * Ensures language resources are loaded before the game initializes.
+ * Initializes the application after the DOM is loaded.
+ * Loads language data and then starts the game.
  */
 async function startApp() {
-    console.log("Starting application...");
+    console.log("DOM Loaded. Starting application...");
 
-    // --- Language Loading ---
-    const defaultLang = 'en'; // Set your desired default language here
-    let languageLoaded = false;
+    // 1. Load Default Language (e.g., English)
+    const defaultLang = 'en'; // Or determine from browser settings/local storage
+    const langLoaded = await loadLanguage(defaultLang);
 
-    try {
-        console.log(`Attempting to load default language: ${defaultLang}...`);
-        languageLoaded = await loadLanguage(defaultLang);
-
-        if (!languageLoaded) {
-            // Attempt a fallback if the default fails? (Optional)
-            // console.warn(`Default language '${defaultLang}' failed. Trying fallback 'en'...`);
-            // languageLoaded = await loadLanguage('en'); // Example fallback
-        }
-
-    } catch (error) {
-        // Catch any unexpected errors during language loading itself
-        console.error("Unexpected error during language loading:", error);
-        languageLoaded = false; // Ensure flag is false on unexpected error
+    if (!langLoaded) {
+        // Handle critical error - maybe display a message without localization
+        document.body.innerHTML = '<p style="color: red; font-weight: bold;">Error: Could not load essential language files. Application cannot start.</p>';
+        return;
     }
 
-    // --- Game Initialization ---
-    if (languageLoaded) {
-        console.log("Language resources loaded successfully. Initializing game...");
-        // Initialize the game only if the language data loaded successfully
-        try {
-            document.title = getString('gameTitle'); // Set browser tab title
-            const h1TitleElement = document.getElementById('game-title');
-            if (h1TitleElement) {
-                h1TitleElement.textContent = getString('gameTitle'); // Set H1 heading
-            } else {
-                console.warn("Game title H1 element (#game-title) not found.");
-            }
-        } catch (e) {
-             console.error("Error setting initial game titles:", e);
-        }
-        initGame();
-    } else {
-        // Handle the critical error where essential language data couldn't be loaded
-        console.error(`CRITICAL ERROR: Could not load required language resources ('${defaultLang}' or fallback). Game cannot start.`);
-        // Display a user-friendly error message on the page
-        const errorTargetElement = document.getElementById('status') || document.getElementById('game-container') || document.body;
-        errorTargetElement.innerHTML = `<p style="color: red; font-weight: bold;">
-            Error: Failed to load essential game resources. The game cannot start. Please try refreshing the page.
-            If the problem persists, please contact support or check your network connection.
-            </p>`;
-        // Optionally, hide the board or controls if they were rendered prematurely
-        const boardElement = document.getElementById('board');
-        if (boardElement) boardElement.style.display = 'none';
-        const controlsElement = document.getElementById('controls');
-        if (controlsElement) controlsElement.style.display = 'none';
+    // 2. Setup UI Event Listeners (Needs DOM and potentially initial localization)
+    // We need to ensure elements exist before calling this
+     try {
+        setupUIListeners();
+        console.log("UI Listeners set up.");
+     } catch (error) {
+         console.error("Fatal Error: Could not set up UI listeners.", error);
+          document.body.innerHTML = '<p style="color: red; font-weight: bold;">Error: Failed to initialize UI controls.</p>';
+         return;
+     }
+
+
+    // 3. Initialize the Game State and Rendering
+    try {
+        initGame(); // This function will now handle initial rendering using loaded language
+        console.log("Game Initialized.");
+    } catch (error) {
+         console.error("Fatal Error: Could not initialize game.", error);
+         // Display error to user
+          const statusElement = document.getElementById('status');
+          if (statusElement) {
+              statusElement.textContent = "Critical Error: Game failed to start.";
+              statusElement.style.color = 'red';
+          } else {
+               document.body.insertAdjacentHTML('beforeend', '<p style="color: red; font-weight: bold;">Critical Error: Game failed to start.</p>');
+          }
     }
 }
 
-// --- Start the Application ---
-// Call the async function to kick things off.
-startApp();
+// --- Entry Point ---
+// Wait for the DOM to be fully loaded before starting the application
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+} else {
+    // DOMContentLoaded has already fired
+    startApp();
+}
