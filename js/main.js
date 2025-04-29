@@ -19,19 +19,6 @@ async function startApp() {
         return;
     }
 
-    // 2. Setup UI Event Listeners (Needs DOM and potentially initial localization)
-    // We need to ensure elements exist before calling this
-     try {
-        setupUIListeners();
-        console.log("UI Listeners set up.");
-     } catch (error) {
-         console.error("Fatal Error: Could not set up UI listeners.", error);
-          document.body.innerHTML = '<p style="color: red; font-weight: bold;">Error: Failed to initialize UI controls.</p>';
-         return;
-     }
-
-
-    // 3. Initialize the Game State and Rendering
     try {
         initGame(); // This function will now handle initial rendering using loaded language
         console.log("Game Initialized.");
@@ -45,7 +32,19 @@ async function startApp() {
           } else {
                document.body.insertAdjacentHTML('beforeend', '<p style="color: red; font-weight: bold;">Critical Error: Game failed to start.</p>');
           }
+         return; // Stop if game init fails
     }
+
+    // 3. Setup UI Event Listeners (Now elements and worker should exist)
+    try {
+        setupUIListeners();
+        console.log("UI Listeners set up.");
+    } catch (error) {
+         console.error("Fatal Error: Could not set up UI listeners.", error);
+          document.body.innerHTML = '<p style="color: red; font-weight: bold;">Error: Failed to initialize UI controls.</p>';
+         // If this fails, the game might be partially usable but controls won't work
+    }
+    // **************************
 }
 
 // --- Entry Point ---

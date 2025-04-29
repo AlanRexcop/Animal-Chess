@@ -3,7 +3,7 @@ import { Board } from './board.js';
 import { Piece } from './piece.js';
 import * as rules from './rules.js';
 import * as renderer from './renderer.js';
-import * as ai from './ai.js';
+import * as ai from './ai.worker.js';
 import { Player, GameStatus, DEFAULT_AI_PLAYER, DEFAULT_AI_TARGET_DEPTH, DEFAULT_AI_TIME_LIMIT_MS, MIN_AI_TIME_LIMIT_MS, ANIMATION_DURATION } from './constants.js';
 // ****** MODIFIED Import: Added toggleLanguage ******
 import { getString, loadLanguage, getCurrentLanguage, toggleLanguage } from './localization.js';
@@ -23,7 +23,9 @@ let aiPlayer = DEFAULT_AI_PLAYER;
 let aiTargetDepth = DEFAULT_AI_TARGET_DEPTH;
 let aiTimeLimitMs = DEFAULT_AI_TIME_LIMIT_MS;
 let lastAiDepthAchieved = 0;
-let currentZobristKey = 0n;
+let currentZobristKey = null;
+
+let aiWorker = null;
 
 let moveHistoryLog = [];
 let capturedByPlayer0 = [];
@@ -52,13 +54,27 @@ export function initGame() {
 
     board = new Board();
 
-    if (typeof BigInt === 'function') {
-        ai.initializeZobrist();
-        currentZobristKey = ai.computeZobristKey(board, currentPlayer);
-        console.log("Initial Zobrist Key:", currentZobristKey);
-    } else {
-        console.warn("BigInt not supported, Zobrist hashing disabled.");
-        currentZobristKey = 0n;
+    if (aiWorker) {
+        aiWorker.terminate();
+        console.log("Terminated previous AI worker.");
+    }
+    try {
+        // Create the worker - specify type: 'module' is crucial for worker imports
+        aiWorker = new Worker('./js/ai.worker.js', { type: 'module' });
+        console.log("AI Worker created.");
+
+        // Setup message and error handlers for the worker
+        setupWorkerListeners();
+
+    } catch (error) {
+        console.error("FATAL: Could not create AI Worker.", error);
+        // Display a user-friendly error, maybe disable AI mode?
+        isAiThinking = false; // Ensure this is false
+        // Disable AI selection?
+        if(gameModeSelect) gameModeSelect.value = 'PVP';
+        alert("Error initializing AI component. AI mode disabled. Please reload."); // Simple alert
+        // Or update status element:
+        // renderer.updateStatus("error.aiWorkerInitFail"); // Need new localization key
     }
 
     gameStatus = GameStatus.ONGOING;
@@ -84,10 +100,63 @@ export function initGame() {
     renderer.renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
     renderer.renderMoveHistory(moveHistoryLog);
     renderer.updateAiDepthDisplay(lastAiDepthAchieved);
-    updateAllLocalizableElements(); // Update text based on initial language
-    updateGameStatusUI(); // Set initial status message
+    updateAllLocalizableElements();
+    updateGameStatusUI();
 
     console.log("Game initialized. Player 0's turn.");
+}
+
+/** Sets up the listeners for the AI worker */
+function setupWorkerListeners() {
+    if (!aiWorker) return;
+
+    aiWorker.onmessage = (event) => {
+        console.log('Main thread received message from worker:', event.data);
+        isAiThinking = false; // Worker finished
+
+        if (event.data.type === 'result') {
+            const { move: moveCoords, depthAchieved, score } = event.data;
+
+            lastAiDepthAchieved = depthAchieved;
+            renderer.updateAiDepthDisplay(lastAiDepthAchieved);
+
+            if (moveCoords) {
+                // ****** IMPORTANT: Get the *actual* piece object from the main board ******
+                // The worker only sends back coordinate data.
+                const pieceToMove = board.getPiece(moveCoords.fromRow, moveCoords.fromCol);
+                // *************************************************************************
+
+                if (pieceToMove && pieceToMove.player === aiPlayer) {
+                    // Proceed with the move using the fetched piece object
+                    makeMove(pieceToMove, moveCoords.fromRow, moveCoords.fromCol, moveCoords.toRow, moveCoords.toCol);
+                } else {
+                    console.error("AI Error: Piece mismatch after worker calculation!", { moveCoords, pieceOnBoard: pieceToMove });
+                    handleAiErrorOrNoMove("statusAIError");
+                }
+            } else {
+                // AI legitimately found no moves
+                 console.log("AI Info: Worker reported no valid moves.");
+                 handleAiErrorOrNoMove("statusAINoMoves");
+            }
+        } else if (event.data.type === 'error') {
+            // Handle errors reported by the worker's calculation logic
+            console.error("AI Worker reported calculation error:", event.data.message);
+            handleAiErrorOrNoMove("statusAIError"); // Use generic AI error status
+        } else {
+             console.warn("Main thread received unknown message type from worker:", event.data);
+             handleAiErrorOrNoMove("statusAIError"); // Treat as error
+        }
+    };
+
+    aiWorker.onerror = (error) => {
+        console.error(`AI Worker Error: Line ${error.lineno} in ${error.filename}: ${error.message}`, error);
+        isAiThinking = false; // Stop thinking state
+        handleAiErrorOrNoMove("statusAIError"); // Use generic AI error status
+        // Optionally, try to terminate and recreate the worker? Or just disable AI mode.
+        if(aiWorker) aiWorker.terminate();
+        aiWorker = null; // Prevent further use
+        alert("A critical AI error occurred. AI mode disabled. Please reload.");
+    };
 }
 
 /**
@@ -103,10 +172,12 @@ export function setupUIListeners() {
     // ****** Get Language Button Reference ******
     langToggleButton = document.getElementById('lang-toggle-button');
 
-    if (!gameModeSelect || !difficultySelect || !timeLimitInput || !resetButton || !langToggleButton) { // Check lang button too
-         console.error("Game Error: Control elements not found! Cannot set up listeners.");
-         return;
-    }
+    if (!gameModeSelect || !difficultySelect || !timeLimitInput || !resetButton || !langToggleButton || !aiWorker) { // Check aiWorker too
+        console.error("Game Error: Control elements or AI worker not found! Cannot set up listeners.");
+        // Don't setup board listener if worker failed
+        if(aiWorker) renderer.addBoardEventListeners(handleSquareClick);
+        return;
+    }   
 
     // Game Mode Change
     gameModeSelect.addEventListener('change', (event) => {
@@ -136,7 +207,6 @@ export function setupUIListeners() {
     // Reset Button
     resetButton.addEventListener('click', resetGame);
 
-    // ****** Language Toggle Button Listener ******
     langToggleButton.addEventListener('click', async () => {
         const success = await toggleLanguage(); // Attempt to toggle and load
         if (success) {
@@ -146,7 +216,6 @@ export function setupUIListeners() {
             // Optionally show an error message to the user
         }
     });
-    // ******************************************
 
     // Board Click Listener (using delegation via renderer)
     renderer.addBoardEventListeners(handleSquareClick);
@@ -305,21 +374,23 @@ async function makeMove(piece, fromRow, fromCol, toRow, toCol) {
         return;
     }
 
-    const targetPiece = board.getPiece(toRow, toCol);
-    const capturedPiece = targetPiece ? new Piece(targetPiece.type, targetPiece.player, targetPiece.row, targetPiece.col) : null;
-    const movedPieceForHash = new Piece(piece.type, piece.player, piece.row, piece.col);
+    const targetPiece = board.getPiece(toRow, toCol); // Piece being captured (if any)
 
+    const capturedPiece = targetPiece ? new Piece(targetPiece.type, targetPiece.player, targetPiece.row, targetPiece.col) : null; // Clone for log
+
+    // --- Start Animation ---
     isAnimating = true;
-    deselectPiece();
-    renderer.renderBoard(board, null, []);
+    deselectPiece(); // Clear selection state now
+    renderer.renderBoard(board, null, []); // Render board without selection/moves before animation
     // updateGameStatusUI(); // Status updated by renderer check
 
     await renderer.animateMove(fromRow, fromCol, toRow, toCol, ANIMATION_DURATION);
 
-    // --- Update Board State ---
+    // --- Update Board State (After Animation) ---
+    // Must update piece's internal row/col BEFORE setting it on board
     piece.setPosition(toRow, toCol);
-    board.setPiece(toRow, toCol, piece);
-    board.setPiece(fromRow, fromCol, null);
+    board.setPiece(toRow, toCol, piece); // Place moving piece
+    board.setPiece(fromRow, fromCol, null); // Clear original square
 
     if (capturedPiece) {
         if (piece.player === Player.PLAYER0) {
@@ -329,19 +400,15 @@ async function makeMove(piece, fromRow, fromCol, toRow, toCol) {
         }
     }
 
-    if (typeof BigInt === 'function' && currentZobristKey !== 0n) {
-         currentZobristKey = ai.updateZobristKey(currentZobristKey, currentPlayer, movedPieceForHash, fromRow, fromCol, toRow, toCol, capturedPiece);
-    }
-
     moveHistoryLog.push({ piece: piece, fromRow, fromCol, toRow, toCol, capturedPiece });
 
-    isAnimating = false;
+    isAnimating = false; // Animation finished
 
-    renderer.renderBoard(board, null, []);
+    renderer.renderBoard(board, null, []); // Render final board state
     renderer.renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
     renderer.renderMoveHistory(moveHistoryLog);
 
-    checkGameEndAndUpdate();
+    checkGameEndAndUpdate(); // Checks win condition and switches player if ongoing
 }
 
 
@@ -412,7 +479,10 @@ function updateGameStatusUI() {
 
 /** Initiates the AI's turn calculation. */
 function triggerAiTurn() {
-    if (gameMode !== 'PVA' || currentPlayer !== aiPlayer || isAnimating || isGameOver || isAiThinking) {
+    // ****** MODIFIED: Use Worker ******
+    if (gameMode !== 'PVA' || currentPlayer !== aiPlayer || isAnimating || isGameOver || isAiThinking || !aiWorker) {
+        // Added !aiWorker check
+        if(!aiWorker) console.error("Cannot trigger AI turn, worker not available.");
         return;
     }
 
@@ -421,37 +491,22 @@ function triggerAiTurn() {
     renderer.updateAiDepthDisplay(lastAiDepthAchieved);
     updateGameStatusUI(); // Show "AI is thinking..."
 
-    setTimeout(() => {
-        try {
-            const aiResult = ai.findBestMove(board, aiPlayer, aiTargetDepth, aiTimeLimitMs);
-            isAiThinking = false;
-            lastAiDepthAchieved = aiResult.depthAchieved;
-            renderer.updateAiDepthDisplay(lastAiDepthAchieved);
+    // Prepare data for the worker
+    // Send a CLONE of the board state. Workers operate on copies.
+    const boardStateForWorker = board.cloneState(); // Use cloneState to get raw data
 
-            if (aiResult.move && aiResult.move.piece) {
-                 const pieceOnBoard = board.getPiece(aiResult.move.fromRow, aiResult.move.fromCol);
-                 if (pieceOnBoard && pieceOnBoard.type === aiResult.move.piece.type && pieceOnBoard.player === aiResult.move.piece.player) {
-                     makeMove(pieceOnBoard, aiResult.move.fromRow, aiResult.move.fromCol, aiResult.move.toRow, aiResult.move.toCol);
-                 } else {
-                      console.error("AI Error: Piece mismatch after search!", { aiMove: aiResult.move, boardPiece: pieceOnBoard });
-                      handleAiErrorOrNoMove("statusAIError");
-                 }
-            } else {
-                 console.error("AI Error: AI did not return a valid move.");
-                 // Check if it was genuinely no moves or an error during search
-                 const possibleAiMoves = rules.getAllPossibleMovesForPlayer(board, aiPlayer);
-                 if (possibleAiMoves.length === 0) {
-                     handleAiErrorOrNoMove("statusAINoMoves");
-                 } else {
-                    handleAiErrorOrNoMove("statusAIError"); // Assume error if moves existed but none returned
-                 }
-            }
-        } catch (error) {
-            isAiThinking = false;
-            console.error("AI Error: Exception during AI move calculation:", error);
-            handleAiErrorOrNoMove("statusAIError");
-        }
-    }, 50);
+    const workerData = {
+        boardState: boardStateForWorker,
+        aiPlayer: aiPlayer,
+        maxDepth: aiTargetDepth,
+        timeLimit: aiTimeLimitMs
+        // Pass Zobrist key if needed by worker? No, worker calculates its own.
+    };
+
+    console.log("Sending data to AI worker:", {maxDepth: aiTargetDepth, timeLimit: aiTimeLimitMs});
+    aiWorker.postMessage(workerData);
+    // The result will be handled by the aiWorker.onmessage listener
+    // ***********************************
 }
 
 /** Handles game over state when AI fails or has no moves */
