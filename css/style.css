@@ -213,15 +213,32 @@ h1 {
 
 .piece {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 45px; height: 45px; line-height: 45px; font-size: 32px; border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.85);
+    width: 45px; height: 45px;
+    border-radius: 50%; 
     box-shadow: 0 1px 4px rgba(0,0,0,0.5);
-    text-align: center; z-index: 2; cursor: pointer; user-select: none;
+    z-index: 2; cursor: pointer; user-select: none;
     transition: transform 0.3s ease-out;
     box-sizing: border-box;
+
+    /* Added for background images */
+    background-size: contain; /* Or 'cover' */
+    background-repeat: no-repeat;
+    background-position: center center;
 }
-.player0 { color: blue; border: 2px solid blue; }
-.player1 { color: red;  border: 2px solid red;}
+
+/* Keep player borders */
+.player0 { background-color: #e7f5ff; border: 3.3px solid #0056b3; } /* Removed color */
+.player1 { background-color: #ffeeee; border: 3.3px solid #c82333;}  /* Removed color */
+
+
+.piece.rat      { background-image: url('../assets/images/rat.webp'); }
+.piece.cat      { background-image: url('../assets/images/cat.webp'); }
+.piece.dog      { background-image: url('../assets/images/dog.webp'); }
+.piece.wolf     { background-image: url('../assets/images/wolf.webp'); }
+.piece.leopard  { background-image: url('../assets/images/leopard.webp'); }
+.piece.tiger    { background-image: url('../assets/images/tiger.webp'); }
+.piece.lion     { background-image: url('../assets/images/lion.webp'); }
+.piece.elephant { background-image: url('../assets/images/elephant.webp'); }
 
 .selected { outline: 3px solid gold !important; outline-offset: -3px; z-index: 3;}
 .possible-move { background-color: rgba(255, 255, 0, 0.5) !important; z-index: 1;}
@@ -447,7 +464,7 @@ h1 {
 
 
     .square { width: 50px; height: 50px; }
-    .piece { width: 38px; height: 38px; line-height: 38px; font-size: 26px; border-width: 1px; }
+    .piece { width: 38px; height: 38px; border-width: 1px; }
     .player0 { border-color: blue; }
     .player1 { border-color: red; }
 

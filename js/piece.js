@@ -18,8 +18,9 @@ export class Piece {
         const data = PieceData[type];
         this.name = data.name;
         this.rank = data.rank;
-        this.symbol = data.symbol;
+        this.symbol = data.symbol; // Keep symbol for history/captured
         this.value = data.value; // For AI evaluation
+        this.imageFile = data.imageFile;
     }
 
     // Optional: Method to update position

@@ -54,9 +54,21 @@ export function getString(key, params = {}) {
 
     // Replace placeholders
     for (const paramName in params) {
-        const placeholder = `{${paramName}}`;
-        // Use a global regex replace
-        str = str.replace(new RegExp(`\\${placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}`, 'g'), params[paramName]);
+        // Escape characters in the paramName that are special in regex (e.g., '.')
+        // This is often unnecessary for simple keys but safe to include.
+        const escapedParamName = paramName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const placeholder = `{${escapedParamName}}`; // Construct the placeholder string
+
+        // ****** CORRECTED RegExp: Removed the erroneous '\\' ******
+        // Create a RegExp to find the placeholder globally.
+        // No need to escape the '{' and '}' here as they are part of the literal string pattern.
+        const regex = new RegExp(placeholder, 'g');
+        // ***********************************************************
+
+        // Perform the replacement using the value from the params object
+        // Ensure the replacement value is converted to a string
+        const replacementValue = String(params[paramName]);
+        str = str.replace(regex, replacementValue);
     }
 
     return str;

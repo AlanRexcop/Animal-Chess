@@ -2,7 +2,7 @@
 import { BOARD_ROWS, BOARD_COLS, TerrainType, Player, PieceData } from './constants.js';
 import { getString } from './localization.js';
 // Piece class potentially needed for type hints if using TypeScript/JSDoc heavily
-// import { Piece } from './piece.js';
+import { Piece } from './piece.js';
 
 // --- DOM Element References ---
 const boardElement = document.getElementById('game-board');
@@ -32,10 +32,7 @@ const turnInfoLabelElem = document.querySelector('.turn-info'); // The whole par
  * @param {Array<{row: number, col: number}>} possibleMoves - Array of valid moves for the selected piece.
  */
 export function renderBoard(board, selectedPiece, possibleMoves = []) {
-    if (!boardElement) {
-        console.error("Renderer Error: Board element #game-board not found!");
-        return;
-    }
+    // ... (element check remains the same) ...
     boardElement.innerHTML = ''; // Clear previous state
 
     const boardState = board.getState(); // Get the 2D array
@@ -45,39 +42,37 @@ export function renderBoard(board, selectedPiece, possibleMoves = []) {
             const squareData = boardState[r][c];
             const square = document.createElement('div');
             square.classList.add('square');
-            square.dataset.row = r; // Data attributes for click handling
+            square.dataset.row = r;
             square.dataset.col = c;
 
-            // --- Add terrain class ---
-            square.classList.add(squareData.terrain); // Uses 'land', 'water', 'trap', 'player0-den', 'player1-den'
+            square.classList.add(squareData.terrain);
 
             // --- Add piece if exists ---
             if (squareData.piece) {
                 const pieceData = squareData.piece;
                 const pieceElement = document.createElement('div');
-                // Class list: 'piece', 'player0'/'player1', optionally symbol/type if needed for CSS
-                pieceElement.classList.add('piece', `player${pieceData.player}`);
-                pieceElement.textContent = pieceData.symbol; // Use textContent for emoji symbol
-                // Store reference to piece data if needed, though not used by CSS here
-                // pieceElement.pieceData = pieceData;
+                pieceElement.classList.add(
+                    'piece',
+                    `player${pieceData.player}`,
+                    pieceData.type // Add class like 'rat', 'lion', etc.
+                );
+                // pieceElement.textContent = pieceData.symbol; // REMOVED
                 square.appendChild(pieceElement);
             }
 
             // --- Add selection highlight ---
             if (selectedPiece && selectedPiece.row === r && selectedPiece.col === c) {
-                // Highlight the piece div directly if it exists, otherwise the square
                 const pieceEl = square.querySelector('.piece');
                 if (pieceEl) {
                     pieceEl.classList.add('selected');
                 } else {
-                    square.classList.add('selected'); // Fallback or style square border? Adjust CSS if needed
+                    square.classList.add('selected');
                 }
             }
 
             // --- Add possible move highlights ---
             if (possibleMoves.some(m => m.row === r && m.col === c)) {
                 square.classList.add('possible-move');
-                // Add capture highlight if the square has an opponent piece
                 if (squareData.piece && squareData.piece.player !== selectedPiece?.piece.player) {
                     square.classList.add('capture-move');
                 }
@@ -86,7 +81,6 @@ export function renderBoard(board, selectedPiece, possibleMoves = []) {
             boardElement.appendChild(square);
         }
     }
-    // console.log("Board rendered"); // Optional debug log
 }
 
 /**

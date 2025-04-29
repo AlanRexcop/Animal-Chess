@@ -23,14 +23,14 @@ export const Player = {
 // Piece Definitions (Combine rank, symbol, name, AI value)
 // Using lowercase keys for easier lookup from piece type strings
 export const PieceData = {
-    rat:      { rank: 1, name: 'Rat',      symbol: '🐀', value: 100 },
-    cat:      { rank: 2, name: 'Cat',      symbol: '🐈', value: 200 },
-    dog:      { rank: 3, name: 'Dog',      symbol: '🐕', value: 300 },
-    wolf:     { rank: 4, name: 'Wolf',     symbol: '🐺', value: 400 },
-    leopard:  { rank: 5, name: 'Leopard',  symbol: '🐆', value: 500 },
-    tiger:    { rank: 6, name: 'Tiger',    symbol: '🐅', value: 700 },
-    lion:     { rank: 7, name: 'Lion',     symbol: '🦁', value: 800 },
-    elephant: { rank: 8, name: 'Elephant', symbol: '🐘', value: 650 }, // Note: Elephant value adjusted
+    rat:      { rank: 1, name: 'Rat',      symbol: '🐀', value: 100, imageFile: 'rat.webp' },
+    cat:      { rank: 2, name: 'Cat',      symbol: '🐈', value: 200, imageFile: 'cat.webp' },
+    dog:      { rank: 3, name: 'Dog',      symbol: '🐕', value: 300, imageFile: 'dog.webp' },
+    wolf:     { rank: 4, name: 'Wolf',     symbol: '🐺', value: 400, imageFile: 'wolf.webp' },
+    leopard:  { rank: 5, name: 'Leopard',  symbol: '🐆', value: 500, imageFile: 'leopard.webp' },
+    tiger:    { rank: 6, name: 'Tiger',    symbol: '🐅', value: 700, imageFile: 'tiger.webp' },
+    lion:     { rank: 7, name: 'Lion',     symbol: '🦁', value: 800, imageFile: 'lion.webp' },
+    elephant: { rank: 8, name: 'Elephant', symbol: '🐘', value: 650, imageFile: 'elephant.webp' },
 };
 export const PieceTypes = Object.keys(PieceData); // ['rat', 'cat', ...]
 
