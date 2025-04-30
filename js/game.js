@@ -423,14 +423,14 @@ function animateAndMakeMove(piece, toRow, toCol, fromRow, fromCol, targetPiece) 
     endSquare.appendChild(pieceElement);
     pieceElement.style.transition = 'none';
     // Translate relative to the piece's new parent (endSquare)
-    pieceElement.style.transform = `translate(${-deltaX}px, ${-deltaY}px)`;
+    pieceElement.style.transform = `translate(calc(-50% - ${deltaX}px), calc(-50% - ${deltaY}px))`;
     // Ensure transform is applied before transition starts
     pieceElement.offsetHeight; // Force reflow
 
     // 3. Start the transition
     requestAnimationFrame(() => {
         pieceElement.style.transition = `transform ${ANIMATION_DURATION / 1000}s ease-out`;
-        pieceElement.style.transform = 'translate(0, 0)'; // Animate to final position (center of endSquare)
+        pieceElement.style.transform = 'translate(-50%, -50%)';
     });
 
     // 4. After animation finishes
@@ -555,10 +555,32 @@ function triggerAiTurn() {
         return;
     }
 
-    console.log(`[Main] Sending job to AI Worker: Depth=${aiTargetDepth}, TimeLimit=${aiTimeLimitMs}ms`);
+    const currentTargetDepth = aiTargetDepth; // Use the module variable
+    const currentTimeLimit = aiTimeLimitMs; // Use the module variable
+    console.log(boardStateForWorker);
+    console.log(`[Main] Sending job to AI Worker: Depth=${currentTargetDepth}, TimeLimit=${currentTimeLimit}ms`); // Log the actual values
+
     aiWorker.postMessage({
         boardState: boardStateForWorker,
-        targetDepth: aiTargetDepth,
-        timeLimit: aiTimeLimitMs
+        targetDepth: currentTargetDepth, // Pass the correct variable
+        timeLimit: currentTimeLimit      // Pass the correct variable
     });
+}
+function triggerAiMove() {
+    if (gameMode !== 'PVA' || currentPlayer !== AI || isAnimating || gameOver || isAiCalculating ) return;
+    if (!aiWorker) { console.error("AI Worker not initialized!"); updateStatus("AI Worker Error!"); if (!gameOver) { gameOver = true; winner = PLAYER; playSound('victory'); renderBoard(); } return; } // Play sound on error
+
+    isAiCalculating = true;
+    updateStatus("AI is thinking...");
+    aiDepthElement.textContent = '-';
+
+    const currentTargetDepth = parseInt(difficultySelect.value, 10);
+    const currentTimeLimit = aiTimeLimitMs;
+
+    let boardStateToSend;
+    try { boardStateToSend = JSON.parse(JSON.stringify(board)); }
+    catch(e) { console.error("Board clone error:", e); updateStatus("AI Error!"); isAiCalculating = false; if (!gameOver) { gameOver = true; winner = PLAYER; playSound('victory'); renderBoard();} return; } // Play sound on error
+
+     console.log(`[Main] Sending job: D=${currentTargetDepth}, T=${currentTimeLimit}ms`);
+     aiWorker.postMessage({ boardState: boardStateToSend, targetDepth: currentTargetDepth, timeLimit: currentTimeLimit });
 }
