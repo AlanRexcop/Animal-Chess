@@ -240,16 +240,17 @@ function evaluateBoard(board, aiPlayer) { // Accepts a Board object
                 if (targetRow >= 0 && targetRow < BOARD_ROWS && targetCol >= 0 && targetCol < BOARD_COLS) {
                     const victimPiece = currentBoard.getPiece(targetRow, targetCol); // Use board method
 
-                    // Is there an opponent piece on the target square?
-                    if (victimPiece && victimPiece.player === victimPlayer) {
-                        const targetTerrain = currentBoard.getTerrain(targetRow, targetCol);
-                        const attackerTerrain = currentBoard.getTerrain(attacker.r, attacker.c); // Attacker's terrain
-
-                        // Can the attacker actually capture the victim?
-                        // Pass the actual Piece objects (or objects with necessary properties)
-                        if (canCapture(attacker, victimPiece, currentBoard)) {
-                            totalThreatScore += (victimPiece.value || 0) * WEIGHTS.THREAT_VICTIM_VALUE_FACTOR;
-                        }
+                    if (canCapture(
+                        attacker,      // The attacker piece object (has type, player, rank, value)
+                        victimPiece,   // The defender piece object
+                        attacker.r,    // Attacker's current row
+                        attacker.c,    // Attacker's current column
+                        targetRow,     // Defender's row (where the attack lands)
+                        targetCol,     // Defender's column
+                        currentBoard   // The board object
+                    )) {
+                        // Add score based on the victim's value
+                        totalThreatScore += (victimPiece.value || 0) * WEIGHTS.THREAT_VICTIM_VALUE_FACTOR;
                     }
                 }
             }
