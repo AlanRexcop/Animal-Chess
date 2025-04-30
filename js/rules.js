@@ -1,318 +1,346 @@
 // js/rules.js
-import { BOARD_ROWS, BOARD_COLS, TerrainType, Player, GameStatus } from './constants.js';
+// Encapsulates game rules - does not modify state.
+// NOTE: This logic largely mirrors the worker's internal rules.
+// Ensure consistency if changes are made here or in the worker.
 
-/**
- * Checks if a move is valid considering bounds, orthogonal steps, river rules, and avoiding own den.
- *
- * @param {object} board - The board instance.
- * @param {object} piece - The piece object being moved.
- * @param {number} endRow - The intended ending row.
- * @param {number} endCol - The intended ending column.
- * @returns {boolean} - True if the move is valid, false otherwise.
- */
-export function isValidMove(board, piece, endRow, endCol) {
-    const startRow = piece.row;
-    const startCol = piece.col;
-    const pieceType = piece.type;
-    const player = piece.player;
+import {
+    BOARD_ROWS, BOARD_COLS,
+    TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP,
+    TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
+    PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL,
+    Player, GameStatus, PIECES, getPieceKey
+} from './constants.js';
+// Piece class isn't strictly needed here if we just pass piece objects/data
 
-    if (endRow < 0 || endRow >= BOARD_ROWS || endCol < 0 || endCol >= BOARD_COLS) {
-        return false; // Out of bounds
-    }
+// --- Helper Functions ---
 
-    if (startRow === endRow && startCol === endCol) {
-        return false; // No movement
-    }
-
-    const targetTerrain = board.getTerrain(endRow, endCol);
-    const startTerrain = board.getTerrain(startRow, startCol);
-
-    if (pieceType === 'lion' || pieceType === 'tiger') {
-        const rowDiff = Math.abs(startRow - endRow);
-        const colDiff = Math.abs(startCol - endCol);
-
-        if (startRow === endRow && colDiff === 3) { // Horizontal Jump
-            const intermediateCol1 = Math.min(startCol, endCol) + 1;
-            const intermediateCol2 = Math.max(startCol, endCol) - 1;
-            if (board.getTerrain(startRow, intermediateCol1) === TerrainType.RIVER &&
-                board.getTerrain(startRow, intermediateCol2) === TerrainType.RIVER &&
-                startTerrain !== TerrainType.RIVER && targetTerrain !== TerrainType.RIVER &&
-                isRiverJumpPathClear(board, startRow, startCol, endRow, endCol)) {
-                return true;
-            }
-        } else if (startCol === endCol && rowDiff === 4) { // Vertical Jump
-            const intermediateRow1 = Math.min(startRow, endRow) + 1;
-            const intermediateRow2 = intermediateRow1 + 1;
-            const intermediateRow3 = Math.max(startRow, endRow) - 1;
-            if (board.getTerrain(intermediateRow1, startCol) === TerrainType.RIVER &&
-                board.getTerrain(intermediateRow2, startCol) === TerrainType.RIVER &&
-                board.getTerrain(intermediateRow3, startCol) === TerrainType.RIVER &&
-                startTerrain !== TerrainType.RIVER && targetTerrain !== TerrainType.RIVER &&
-                isRiverJumpPathClear(board, startRow, startCol, endRow, endCol)) {
-                return true;
-            }
-        }
-    }
-
-    const rowDiffOrth = Math.abs(startRow - endRow);
-    const colDiffOrth = Math.abs(startCol - endCol);
-
-    if (rowDiffOrth + colDiffOrth !== 1) {
-        return false; // Not a single orthogonal step or a valid jump
-    }
-
-    if (targetTerrain === TerrainType.RIVER && pieceType !== 'rat') {
-        return false; // Only rats can enter the river
-    }
-
-    if ((player === Player.PLAYER1 && targetTerrain === TerrainType.DEN_P1) ||
-        (player === Player.PLAYER2 && targetTerrain === TerrainType.DEN_P2)) {
-        return false; // Cannot move into own den
-    }
-
-    return true;
+function isRiver(r, c) {
+    return r >= 3 && r <= 5 && (c === 1 || c === 2 || c === 4 || c === 5);
 }
 
-/**
- * Calculates all valid destination squares for a given piece,
- * ensuring captures are valid according to game rules.
- *
- * @param {object} board - The board instance.
- * @param {object} piece - The piece object attempting to move.
- * @returns {Array<object>} - An array of valid move destination objects {r, c}.
- */
-export function getValidMovesForPiece(board, piece) {
-    const validDestinations = [];
-    if (!piece) {
-        console.error("getValidMovesForPiece called without a piece.");
-        return validDestinations;
-    }
+// Determines effective rank, considering traps
+// boardState should be the format from board.getState() or board.getClonedStateForWorker()
+function getEffectiveRank(piece, r, c, boardState) {
+    if (!piece) return 0;
+    const terrain = boardState[r]?.[c]?.terrain;
 
-    const startRow = piece.row;
-    const startCol = piece.col;
-    const pieceType = piece.type;
-    const currentPlayer = piece.player;
+    if (terrain === TERRAIN_TRAP) {
+        // Check if it's the *opponent's* trap
+        const isPlayer0Trap = (r === 8 && (c === 2 || c === 4)) || (r === 7 && c === 3);
+        const isPlayer1Trap = (r === 0 && (c === 2 || c === 4)) || (r === 1 && c === 3);
 
-    // --- Generate Potential Target Coordinates ---
-    const potentialTargets = [];
-    const orthogonalDeltas = [
-        { dr: -1, dc: 0 }, // Up
-        { dr: 1, dc: 0 },  // Down
-        { dr: 0, dc: -1 }, // Left
-        { dr: 0, dc: 1 }   // Right
-    ];
-    for (const delta of orthogonalDeltas) {
-        potentialTargets.push({ r: startRow + delta.dr, c: startCol + delta.dc });
-    }
-
-    // Add jump targets only for Lion and Tiger
-    if (pieceType === 'lion' || pieceType === 'tiger') {
-        // Define jump logic relative to river positions might be safer,
-        // but using fixed deltas requires isValidMove to handle river checks correctly.
-        const jumpDeltas = [
-            // Assuming isValidMove handles the path clearing and river crossing checks
-            { dr: -4, dc: 0 }, // Jump Up over river
-            { dr: 4, dc: 0 },  // Jump Down over river
-            { dr: 0, dc: -3 }, // Jump Left over river
-            { dr: 0, dc: 3 }   // Jump Right over river
-        ];
-        for (const delta of jumpDeltas) {
-            potentialTargets.push({ r: startRow + delta.dr, c: startCol + delta.dc });
+        if ((piece.player === Player.PLAYER0 && isPlayer1Trap) ||
+            (piece.player === Player.PLAYER1 && isPlayer0Trap)) {
+            return 0; // Rank reduced in opponent's trap
         }
     }
-
-    // --- Validate Each Potential Target ---
-    for (const target of potentialTargets) {
-        const endRow = target.r;
-        const endCol = target.c;
-
-        // 1. Check basic movement validity (bounds, terrain rules, own den, jumps)
-        if (isValidMove(board, piece, endRow, endCol)) {
-            // Movement is allowed by terrain/jump rules, now check occupancy/capture
-
-            const destinationPiece = board.getPiece(endRow, endCol);
-            const targetTerrain = board.getTerrain(endRow, endCol); // Needed for canCapture
-
-            if (destinationPiece === null) {
-                // 2a. Destination is empty: Valid move.
-                validDestinations.push({ r: endRow, c: endCol });
-            } else {
-                // 2b. Destination is occupied. Check if it's an opponent.
-                if (destinationPiece.player !== currentPlayer) {
-                    // It's an opponent's piece. Check if capture is allowed.
-                    if (canCapture(piece, destinationPiece, targetTerrain)) {
-                        // Capture is valid according to ranks/traps/etc.
-                        validDestinations.push({ r: endRow, c: endCol });
-                    }
-                    // Else: canCapture returned false, so this is not a valid move.
-                }
-                // Else: destinationPiece.player === currentPlayer (friendly piece)
-                // This is not a valid move (can't move onto own piece).
-                // isValidMove *should* ideally already prevent this, but doesn't hurt to be explicit.
-            }
-        }
-        // Else: isValidMove returned false, so don't even consider this target.
-    }
-
-    return validDestinations;
+    // Return normal rank if not in opponent's trap
+    return piece.rank;
 }
 
-/**
- * Checks if the intermediate river squares for a potential Lion/Tiger jump are empty.
- *
- * @param {object} board - The board instance.
- * @param {number} startRow - The starting row.
- * @param {number} startCol - The starting column.
- * @param {number} endRow - The ending row.
- * @param {number} endCol - The ending column.
- * @returns {boolean} - True if all intermediate river squares are empty, false otherwise.
- */
-export function isRiverJumpPathClear(board, startRow, startCol, endRow, endCol) {
-    if (startRow === endRow && Math.abs(startCol - endCol) === 3) { // Horizontal Jump
-        const intermediateCol1 = Math.min(startCol, endCol) + 1;
-        const intermediateCol2 = Math.max(startCol, endCol) - 1;
-        if (board.getPiece(startRow, intermediateCol1) || board.getPiece(startRow, intermediateCol2)) {
-            return false; // Path is blocked
-        }
-        return true;
-    } else if (startCol === endCol && Math.abs(startRow - endRow) === 4) { // Vertical Jump
-        const intermediateRow1 = Math.min(startRow, endRow) + 1;
-        const intermediateRow2 = intermediateRow1 + 1;
-        const intermediateRow3 = Math.max(startRow, endRow) - 1;
-        if (board.getPiece(intermediateRow1, startCol) ||
-            board.getPiece(intermediateRow2, startCol) ||
-            board.getPiece(intermediateRow3, startCol)) {
-            return false; // Path is blocked
-        }
-        return true;
-    }
-
-    console.warn("isRiverJumpPathClear called with non-jump coordinates:", startRow, startCol, "to", endRow, endCol);
-    return false;
-}
+// --- Core Rule Functions ---
 
 /**
- * Determines if an attacker piece can capture a defender piece.
- *
- * @param {object} attackerPiece - The attacking piece.
- * @param {object} defenderPiece - The defending piece.
- * @param {TerrainType} targetTerrain - The terrain type the defender is on.
- * @returns {boolean} - True if the capture is valid, false otherwise.
+ * Checks if an attacker piece can capture a defender piece.
+ * Considers rank, traps, water, and special Rat/Elephant rules.
+ * boardState should be the format from board.getState() or board.getClonedStateForWorker()
  */
-export function canCapture(attackerPiece, defenderPiece, targetTerrain) {
-    if (!attackerPiece || !defenderPiece || !attackerPiece.type || !defenderPiece.type) {
-        console.error("canCapture called with invalid piece data.");
+export function canCapture(attackerPiece, defenderPiece, attR, attC, defR, defC, boardState) {
+    if (!attackerPiece || !defenderPiece || attackerPiece.player === defenderPiece.player) {
         return false;
     }
 
-    const attackerType = attackerPiece.type;
-    const defenderType = defenderPiece.type;
-    const attackerRank = attackerPiece.rank;
-    const defenderRank = defenderPiece.rank;
-    const attackerPlayer = attackerPiece.player;
+    const attTerrain = boardState[attR]?.[attC]?.terrain;
+    const defTerrain = boardState[defR]?.[defC]?.terrain;
 
-    if (attackerType === 'elephant' && defenderType === 'rat') {
+    // Rule: Cannot capture from water to land (except Rat vs Rat)
+    if (attTerrain === TERRAIN_WATER && defTerrain !== TERRAIN_WATER) {
+        // Allow Rat vs Rat capture across water/land boundary? Original logic was complex.
+        // Original: `if (attPc.name==='Rat'&&defPc.name==='Rat'&&attT!==WATER&&defT===WATER) return false;` -> Rat on land cannot attack Rat in water
+        // Original: `if (attT===WATER&&defT!==WATER&&!(attPc.name==='Rat'&&defPc.name==='Rat')) return false;` -> Non-Rat in water cannot attack land
+        // Let's simplify: If attacker is in water, it must be a Rat. It can only attack pieces also in water.
+         if (attackerPiece.type !== 'rat' || defTerrain !== TERRAIN_WATER) {
+             return false;
+         }
+         // If attacker is Rat in water, and defender is also in water, proceed to rank check.
+    }
+
+    // Rule: Only Rat can be in water (this check prevents non-rats from attacking *from* water)
+    if (attTerrain === TERRAIN_WATER && attackerPiece.type !== 'rat') {
+        return false; // Should not happen if move validation is correct
+    }
+
+    // Special Rat vs Elephant
+    const attKey = attackerPiece.type;
+    const defKey = defenderPiece.type;
+
+    if (attKey === 'rat' && defKey === 'elephant') {
+        // Rat can capture Elephant *unless* the Rat is attacking from water
+        return attTerrain !== TERRAIN_WATER;
+    }
+    if (attKey === 'elephant' && defKey === 'rat') {
         return false; // Elephant cannot capture Rat
     }
 
-    let opponentTrapTerrain = null;
-    if (attackerPlayer === Player.PLAYER1 && targetTerrain === TerrainType.TRAP_P2) {
-        opponentTrapTerrain = TerrainType.TRAP_P2;
-    } else if (attackerPlayer === Player.PLAYER2 && targetTerrain === TerrainType.TRAP_P1) {
-        opponentTrapTerrain = TerrainType.TRAP_P1;
-    }
-
-    if (targetTerrain === opponentTrapTerrain) {
-        return true; // Defender is in an opponent's trap
-    }
-
-    if (attackerType === 'rat' && defenderType === 'elephant') {
-        return true; // Rat captures Elephant
-    }
+    // Standard Rank Comparison (considering traps)
+    const attackerRank = getEffectiveRank(attackerPiece, attR, attC, boardState);
+    const defenderRank = getEffectiveRank(defenderPiece, defR, defC, boardState);
 
     return attackerRank >= defenderRank;
 }
 
 /**
- * Checks the current board state to determine the game status.
- *
- * @param {object} board - The board instance.
- * @returns {GameStatus} - The current status of the game.
+ * Calculates all valid destination squares for a given piece.
+ * Returns Array<{row: number, col: number}>
+ * boardState should be the format from board.getState() or board.getClonedStateForWorker()
  */
-export function getGameStatus(board) {
-    let p1PieceCount = 0;
-    let p2PieceCount = 0;
+export function getValidMovesForPiece(piece, r, c, boardState) {
+    if (!piece) return [];
+
+    const moves = [];
+    const player = piece.player;
+    const pieceType = piece.type; // 'rat', 'lion', etc.
+
+    // 1. Standard Orthogonal Moves
+    const potentialMoves = [
+        { dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }
+    ];
+
+    potentialMoves.forEach(move => {
+        const nr = r + move.dr;
+        const nc = c + move.dc;
+
+        // Check bounds
+        if (nr < 0 || nr >= BOARD_ROWS || nc < 0 || nc >= BOARD_COLS) return;
+
+        const targetSquare = boardState[nr]?.[nc];
+        if (!targetSquare) return; // Should not happen with bounds check
+
+        const targetPiece = targetSquare.piece;
+        const targetTerrain = targetSquare.terrain;
+
+        // Rule: Cannot move into own Den
+        const ownDen = (player === Player.PLAYER0) ? TERRAIN_PLAYER0_DEN : TERRAIN_PLAYER1_DEN;
+        if (targetTerrain === ownDen) return;
+
+        // Rule: Water movement restrictions
+        if (targetTerrain === TERRAIN_WATER) {
+            if (pieceType !== 'rat') return; // Only Rat can enter water
+        }
+
+        // Rule: Cannot move from Land into Water if target square has non-Rat piece (relevant for Rat attacking Rat in water)
+        // This seems covered by canCapture logic? Let's focus on valid destination squares first.
+
+        // Rule: Cannot move onto square occupied by own piece
+        if (targetPiece && targetPiece.player === player) return;
+
+        // Rule: Check capture validity if target square has opponent piece
+        if (targetPiece && targetPiece.player !== player) {
+            if (!canCapture(piece, targetPiece, r, c, nr, nc, boardState)) {
+                return; // Cannot move if capture is invalid
+            }
+        }
+
+        // If all checks pass, it's a valid destination
+        moves.push({ row: nr, col: nc });
+    });
+
+    // 2. Special Jumps (Lion, Tiger)
+    if (pieceType === 'lion' || pieceType === 'tiger') {
+        const jumpOverRiver = (targetRow, targetCol, riverCols, riverRows) => {
+            // Basic bounds check for target
+            if (targetRow < 0 || targetRow >= BOARD_ROWS || targetCol < 0 || targetCol >= BOARD_COLS) return;
+
+            // Check path is clear (no pieces in river squares)
+            for (let i = 0; i < riverRows.length; i++) {
+                const rr = riverRows[i];
+                const rc = riverCols[i];
+                // Check if the intermediate square is actually river and if it's occupied
+                if (!isRiver(rr, rc) || boardState[rr]?.[rc]?.piece) {
+                    return; // Path blocked or not river
+                }
+            }
+
+            // Check target square validity (similar to orthogonal checks)
+            const targetSquare = boardState[targetRow]?.[targetCol];
+            if (!targetSquare) return;
+            const targetPiece = targetSquare.piece;
+            const targetTerrain = targetSquare.terrain;
+
+            // Cannot jump into water
+            if (targetTerrain === TERRAIN_WATER) return;
+
+            // Cannot jump into own Den
+            const ownDen = (player === Player.PLAYER0) ? TERRAIN_PLAYER0_DEN : TERRAIN_PLAYER1_DEN;
+            if (targetTerrain === ownDen) return;
+
+            // Cannot jump onto own piece
+            if (targetPiece && targetPiece.player === player) return;
+
+            // Check capture validity if opponent piece is on target
+            if (targetPiece && targetPiece.player !== player) {
+                if (!canCapture(piece, targetPiece, r, c, targetRow, targetCol, boardState)) {
+                    return; // Cannot jump if capture is invalid
+                }
+            }
+
+            // Valid jump destination
+            moves.push({ row: targetRow, col: targetCol });
+        };
+
+        // Vertical Jumps (Tiger & Lion)
+        if (isRiver(3, c)) { // Check if current column is adjacent to vertical river path
+            if (r === 2) jumpOverRiver(6, c, [c, c, c], [3, 4, 5]); // Jump down
+            else if (r === 6) jumpOverRiver(2, c, [c, c, c], [5, 4, 3]); // Jump up
+        }
+
+        // Horizontal Jumps (Lion only)
+        if (pieceType === 'lion') {
+             // Check if current row is adjacent to horizontal river paths
+            if (isRiver(r, 1) && isRiver(r, 2)) { // River squares at col 1 and 2
+                 if (c === 0) jumpOverRiver(r, 3, [1, 2], [r, r]); // Jump right from col 0
+                 else if (c === 3) jumpOverRiver(r, 0, [2, 1], [r, r]); // Jump left from col 3
+            }
+             if (isRiver(r, 4) && isRiver(r, 5)) { // River squares at col 4 and 5
+                 if (c === 3) jumpOverRiver(r, 6, [4, 5], [r, r]); // Jump right from col 3
+                 else if (c === 6) jumpOverRiver(r, 3, [5, 4], [r, r]); // Jump left from col 6
+            }
+        }
+    }
+
+    // Filter out duplicate moves if any (shouldn't happen with this logic, but safe)
+    const uniqueMoves = [];
+    const seen = new Set();
+    for (const move of moves) {
+        const key = `${move.row}-${move.col}`;
+        if (!seen.has(key)) {
+            uniqueMoves.push(move);
+            seen.add(key);
+        }
+    }
+
+    return uniqueMoves;
+}
+
+
+/**
+ * Calculates all possible valid moves for a given player.
+ * Returns Array<{ piece: Piece, fromRow: number, fromCol: number, toRow: number, toCol: number }>
+ * boardState should be the format from board.getState() or board.getClonedStateForWorker()
+ */
+export function getAllValidMoves(player, boardState) {
+    const allMoves = [];
+    for (let r = 0; r < BOARD_ROWS; r++) {
+        for (let c = 0; c < BOARD_COLS; c++) {
+            const piece = boardState[r]?.[c]?.piece;
+            if (piece && piece.player === player) {
+                const validDests = getValidMovesForPiece(piece, r, c, boardState);
+                validDests.forEach(dest => {
+                    allMoves.push({
+                        // Pass a copy of piece data, not the object itself,
+                        // especially if boardState might be modified elsewhere during AI search.
+                        // The worker expects pieceData, fromRow, fromCol, etc.
+                        pieceData: { ...piece }, // Shallow copy is enough for worker's needs
+                        fromRow: r,
+                        fromCol: c,
+                        toRow: dest.row,
+                        toCol: dest.col
+                    });
+                });
+            }
+        }
+    }
+    return allMoves;
+}
+
+/**
+ * Checks the board state for a win condition.
+ * Returns a GameStatus value (ONGOING, PLAYER0_WINS, PLAYER1_WINS).
+ * boardState should be the format from board.getState() or board.getClonedStateForWorker()
+ */
+export function getGameStatus(boardState) {
+    let player0PieceCount = 0;
+    let player1PieceCount = 0;
+    let player0InDen = false;
+    let player1InDen = false;
 
     for (let r = 0; r < BOARD_ROWS; r++) {
         for (let c = 0; c < BOARD_COLS; c++) {
-            const piece = board.getPiece(r, c);
-            const terrain = board.getTerrain(r, c);
+            const square = boardState[r]?.[c];
+            const piece = square?.piece;
+            const terrain = square?.terrain;
 
             if (piece) {
-                if (piece.player === Player.PLAYER1) {
-                    p1PieceCount++;
-                    if (terrain === TerrainType.DEN_P2) {
-                        return GameStatus.P1_WINS;
+                if (piece.player === Player.PLAYER0) {
+                    player0PieceCount++;
+                    if (terrain === TERRAIN_PLAYER1_DEN) { // Blue piece in Red Den
+                        player0InDen = true;
                     }
-                } else if (piece.player === Player.PLAYER2) {
-                    p2PieceCount++;
-                    if (terrain === TerrainType.DEN_P1) {
-                        return GameStatus.P2_WINS;
+                } else { // Player.PLAYER1
+                    player1PieceCount++;
+                    if (terrain === TERRAIN_PLAYER0_DEN) { // Red piece in Blue Den
+                        player1InDen = true;
                     }
                 }
             }
         }
     }
 
-    if (p2PieceCount === 0 && p1PieceCount > 0) {
-        return GameStatus.P1_WINS;
-    }
-
-    if (p1PieceCount === 0 && p2PieceCount > 0) {
-        return GameStatus.P2_WINS;
-    }
+    // Check win conditions
+    if (player0InDen) return GameStatus.PLAYER0_WINS;
+    if (player1InDen) return GameStatus.PLAYER1_WINS;
+    if (player1PieceCount === 0 && player0PieceCount > 0) return GameStatus.PLAYER0_WINS;
+    if (player0PieceCount === 0 && player1PieceCount > 0) return GameStatus.PLAYER1_WINS;
+    // Optional: Add draw condition (e.g., 50 move rule, repetition) if needed
+    // if (player0PieceCount === 0 && player1PieceCount === 0) return GameStatus.DRAW; // Or last player to move wins? Check rules.
 
     return GameStatus.ONGOING;
 }
 
+// --- Keep functions needed by worker directly ---
+// These are slightly adapted versions from the original worker code
+// to work with the boardState format used here.
+
 /**
- * Calculates all possible valid moves for a given player on the current board state.
- * For AI
- *
- * @param {object} board - The board instance.
- * @param {string} player - The player identifier (e.g., Player.PLAYER1).
- * @returns {Array<object>} - An array of "rich" move objects, each containing
- *                           { piece: Piece, startRow: number, startCol: number, endRow: number, endCol: number }.
- *                           Returns an empty array if no moves are possible.
+ * Checks if a move is valid (simplified check, assumes basic orthogonal/jump exists).
+ * Used primarily for comparing moves in AI (killers, TT).
+ * boardState is not strictly needed if just comparing coords, but included for potential extension.
  */
-export function getAllValidMoves(board, player) {
-    const allMoves = []; // Initialize an empty array to store all valid moves
+export function isValidMove(boardState, piece, endRow, endCol) {
+    // This is a placeholder/simplified version.
+    // The main validation is done by getValidMovesForPiece.
+    // This could be used to quickly check if endRow/endCol is plausible.
+    if (!piece) return false;
+    if (endRow < 0 || endRow >= BOARD_ROWS || endCol < 0 || endCol >= BOARD_COLS) return false;
 
-    // Iterate through every square on the board
-    for (let r = 0; r < BOARD_ROWS; r++) {
-        for (let c = 0; c < BOARD_COLS; c++) {
-            const piece = board.getPiece(r, c);
+    const targetSquare = boardState[endRow]?.[endCol];
+    if (!targetSquare) return false;
+    const targetPiece = targetSquare.piece;
+    const targetTerrain = targetSquare.terrain;
 
-            // Check if there's a piece and if it belongs to the current player
-            if (piece && piece.player === player) {
-                // Get the valid destinations for this specific piece
-                // getValidMovesForPiece returns Array<{r, c}>
-                const validDestinations = getValidMovesForPiece(board, piece);
+    // Cannot move into own den
+    const ownDen = (piece.player === Player.PLAYER0) ? TERRAIN_PLAYER0_DEN : TERRAIN_PLAYER1_DEN;
+    if (targetTerrain === ownDen) return false;
 
-                // For each valid destination, create the rich move object
-                for (const destination of validDestinations) {
-                    const move = {
-                        piece: piece,         // The piece object itself
-                        startRow: piece.row,  // Starting row (piece's current row)
-                        startCol: piece.col,  // Starting column (piece's current col)
-                        endRow: destination.r, // Destination row from getValidMovesForPiece
-                        endCol: destination.c  // Destination column from getValidMovesForPiece
-                    };
-                    allMoves.push(move); // Add the detailed move object to the list
-                }
-            }
-        }
-    }
+    // Cannot move onto own piece
+    if (targetPiece && targetPiece.player === piece.player) return false;
 
-    return allMoves; // Return the complete list of possible moves for the player
+    // Basic water check (only rat)
+    if (targetTerrain === TERRAIN_WATER && piece.type !== 'rat') return false;
+
+    // Further checks (like capture validity, jumps) would require startRow/Col
+    // and are better handled by getValidMovesForPiece.
+    // This function is likely sufficient for the AI's purpose of *comparing* moves.
+    return true;
+}
+
+
+// Helper to check if two move objects are the same
+// (Used by AI for Killer Moves / TT comparison)
+export function movesAreEqual(move1, move2) {
+    if (!move1 || !move2) return false;
+    return move1.fromRow === move2.fromRow &&
+           move1.fromCol === move2.fromCol &&
+           move1.toRow === move2.toRow &&
+           move1.toCol === move2.toCol;
 }

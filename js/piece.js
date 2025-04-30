@@ -1,28 +1,34 @@
-// js/piece.js
-import { AnimalRanks, Player } from './constants.js';
+import { PIECES, Player, getPieceKey } from './constants.js';
 
-/**
- * Represents a single animal piece on the game board.
- */
 export class Piece {
-    /**
-     * Creates an instance of a Piece.
-     * @param {string} type - The type of animal.
-     * @param {number} player - The player owning the piece.
-     * @param {number} row - The initial row position.
-     * @param {number} col - The initial column position.
-     */
     constructor(type, player, row, col) {
-        if (!AnimalRanks.hasOwnProperty(type)) {
-            throw new Error(`Invalid piece type provided: ${type}`);
+        const pieceKey = getPieceKey(type); // e.g., 'rat', 'lion'
+        const pieceData = PIECES[pieceKey];
+
+        if (!pieceData) {
+            throw new Error(`Invalid piece type: ${type}`);
         }
-        if (player !== Player.PLAYER1 && player !== Player.PLAYER2) {
-            throw new Error(`Invalid player provided: ${player}`);
+        if (player !== Player.PLAYER0 && player !== Player.PLAYER1) {
+            throw new Error(`Invalid player: ${player}`);
         }
 
-        this.type = type;
-        this.rank = AnimalRanks[type];
-        this.player = player;
+        this.type = pieceKey;           // Lowercase name ('rat')
+        this.name = pieceData.name;     // Capitalized name ('Rat')
+        this.rank = pieceData.rank;
+        this.symbol = pieceData.symbol; // Emoji
+        this.player = player;           // Player.PLAYER0 or Player.PLAYER1
+        this.row = row;
+        this.col = col;
+    }
+
+    // Optional: Method to get image source based on type and player
+    getImageSrc() {
+        const color = this.player === Player.PLAYER0 ? 'blue' : 'red';
+        return `assets/images/${this.type}_${color}.webp`;
+    }
+
+    // Optional: update position
+    setPosition(row, col) {
         this.row = row;
         this.col = col;
     }

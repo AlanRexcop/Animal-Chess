@@ -1,14 +1,26 @@
-// Import necessary constants and potentially the Board class if needed for type hinting
-import { BOARD_ROWS, BOARD_COLS, TerrainType, Player } from './constants.js';
+// js/renderer.js
+import { BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, Player, getPieceKey, PIECES } from './constants.js';
 import { getString } from './localization.js';
+import { Piece } from './piece.js'; // Needed if we instantiate pieces here, but likely not
 
-
+// DOM Elements (Cache them if accessed frequently)
 const boardElement = document.getElementById('board');
+const statusElement = document.getElementById('status');
+const turnElement = document.getElementById('turn');
+const capturedByPlayer0Container = document.querySelector('#captured-by-player0 .pieces-container');
+const capturedByPlayer1Container = document.querySelector('#captured-by-player1 .pieces-container');
+const moveListElement = document.getElementById('move-list');
+const colLabelsTop = document.getElementById('col-labels-top');
+const colLabelsBottom = document.getElementById('col-labels-bottom');
+const rowLabelsLeft = document.getElementById('row-labels-left');
+const rowLabelsRight = document.getElementById('row-labels-right');
+
+
 /**
- * Clears the board container and redraws squares, terrain, and pieces.
- * @param {Array<Array<{piece: Piece | null, terrain: string}>>} boardState - The 2D array representing the board.
- * @param {Function} clickHandler - The function to call when a square is clicked, passing (row, col).
- * @param {object | null} lastMove - Object like { start: {r, c}, end: {r, c} } or null
+ * Renders the entire game board, including terrain, pieces, and attaches click handlers.
+ * @param {Array<Array<{piece: Piece|object|null, terrain: number}>>} boardState - The current board state. Piece can be Piece instance or plain object.
+ * @param {function} clickHandler - Function to call when a square is clicked (passes row, col).
+ * @param {{start: {r, c}, end: {r, c}} | null} lastMove - The last move made, for highlighting.
  */
 export function renderBoard(boardState, clickHandler, lastMove = null) {
     if (!boardElement) {
@@ -17,167 +29,255 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
     }
     boardElement.innerHTML = ''; // Clear previous state
 
-    const rows = boardState.length;
-    if (rows === 0) return;
-    const cols = boardState[0].length;
+    // Clear previous last move highlights
+    clearHighlights('last-move-start');
+    clearHighlights('last-move-end');
 
-    boardElement.style.gridTemplateColumns = `repeat(${cols}, 70px)`;
-    boardElement.style.gridTemplateRows = `repeat(${rows}, 70px)`;
+    for (let r = 0; r < BOARD_ROWS; r++) {
+        for (let c = 0; c < BOARD_COLS; c++) {
+            const squareElement = document.createElement('div');
+            squareElement.className = 'square';
+            squareElement.dataset.row = r;
+            squareElement.dataset.col = c;
 
-    clearHighlights('last-move-start', boardElement); // Pass boardElement for context if needed
-    clearHighlights('last-move-end', boardElement); // Pass boardElement for context if needed
-
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const squareData = boardState[r][c];
-            const square = document.createElement('div');
-            square.classList.add('square');
-            square.dataset.row = r;
-            square.dataset.col = c;
-
-            // --- Add terrain classes ---
-            if (squareData && squareData.terrain) {
-                const terrain = squareData.terrain; // Assuming terrain is stored directly, e.g., 'RIVER', 'TRAP_P1', 'DEN_P2'
-                square.classList.add(terrain.toLowerCase()); // Adds 'river', 'trap_p1', 'den_p2' etc.
-
-            } else {
-                 square.classList.add('normal'); // Default if no terrain info
+            const cellData = boardState[r]?.[c];
+            if (!cellData) {
+                console.warn(`Missing cell data for ${r},${c}`);
+                continue; // Skip if data is missing
             }
-            // -------------------------
+            const terrain = cellData.terrain;
+            const pieceData = cellData.piece; // This could be a Piece instance or a plain object from worker/clone
 
+            // --- Terrain Class ---
+            switch (terrain) {
+                case TERRAIN_LAND: squareElement.classList.add('land'); break;
+                case TERRAIN_WATER: squareElement.classList.add('water'); break;
+                case TERRAIN_TRAP: squareElement.classList.add('trap'); break;
+                case TERRAIN_PLAYER0_DEN: squareElement.classList.add('player0-den'); break; // Blue Den
+                case TERRAIN_PLAYER1_DEN: squareElement.classList.add('player1-den'); break; // Red Den
+                default: squareElement.classList.add('land'); // Default fallback
+            }
 
-            // Add piece if exists
-            if (squareData && squareData.piece) {
-                const pieceData = squareData.piece;
+            // --- Piece Rendering ---
+            if (pieceData && pieceData.type) { // Check if piece exists and has a type
                 const pieceElement = document.createElement('div');
-                pieceElement.classList.add('piece', pieceData.type.toLowerCase(), `player${pieceData.player}`);
-                pieceElement.dataset.piece = `${pieceData.type}-P${pieceData.player}`;
-                 // Ensure piece visuals override terrain background if needed (usually handled by CSS specificity)
-                square.appendChild(pieceElement);
+                // Use pieceData.player (should be 0 or 1)
+                pieceElement.className = `piece player${pieceData.player}`;
+
+                const imgElement = document.createElement('img');
+                // Construct image source based on piece type and player
+                const color = pieceData.player === Player.PLAYER0 ? 'blue' : 'red';
+                imgElement.src = `assets/images/${pieceData.type}_${color}.webp`;
+                imgElement.alt = pieceData.name || pieceData.type; // Use name if available, else type
+                pieceElement.appendChild(imgElement);
+
+                // Add data attributes for easier selection if needed later
+                pieceElement.dataset.pieceType = pieceData.type;
+                pieceElement.dataset.player = pieceData.player;
+
+                squareElement.appendChild(pieceElement);
             }
 
-            // Add last move highlights ---
-            if (lastMove?.start && lastMove.start.r === r && lastMove.start.c === c) {
-                square.classList.add('last-move-start');
-            }
-            if (lastMove?.end && lastMove.end.r === r && lastMove.end.c === c) {
-                square.classList.add('last-move-end');
-            }
+            // --- Attach Click Handler ---
+            squareElement.addEventListener('click', () => clickHandler(r, c));
 
-            // Add the click listener
-            square.addEventListener('click', () => clickHandler(r, c));
-
-            boardElement.appendChild(square);
-        }
-    }
-    // console.log("Board rendered with terrain");
-}
-//TODO other renderer
-/**
- * Highlights a specific square with a given class name.
- * @param {number} row
- * @param {number} col
- * @param {string} className - e.g., 'selected-square', 'valid-move'
- */
-export function highlightSquare(row, col, className) {
-  // Find the square element using its data attributes
-  const square = boardElement.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
-  if (square) {
-      square.classList.add(className); // Add the CSS class (e.g., 'selected', 'valid-move')
-  } else {
-      console.warn(`Could not find square at ${row},${col} to highlight.`);
-  }
-}
-
-/**
- * Removes a specific CSS class from all elements that have it within a given container.
- * @param {string} className - The CSS class selector (MUST start with '.', e.g., '.selected', '.valid-move').
- * @param {HTMLElement} [container=document] - The container element to search within (defaults to document).
- */
-export function clearHighlights(className) {
-    const highlighted = document.querySelectorAll(`#board .${className}`);
-    highlighted.forEach(el => el.classList.remove(className));
-}
-
-/**
- * Highlights the piece element itself when selected.
- * @param {number} row
- * @param {number} col
- * @param {string} className - e.g., 'selected-piece'
- */
-export function highlightPiece(row, col, className) {
-    const piece = document.querySelector(`.square[data-row="${row}"][data-col="${col}"] .piece`);
-     if (piece) {
-        piece.classList.add(className);
-     }
-}
-
-/**
- * Removes a specific highlight class from all piece elements.
- * @param {string} className - e.g., 'selected-piece'
- */
-export function clearPieceHighlights(className) {
-     const highlighted = document.querySelectorAll(`#board .${className}`);
-     highlighted.forEach(el => el.classList.remove(className));
-}
-
-
-/**
- * Updates the text content of the status element.
- * @param {string} messageKey
- */
-export function updateStatus(messageKey, params = {}) {
-    const statusElement = document.getElementById('status');
-    if (statusElement) {
-        const translatedText = getString(messageKey, params);
-        statusElement.textContent = translatedText;
-    } else {
-        console.warn("Renderer Warning: Status element #status not found!");
-    }
-}
-
-// Example of adding event listeners (should be called ONCE from main.js/game.js)
-/**
- * Adds click event listeners to all squares on the board.
- * @param {function(number, number)} handleClickCallback - Function to call when a square is clicked, passing (row, col).
- */
-export function addBoardEventListeners(handleClickCallback) {
-    const boardElement = document.getElementById('board');
-    if (boardElement) {
-        // Use event delegation on the parent board element for efficiency
-        boardElement.addEventListener('click', (event) => {
-            // Find the closest ancestor element that is a square
-            const clickedSquare = event.target.closest('.square');
-            if (clickedSquare) {
-                const row = parseInt(clickedSquare.dataset.row);
-                const col = parseInt(clickedSquare.dataset.col);
-                if (!isNaN(row) && !isNaN(col)) {
-                    handleClickCallback(row, col);
+            // --- Highlight Last Move ---
+            if (lastMove) {
+                if (lastMove.start.r === r && lastMove.start.c === c) {
+                    squareElement.classList.add('last-move-start');
+                }
+                if (lastMove.end.r === r && lastMove.end.c === c) {
+                    squareElement.classList.add('last-move-end');
                 }
             }
-        });
-        console.log("Board event listener added.");
+
+            boardElement.appendChild(squareElement);
+        }
+    }
+     renderCoordinatesIfNeeded(); // Render coords if not already done
+}
+
+let coordinatesRendered = false;
+function renderCoordinatesIfNeeded() {
+    if (coordinatesRendered) return;
+     colLabelsTop.innerHTML = ''; colLabelsBottom.innerHTML = ''; rowLabelsLeft.innerHTML = ''; rowLabelsRight.innerHTML = '';
+     for (let c = 0; c < BOARD_COLS; c++) { const l=String.fromCharCode(65+c); const sT=document.createElement('span'); sT.textContent=l; colLabelsTop.appendChild(sT); const sB=document.createElement('span'); sB.textContent=l; colLabelsBottom.appendChild(sB); }
+     for (let r = 0; r < BOARD_ROWS; r++) { const l=(BOARD_ROWS-r).toString(); const sL=document.createElement('span'); sL.textContent=l; rowLabelsLeft.appendChild(sL); const sR=document.createElement('span'); sR.textContent=l; rowLabelsRight.appendChild(sR); }
+     coordinatesRendered = true;
+}
+
+
+/**
+ * Adds a CSS class to highlight a specific square.
+ * @param {number} row
+ * @param {number} col
+ * @param {string} className - The CSS class name to add (e.g., 'selected', 'possible-move').
+ */
+export function highlightSquare(row, col, className) {
+    const square = boardElement?.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
+    if (square) {
+        square.classList.add(className);
+         // Add capture-move class specifically if it's a possible move and occupied by opponent
+         if (className === 'possible-move') {
+             const pieceEl = square.querySelector('.piece');
+             // This requires knowledge of the current player - better handled in game.js calling this
+             // Or pass currentPlayer as an argument if needed here.
+             // For now, game.js can add 'capture-move' separately if needed.
+         }
     } else {
-         console.error("Renderer Error: Could not add board event listeners, #board not found!");
+        // console.warn(`Highlight: Square not found for ${row}, ${col}`);
     }
 }
 
 /**
- * Updates the display for captured pieces (Example Implementation)
- * @param {string[]} capturedP1 - Array of piece types captured by Player 1
- * @param {string[]} capturedP2 - Array of piece types captured by Player 2
+ * Removes a specific CSS highlight class from all squares.
+ * @param {string} className - The CSS class name to remove.
  */
-export function renderCapturedPieces(capturedP1 = [], capturedP2 = []) {
-    const capturedP1Element = document.getElementById('captured-p1');
-    const capturedP2Element = document.getElementById('captured-p2');
-    const noneText = getString('capturedNone'); // Get localized "None"
+export function clearHighlights(className) {
+    boardElement?.querySelectorAll(`.${className}`).forEach(el => el.classList.remove(className));
+}
 
-    if (capturedP1Element) {
-        const label = getString('capturedByP1Label'); // Get localized label
-        capturedP1Element.textContent = `${label} ${capturedP1.join(', ') || noneText}`;
+/**
+ * Updates the status message display with localized text.
+ * @param {string} messageKey - The key for the localized string.
+ * @param {object} [params] - Optional parameters for placeholder replacement.
+ * @param {boolean} [isError=false] - Optional flag to style as error.
+ */
+export function updateStatus(messageKey, params = {}, isError = false) {
+    if (!statusElement) return;
+    const message = getString(messageKey, params);
+    statusElement.textContent = message;
+    statusElement.classList.toggle('error-message', isError); // Add/remove an error class if needed
+}
+
+/**
+ * Updates the turn indicator display with localized text.
+ * @param {number} currentPlayer - Player.PLAYER0 or Player.PLAYER1
+ * @param {string} gameMode - 'PVA' or 'PVP'
+ */
+export function updateTurnDisplay(currentPlayer, gameMode = 'PVA') {
+     if (!turnElement) return;
+     let playerLabelKey;
+     if (gameMode === 'PVP') {
+         playerLabelKey = (currentPlayer === Player.PLAYER0) ? 'player1Name' : 'player2Name'; // Assuming P1=Blue, P2=Red
+     } else { // PVA
+         playerLabelKey = (currentPlayer === Player.PLAYER0) ? 'playerName' : 'aiName';
+     }
+     turnElement.textContent = getString(playerLabelKey); // Uses localization
+}
+
+/**
+ * Renders the lists of captured pieces for both players.
+ * @param {Array<object>} capturedByPlayer0 - Array of piece objects/data captured by Player 0 (Blue).
+ * @param {Array<object>} capturedByPlayer1 - Array of piece objects/data captured by Player 1 (Red).
+ */
+export function renderCapturedPieces(capturedByPlayer0, capturedByPlayer1) {
+    const renderPanel = (container, piecesList) => {
+        if (!container) return;
+        container.innerHTML = ''; // Clear previous
+        if (piecesList.length === 0) {
+            container.textContent = getString('capturedNone'); // Localized "None"
+            return;
+        }
+        // Sort by rank (descending) before rendering might be nice
+        piecesList.sort((a, b) => (PIECES[b.type]?.rank ?? 0) - (PIECES[a.type]?.rank ?? 0));
+
+        piecesList.forEach(p => {
+            if (!p || !p.type) return; // Skip invalid piece data
+
+            const el = document.createElement('span');
+            // Style based on the *original* player of the captured piece, or capturing player?
+            // Original style used capturing player: player${1 - p.player}
+            // Let's stick to that for border color consistency.
+            const capturingPlayer = Player.getOpponent(p.player);
+            el.className = `captured-piece player${capturingPlayer}`;
+
+            const img = document.createElement('img');
+            // Image source uses the piece's *original* color/player
+            const originalColor = p.player === Player.PLAYER0 ? 'blue' : 'red';
+            img.src = `assets/images/${p.type}_${originalColor}.webp`;
+            img.alt = p.name || p.type;
+            img.title = p.name || p.type; // Tooltip
+            el.appendChild(img);
+            container.appendChild(el);
+        });
+    };
+
+    renderPanel(capturedByPlayer0Container, capturedByPlayer0); // Pieces captured *by* Blue (were originally Red)
+    renderPanel(capturedByPlayer1Container, capturedByPlayer1); // Pieces captured *by* Red (were originally Blue)
+}
+
+
+/**
+ * Adds a formatted move string (with piece images) to the history list.
+ * @param {object} pieceData - The piece that moved { type, player, name? }.
+ * @param {number} fromR
+ * @param {number} fromC
+ * @param {number} toR
+ * @param {number} toC
+ * @param {object | null} capturedPieceData - The piece that was captured { type, player, name? }.
+ */
+export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPieceData) {
+    if (!moveListElement) return;
+
+    const getAlgebraic = (r, c) => `${String.fromCharCode(65 + c)}${BOARD_ROWS - r}`;
+    const startNotation = getAlgebraic(fromR, fromC);
+    const endNotation = getAlgebraic(toR, toC);
+
+    const pieceColor = pieceData.player === Player.PLAYER0 ? 'blue' : 'red';
+    const pieceImgSrc = `assets/images/${pieceData.type}_${pieceColor}.webp`;
+    const pieceAlt = `${PIECES[pieceData.type]?.symbol || pieceData.name || pieceData.type}`;
+
+    let moveHtml = `<span class="piece-hist player${pieceData.player}">
+                        <img src="${pieceImgSrc}" alt="${pieceAlt}" title="${pieceData.name || pieceData.type}">
+                    </span> ${startNotation} → ${endNotation}`;
+
+    if (capturedPieceData) {
+        const capturedColor = capturedPieceData.player === Player.PLAYER0 ? 'blue' : 'red';
+        const capturedImgSrc = `assets/images/${capturedPieceData.type}_${capturedColor}.webp`;
+        const capturedAlt = `${PIECES[capturedPieceData.type]?.symbol || capturedPieceData.name || capturedPieceData.type}`;
+         moveHtml += ` (x <span class="piece-hist player${capturedPieceData.player}">
+                            <img src="${capturedImgSrc}" alt="${capturedAlt}" title="${capturedPieceData.name || capturedPieceData.type}">
+                         </span>)`;
     }
-     if (capturedP2Element) {
-        const label = getString('capturedByP2Label'); // Get localized label
-        capturedP2Element.textContent = `${label} ${capturedP2.join(', ') || noneText}`;
+
+    const li = document.createElement('li');
+    li.innerHTML = moveHtml;
+    moveListElement.appendChild(li);
+    // Auto-scroll to bottom
+    moveListElement.scrollTop = moveListElement.scrollHeight;
+}
+
+/** Clears the move history display */
+export function clearMoveHistory() {
+     if (moveListElement) moveListElement.innerHTML = '';
+}
+
+/**
+ * Plays a sound effect.
+ * @param {string} soundName - Base name of the sound (e.g., 'move', 'capture_rat', 'victory').
+ */
+export function playSound(soundName) {
+    try {
+        if (!soundName || typeof soundName !== 'string') {
+            console.warn("playSound: Invalid sound name provided:", soundName);
+            return;
+        }
+        const soundPath = `assets/sounds/${soundName.toLowerCase()}.mp3`;
+        const audio = new Audio(soundPath);
+        audio.play().catch(e => console.warn(`Sound playback failed for ${soundPath}:`, e));
+    } catch (e) {
+        console.error("Error creating or playing sound:", e);
+    }
+}
+
+/**
+ * Updates the displayed AI depth achieved.
+ * @param {number | string} depth - The depth value or '-'
+ */
+export function updateAiDepthDisplay(depth) {
+    const el = document.getElementById('ai-depth-achieved');
+    if (el) {
+        el.textContent = depth.toString();
     }
 }

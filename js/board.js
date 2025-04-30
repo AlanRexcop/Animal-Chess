@@ -1,144 +1,158 @@
-import { BOARD_ROWS, BOARD_COLS, TerrainType, Player } from './constants.js';
+import {
+    BOARD_ROWS, BOARD_COLS,
+    TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
+    PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL,
+    PIECES, Player
+} from './constants.js';
 import { Piece } from './piece.js';
 
 export class Board {
     constructor() {
-        /** @type {Array<Array<{piece: Piece|null, terrain: string}>>} */
-        this.state = [];
+        this.state = []; // 2D array: state[row][col] = { piece: Piece | null, terrain: number }
+        // Don't call initBoard here, let game.js decide when
     }
 
-    // ========================
-    //  Core Board Setup
-    // ========================
-    
-    /**
-     * Initializes game board with terrain and starting pieces
-     */
+    // --- Initialization ---
+
     initBoard() {
-        this._createEmptyBoard();
+        this.state = [];
+        for (let r = 0; r < BOARD_ROWS; r++) {
+            this.state.push(Array(BOARD_COLS).fill(null));
+        }
         this._setupTerrain();
         this._setupInitialPieces();
     }
-    // ========================
-    //  Terrain Configuration
-    // ========================
-    
+
     _setupTerrain() {
-        // River setup
-        const RIVER_REGIONS = [
-            { rows: [3,4,5], cols: [1,2,4,5] }
+        for (let r = 0; r < BOARD_ROWS; r++) {
+            for (let c = 0; c < BOARD_COLS; c++) {
+                this.state[r][c] = { piece: null, terrain: this._getTerrainType(r, c) };
+            }
+        }
+    }
+
+    _getTerrainType(r, c) {
+        // Dens
+        if (r === PLAYER1_DEN_ROW && c === PLAYER1_DEN_COL) return TERRAIN_PLAYER1_DEN; // Red Den
+        if (r === PLAYER0_DEN_ROW && c === PLAYER0_DEN_COL) return TERRAIN_PLAYER0_DEN; // Blue Den
+
+        // Traps (Using original numeric constants for consistency with worker if needed)
+        // Player 1 (Red) Traps are near row 0
+        if ((r === 0 && (c === 2 || c === 4)) || (r === 1 && c === 3)) return TERRAIN_TRAP;
+        // Player 0 (Blue) Traps are near row 8
+        if ((r === 8 && (c === 2 || c === 4)) || (r === 7 && c === 3)) return TERRAIN_TRAP;
+
+        // Water
+        if (r >= 3 && r <= 5 && (c === 1 || c === 2 || c === 4 || c === 5)) return TERRAIN_WATER;
+
+        // Land
+        return TERRAIN_LAND;
+    }
+
+     _setupInitialPieces() {
+        const initialPositions = [
+            // Player 1 (Red)
+            { type: 'lion',    row: 0, col: 0, pl: Player.PLAYER1 },
+            { type: 'tiger',   row: 0, col: 6, pl: Player.PLAYER1 },
+            { type: 'dog',     row: 1, col: 1, pl: Player.PLAYER1 },
+            { type: 'cat',     row: 1, col: 5, pl: Player.PLAYER1 },
+            { type: 'rat',     row: 2, col: 0, pl: Player.PLAYER1 },
+            { type: 'leopard', row: 2, col: 2, pl: Player.PLAYER1 },
+            { type: 'wolf',    row: 2, col: 4, pl: Player.PLAYER1 },
+            { type: 'elephant',row: 2, col: 6, pl: Player.PLAYER1 },
+            // Player 0 (Blue)
+            { type: 'lion',    row: 8, col: 6, pl: Player.PLAYER0 },
+            { type: 'tiger',   row: 8, col: 0, pl: Player.PLAYER0 },
+            { type: 'dog',     row: 7, col: 5, pl: Player.PLAYER0 },
+            { type: 'cat',     row: 7, col: 1, pl: Player.PLAYER0 },
+            { type: 'rat',     row: 6, col: 6, pl: Player.PLAYER0 },
+            { type: 'leopard', row: 6, col: 4, pl: Player.PLAYER0 },
+            { type: 'wolf',    row: 6, col: 2, pl: Player.PLAYER0 },
+            { type: 'elephant',row: 6, col: 0, pl: Player.PLAYER0 },
         ];
-        
-        RIVER_REGIONS.forEach(region => {
-            region.rows.forEach(r => region.cols.forEach(c => 
-                this._setTerrainSafe(r, c, TerrainType.RIVER)
-            ));
+
+        initialPositions.forEach(pos => {
+            if (this.isValidCoordinate(pos.row, pos.col)) {
+                try {
+                    const piece = new Piece(pos.type, pos.pl, pos.row, pos.col);
+                    this.state[pos.row][pos.col].piece = piece;
+                } catch (e) {
+                    console.error(`Failed to create piece: ${pos.type}`, e);
+                }
+            } else {
+                console.error("Invalid initial position:", pos);
+            }
         });
-
-        // Player dens
-        this._setTerrainSafe(0, 3, TerrainType.DEN_P2);
-        this._setTerrainSafe(8, 3, TerrainType.DEN_P1);
-
-        // Traps
-        const TRAPS = {
-            [Player.PLAYER1]: [[8,2], [8,4], [7,3]],
-            [Player.PLAYER2]: [[0,2], [0,4], [1,3]]
-        };
-
-        TRAPS[Player.PLAYER1].forEach(([r,c]) => 
-            this._setTerrainSafe(r, c, TerrainType.TRAP_P1));
-        TRAPS[Player.PLAYER2].forEach(([r,c]) => 
-            this._setTerrainSafe(r, c, TerrainType.TRAP_P2));
     }
 
-    // ========================
-    //  Piece Management
-    // ========================
-    
-    _setupInitialPieces() {
-        const STARTING_POSITIONS = {
-            [Player.PLAYER1]: [
-                ['lion', 8,6], ['tiger',8,0], ['dog',7,5],
-                ['cat',7,1], ['rat',6,6], ['leopard',6,4],
-                ['wolf',6,2], ['elephant',6,0]
-            ],
-            [Player.PLAYER2]: [
-                ['lion',0,0], ['tiger',0,6], ['dog',1,1],
-                ['cat',1,5], ['rat',2,0], ['leopard',2,2],
-                ['wolf',2,4], ['elephant',2,6]
-            ]
-        };
+    // --- State Access ---
 
-        Object.entries(STARTING_POSITIONS).forEach(([player, pieces]) => 
-            pieces.forEach(([type, row, col]) => 
-                this.setPiece(row, col, new Piece(type, parseInt(player), row, col))
-        ));
-    }
-
-    // ========================
-    //  Board State Accessors
-    // ========================
-
-    /** @param {number} row @param {number} col @returns {boolean} */
     isValidCoordinate(row, col) {
         return row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS;
     }
 
-    /** @param {number} row @param {number} col @returns {Object|null} */
     getSquareData(row, col) {
-        return this.isValidCoordinate(row, col) ? this.state[row][col] : null;
+        if (!this.isValidCoordinate(row, col)) {
+            return null; // Or throw error
+        }
+        // Return a copy to prevent accidental modification? For now, return direct ref.
+        return this.state[row][col];
     }
 
-    /** @param {number} row @param {number} col @returns {Piece|null} */
     getPiece(row, col) {
-        return this.getSquareData(row, col)?.piece || null;
+        if (!this.isValidCoordinate(row, col)) {
+            return null;
+        }
+        return this.state[row][col]?.piece ?? null;
     }
 
-    /** @param {number} row @param {number} col @returns {string|null} */
     getTerrain(row, col) {
-        return this.getSquareData(row, col)?.terrain || null;
+         if (!this.isValidCoordinate(row, col)) {
+            // Return a default or handle error
+            return TERRAIN_LAND; // Or null/undefined
+        }
+        return this.state[row][col]?.terrain ?? TERRAIN_LAND;
     }
 
-    /** @param {number} row @param {number} col @param {Piece|null} piece */
-    setPiece(row, col, piece) {
-        if (this.isValidCoordinate(row, col)) {
-            this.state[row][col].piece = piece;
-            if (piece) [piece.row, piece.col] = [row, col];
+    isEmpty(row, col) {
+        if (!this.isValidCoordinate(row, col)) {
+            return true; // Treat off-board as empty for movement checks?
+        }
+        return this.state[row][col]?.piece === null;
+    }
+
+    // --- State Modification ---
+
+    setPiece(row, col, piece) { // piece can be a Piece object or null
+        if (!this.isValidCoordinate(row, col)) {
+            console.error(`SetPiece: Invalid coordinates (${row}, ${col})`);
+            return;
+        }
+        // Update the board state
+        this.state[row][col].piece = piece;
+
+        // If adding a piece (not null), update its internal position
+        if (piece instanceof Piece) {
+            piece.setPosition(row, col);
         }
     }
 
-    /** @param {number} row @param {number} col @returns {boolean} */
-    isEmpty(row, col) {
-        return !this.getPiece(row, col);
-    }
+    // --- Getters ---
 
-    /** @returns {Array<Array<{piece:Piece|null, terrain:string}>>} */
-    getState() {
-        return this.state;
-    }
-
-    // ========================
-    //  Private Helpers
-    // ========================
-    
-    _createEmptyBoard() {
-        this.state = Array.from({length: BOARD_ROWS}, () => 
-            Array(BOARD_COLS).fill().map(() => ({
-                piece: null,
-                terrain: TerrainType.NORMAL
+    // Returns a deep copy suitable for the AI worker or history
+    // Note: The original worker expected a specific format. Let's mimic the original cloneBoard.
+    getClonedStateForWorker() {
+        return this.state.map(row =>
+            row.map(cell => ({
+                terrain: cell.terrain,
+                // Crucially, clone the piece object if it exists
+                piece: cell.piece ? { ...cell.piece } : null
             }))
         );
     }
 
-    _setTerrainSafe(row, col, terrain) {
-        if (this.isValidCoordinate(row, col)) {
-            this.state[row][col].terrain = terrain;
-        }
-    }
-
-    _validateCoordinates(row, col) {
-        if (!this.isValidCoordinate(row, col)) {
-            throw new Error(`Invalid board coordinates: [${row},${col}]`);
-        }
-    }
+     // Get simple 2D array of piece/terrain for rendering if needed
+     getState() {
+        return this.state;
+     }
 }
