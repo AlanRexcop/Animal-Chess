@@ -126,14 +126,15 @@ function evaluateBoard(board, aiPlayer) { // Accepts a Board object
 
     // Heuristic evaluation (weights can be tuned)
     const WEIGHTS = {
-        MATERIAL: 1.0,          // Basic piece value
-        ADVANCEMENT: 0.25,      // How far pieces have moved towards opponent's side
-        DEN_PROXIMITY: 6.0,     // Bonus for non-rat pieces nearing the opponent's den
-        ATTACK_THREAT: 1.5,     // Bonus for pieces threatening captures (simplified)
-        KEY_SQUARE_CONTROL: 0.5,// Bonus for controlling central river-adjacent squares
-        TRAPPED_PENALTY: -3.0,  // Penalty for being rank 0 on an opponent's trap
-        DEFENSE_PENALTY: -0.7,  // Penalty for having pieces too far back defensively (non-rats)
-        RAT_VS_ELEPHANT: 4.0    // Specific bonus/penalty for rat vs elephant situations
+        MATERIAL: 1.0,
+        ADVANCEMENT: 0.25,
+        DEN_PROXIMITY: 6.0,
+        ATTACK_THREAT: 1.5,      
+        KEY_SQUARE_CONTROL: 0.5,
+        TRAPPED_PENALTY: -3.0,
+        DEFENSE_PENALTY: -0.7,
+        RAT_VS_ELEPHANT: 4.0,
+        THREAT_VICTIM_VALUE_FACTOR: 0.1 // Fraction of threatened piece's value to add as score (e.g., 0.1 = 10%)
     };
 
     let aiScore = 0;
@@ -148,119 +149,155 @@ function evaluateBoard(board, aiPlayer) { // Accepts a Board object
             const piece = cell.piece;
             if (piece) {
                 const player = piece.player;
-                // Store piece info needed for later positional calculations
-                pieces[player].push({ ...piece, r, c, terrain: cell.terrain });
+                // Create a representative object for evaluation, ensuring necessary properties exist
+                // Use Piece class temporarily to easily get rank/value if not directly on serialized object
+                const evalPiece = new Piece(piece.type, piece.player, r, c); // Ensures .rank, .value are accessible
+
+                pieces[player].push({
+                    ...evalPiece, // Includes type, player, rank, value from Piece constructor
+                    r: r,         // Explicitly add row/col for clarity
+                    c: c,
+                    terrain: cell.terrain // Store current terrain
+                });
 
                 let scoreRef = (player === aiPlayer) ? aiScore : opponentScore;
-                const value = piece.value; // Assumes piece.value is valid number from PieceData
+                const value = evalPiece.value; // Get value from the constructed Piece
 
                 // Material Score
                 scoreRef += value * WEIGHTS.MATERIAL;
 
-                // Advancement Score (scaled by piece value)
+                // Advancement Score
                 const advancement = (player === aiPlayer) ? (BOARD_ROWS - 1 - r) : r;
-                scoreRef += advancement * WEIGHTS.ADVANCEMENT * (value / 150.0); // Normalize scaling factor
+                scoreRef += advancement * WEIGHTS.ADVANCEMENT * (value / 150.0);
 
-                // Defense Penalty (for non-rats sitting too far back)
+                // Defense Penalty
                 if (piece.type !== 'rat') {
-                    if (player === aiPlayer && r > 5) { // AI piece near own back rank
-                         scoreRef += (r - 5) * WEIGHTS.DEFENSE_PENALTY * (value / 100.0); // Scale penalty
-                    }
-                    if (player === opponent && r < 3) { // Opponent piece near own back rank
-                        scoreRef += (2 - r) * WEIGHTS.DEFENSE_PENALTY * (value / 100.0); // Scale penalty
-                    }
+                    if (player === aiPlayer && r > 5) scoreRef += (r - 5) * WEIGHTS.DEFENSE_PENALTY * (value / 100.0);
+                    if (player === opponent && r < 3) scoreRef += (2 - r) * WEIGHTS.DEFENSE_PENALTY * (value / 100.0);
                 }
 
-                // Trapped Penalty (on opponent's trap and rank 0)
-                const opponentDen = Dens[opponent];
-                const isOpponentTrap = cell.terrain === TerrainType.TRAP &&
-                                      ((player === Player.PLAYER0 && r === opponentDen.row) ||
-                                       (player === Player.PLAYER1 && r === opponentDen.row)); // Simplified trap owner check
+                // Trapped Penalty - Use the correct way to check opponent's traps
+                const opponentDenRow = Dens[opponent].row;
+                const isOpponentTrap = cell.terrain === TerrainType.TRAP && r === opponentDenRow;
 
-                if (isOpponentTrap && getEffectiveRank(piece, r, c, board) === 0) {
-                    scoreRef += WEIGHTS.TRAPPED_PENALTY * (value / 100.0); // Scale penalty
+                // Use the evalPiece object which has rank etc.
+                if (isOpponentTrap && getEffectiveRank(evalPiece, r, c, board) === 0) {
+                     scoreRef += WEIGHTS.TRAPPED_PENALTY * (value / 100.0);
                 }
 
-                // Assign back accumulated score
                 if (player === aiPlayer) aiScore = scoreRef; else opponentScore = scoreRef;
             }
         }
     }
 
-    // --- Positional and Threat Scores ---
+    // --- Positional Scores (Den Proximity, Key Squares) ---
     const opponentDen = Dens[opponent];
     const myDen = Dens[aiPlayer];
 
-    // AI pieces: Den Proximity and Key Square Control
-    pieces[aiPlayer].forEach(p => {
+    pieces[aiPlayer].forEach(p => { // p is now the object created above { ...evalPiece, r, c, terrain }
         const value = p.value;
-        if (p.type !== 'rat') { // Den Proximity (scaled by value and progress)
+        if (p.type !== 'rat') {
              const dist = Math.abs(p.r - opponentDen.row) + Math.abs(p.c - opponentDen.col);
-             const progressFactor = (p.r <= 4) ? 1.0 : 0.2; // Encourage forward progress
+             const progressFactor = (p.r <= 4) ? 1.0 : 0.2;
              aiScore += Math.max(0, 10 - dist) * WEIGHTS.DEN_PROXIMITY * (value / 150.0) * progressFactor;
         }
-        if ((p.c >= 2 && p.c <= 4) && (p.r >= 3 && p.r <= 5)) { // Key Square Control (scaled by value)
+        if ((p.c >= 2 && p.c <= 4) && (p.r >= 3 && p.r <= 5)) {
              aiScore += WEIGHTS.KEY_SQUARE_CONTROL * (value / 100.0);
         }
     });
 
-     // Opponent pieces: Den Proximity and Key Square Control
      pieces[opponent].forEach(p => {
         const value = p.value;
-        if (p.type !== 'rat') { // Den Proximity (scaled by value and progress)
+        if (p.type !== 'rat') {
              const dist = Math.abs(p.r - myDen.row) + Math.abs(p.c - myDen.col);
-             const progressFactor = (p.r >= 4) ? 1.0 : 0.2; // Recognize opponent's forward progress
+             const progressFactor = (p.r >= 4) ? 1.0 : 0.2;
              opponentScore += Math.max(0, 10 - dist) * WEIGHTS.DEN_PROXIMITY * (value / 150.0) * progressFactor;
         }
-         if ((p.c >= 2 && p.c <= 4) && (p.r >= 3 && p.r <= 5)) { // Key Square Control (scaled by value)
+         if ((p.c >= 2 && p.c <= 4) && (p.r >= 3 && p.r <= 5)) {
              opponentScore += WEIGHTS.KEY_SQUARE_CONTROL * (value / 100.0);
         }
     });
 
-    // --- Attack Threats (Placeholder - replace with your actual implementation) ---
-    // This function should calculate a score based on pieces directly threatening captures.
-    // It needs access to the 'board' or 'boardState' to check capture validity.
-    const checkAttackThreat = (attackerList, attackerPlayer, currentBoard) => {
-        let threatScore = 0;
-        // Example simplified logic: Iterate through attackers, check adjacent squares
-        // for opponent pieces they can capture according to rules.js/canCapture.
-        // Add points based on the value of the threatened piece.
-        // attackerList.forEach(attacker => {
-        //    // get potential moves for attacker (adjacent squares)
-        //    // for each potential move target square:
-        //    //   targetPiece = currentBoard.getPiece(targetRow, targetCol)
-        //    //   if (targetPiece && targetPiece.player !== attackerPlayer && canCapture(attacker, targetPiece, currentBoard.getTerrain(targetRow, targetCol), currentBoard.getTerrain(attacker.r, attacker.c))) {
-        //    //      threatScore += targetPiece.value / 10.0; // Add fraction of victim value
-        //    //   }
-        // });
-        return threatScore; // Return the calculated threat score
+
+    // --- Attack Threat Calculation ---
+    // Helper function defined *inside* evaluateBoard or globally in the worker
+    const calculateThreatScore = (attackerList, listOwnerPlayer, currentBoard) => {
+        let totalThreatScore = 0;
+        const victimPlayer = Player.getOpponent(listOwnerPlayer);
+
+        for (const attacker of attackerList) {
+            // Define potential target squares (adjacent)
+            const potentialTargets = [
+                { dr: -1, dc: 0 }, { dr: 1, dc: 0 },
+                { dr: 0, dc: -1 }, { dr: 0, dc: 1 }
+            ];
+
+            for (const move of potentialTargets) {
+                const targetRow = attacker.r + move.dr;
+                const targetCol = attacker.c + move.dc;
+
+                // Check boundaries
+                if (targetRow >= 0 && targetRow < BOARD_ROWS && targetCol >= 0 && targetCol < BOARD_COLS) {
+                    const victimPiece = currentBoard.getPiece(targetRow, targetCol); // Use board method
+
+                    // Is there an opponent piece on the target square?
+                    if (victimPiece && victimPiece.player === victimPlayer) {
+                        const targetTerrain = currentBoard.getTerrain(targetRow, targetCol);
+                        const attackerTerrain = currentBoard.getTerrain(attacker.r, attacker.c); // Attacker's terrain
+
+                        // Can the attacker actually capture the victim?
+                        // Pass the actual Piece objects (or objects with necessary properties)
+                        if (canCapture(attacker, victimPiece, currentBoard)) {
+                            totalThreatScore += (victimPiece.value || 0) * WEIGHTS.THREAT_VICTIM_VALUE_FACTOR;
+                        }
+                    }
+                }
+            }
+            // Note: This doesn't account for Lion/Tiger jump captures here.
+            // That would require checking across the river explicitly if attacker is Lion/Tiger.
+            // For simplicity, we focus on adjacent threats.
+        }
+        return totalThreatScore;
     };
-    aiScore += checkAttackThreat(pieces[aiPlayer], aiPlayer, board) * WEIGHTS.ATTACK_THREAT;
-    opponentScore += checkAttackThreat(pieces[opponent], opponent, board) * WEIGHTS.ATTACK_THREAT;
+
+    // Calculate threats for both players
+    const aiThreatScore = calculateThreatScore(pieces[aiPlayer], aiPlayer, board);
+    const opponentThreatScore = calculateThreatScore(pieces[opponent], opponent, board);
+
+    // Add weighted threat scores
+    aiScore += aiThreatScore * WEIGHTS.ATTACK_THREAT;
+    opponentScore += opponentThreatScore * WEIGHTS.ATTACK_THREAT;
 
 
-     // --- Rat vs Elephant Threat Bonus/Penalty (Placeholder) ---
-     // Add specific bonus if AI rat threatens opponent elephant (not in water)
-     // Add penalty (increase opponent score) if opponent rat threatens AI elephant (not in water)
-     const aiRat = pieces[aiPlayer].find(p => p.type === 'rat');
-     const oppElephant = pieces[opponent].find(p => p.type === 'elephant');
-     if (aiRat && oppElephant && board.getTerrain(aiRat.r, aiRat.c) !== TerrainType.WATER) {
-         // Check if the rat can actually attack the elephant (e.g., adjacent or specific move logic)
-         // Potentially check if elephant is trapped or restricted
-         // aiScore += WEIGHTS.RAT_VS_ELEPHANT; // Add bonus
+    // --- Rat vs Elephant Threat Bonus/Penalty (Placeholder - refine as needed) ---
+    const aiRatEval = pieces[aiPlayer].find(p => p.type === 'rat');
+    const oppElephantEval = pieces[opponent].find(p => p.type === 'elephant');
+    if (aiRatEval && oppElephantEval && aiRatEval.terrain !== TerrainType.WATER) {
+         // Simplified check: Add bonus if rat is adjacent to non-water elephant
+         const dr = Math.abs(aiRatEval.r - oppElephantEval.r);
+         const dc = Math.abs(aiRatEval.c - oppElephantEval.c);
+         if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+              // Check if elephant is actually on land
+              if (oppElephantEval.terrain !== TerrainType.WATER) {
+                aiScore += WEIGHTS.RAT_VS_ELEPHANT; // Add direct bonus
+              }
+         }
+    }
+
+    const oppRatEval = pieces[opponent].find(p => p.type === 'rat');
+    const aiElephantEval = pieces[aiPlayer].find(p => p.type === 'elephant');
+     if (oppRatEval && aiElephantEval && oppRatEval.terrain !== TerrainType.WATER) {
+         const dr = Math.abs(oppRatEval.r - aiElephantEval.r);
+         const dc = Math.abs(oppRatEval.c - aiElephantEval.c);
+          if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+              if (aiElephantEval.terrain !== TerrainType.WATER) {
+                 opponentScore += WEIGHTS.RAT_VS_ELEPHANT; // Add "penalty" by boosting opponent score
+              }
+          }
      }
-
-     const oppRat = pieces[opponent].find(p => p.type === 'rat');
-     const aiElephant = pieces[aiPlayer].find(p => p.type === 'elephant');
-      if (oppRat && aiElephant && board.getTerrain(oppRat.r, oppRat.c) !== TerrainType.WATER) {
-          // Check if the opponent rat can actually attack the AI elephant
-          // opponentScore += WEIGHTS.RAT_VS_ELEPHANT; // Add "penalty" by boosting opponent score
-      }
 
 
     // --- Final Score ---
-    // The final score is the difference between the AI's calculated score and the opponent's.
-    // A positive score favors the AI, a negative score favors the opponent.
     return aiScore - opponentScore;
 }
 // --- END Evaluation Function ---
