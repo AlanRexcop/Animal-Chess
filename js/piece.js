@@ -19,6 +19,7 @@ export class Piece {
         this.player = player;           // Player.PLAYER0 or Player.PLAYER1
         this.row = row;
         this.col = col;
+        this.value = pieceData.value 
     }
 
     // Optional: Method to get image source based on type and player
