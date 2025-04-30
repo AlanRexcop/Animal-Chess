@@ -145,7 +145,6 @@ export class Board {
         return this.state.map(row =>
             row.map(cell => ({
                 terrain: cell.terrain,
-                // Crucially, clone the piece object if it exists
                 piece: cell.piece ? { ...cell.piece } : null
             }))
         );

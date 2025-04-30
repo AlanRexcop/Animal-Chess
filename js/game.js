@@ -46,11 +46,12 @@ function initializeAiWorker() {
     if (aiWorker) {
         console.log("[Main] Terminating previous AI Worker.");
         aiWorker.terminate();
+        aiWorker = null; // Ensure it's nullified before creating a new one
     }
     try {
         // Path relative to where HTML is served from
-        aiWorker = new Worker('js/aiWorker.js');
-        console.log("[Main] AI Worker created successfully.");
+        aiWorker = new Worker('js/aiWorker.js', { type: 'module' });
+        console.log("[Main] AI Worker created successfully (as module).");
 
         aiWorker.onmessage = handleAiWorkerMessage;
         aiWorker.onerror = handleAiWorkerError;

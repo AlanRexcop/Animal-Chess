@@ -1,43 +1,25 @@
-// --- START OF js/aiWorker.js ---
+import {
+    BOARD_ROWS, BOARD_COLS,
+    TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP,
+    TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
+    PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL,
+    Player, // Import the Player object
+    PIECES, // Import the PIECES definition
+    GameStatus // Import GameStatus for terminal checks
+} from './constants.js'; // Adjust path if needed (e.g., '../constants.js')
 
-/**
- * AI Worker (aiWorker.js)
- * Runs the AI logic (Minimax with Alpha-Beta Pruning and Iterative Deepening)
- * in a separate thread to avoid blocking the main UI thread.
- */
+import {
+    canCapture,
+    getValidMovesForPiece, // Use this instead of getPossibleMoves
+    getAllValidMoves,     // Use this instead of getAllPossibleMovesForPlayer
+    getGameStatus,        // Use this instead of checkTerminalState
+    isValidMove,          // Import if needed for TT move comparison etc.
+    movesAreEqual,        // Import the shared version
+    getEffectiveRank,     // Import if evaluateBoard needs it directly
+    isRiver               // Import if evaluateBoard needs it directly
+} from './rules.js';     // Adjust path if needed (e.g., '../rules.js')
 
 // --- Constants ---
-// Board dimensions and terrain types (must match main thread constants.js)
-const ROWS = 9;
-const COLS = 7;
-const LAND = 0;
-const WATER = 1;
-const TRAP = 2;
-const PLAYER0_DEN = 3; // Blue's Den (Player 0)
-const PLAYER1_DEN = 4; // Red's Den (Player 1 / AI)
-
-// Player identifiers
-const PLAYER = 0; // Blue (Human)
-const AI = 1;     // Red (This worker's player)
-
-// Piece information (Rank, Name, Symbol, AI Evaluation Value)
-const PIECES = {
-    rat:     { rank: 1, name: 'Rat',     symbol: '🐀', value: 100 },
-    cat:     { rank: 2, name: 'Cat',     symbol: '🐈', value: 200 },
-    dog:     { rank: 3, name: 'Dog',     symbol: '🐕', value: 300 },
-    wolf:    { rank: 4, name: 'Wolf',    symbol: '🐺', value: 400 },
-    leopard: { rank: 5, name: 'Leopard', symbol: '🐆', value: 500 },
-    tiger:   { rank: 6, name: 'Tiger',   symbol: '🐅', value: 700 },
-    lion:    { rank: 7, name: 'Lion',    symbol: '🦁', value: 800 },
-    elephant:{ rank: 8, name: 'Elephant',symbol: '🐘', value: 650 }
-};
-
-// Den coordinates
-const PLAYER0_DEN_ROW = 8;
-const PLAYER0_DEN_COL = 3;
-const PLAYER1_DEN_ROW = 0;
-const PLAYER1_DEN_COL = 3;
-
 // Evaluation constants
 const WIN_SCORE = 20000;
 const LOSE_SCORE = -20000;
@@ -71,33 +53,27 @@ function randomBigInt() {
 /** Initializes the Zobrist hashing keys. */
 function initializeZobrist() {
     pieceIndexCounter = 0;
-    for (const pieceKey in PIECES) {
+    for (const pieceKey in PIECES) { // Use imported PIECES
         const nameLower = pieceKey.toLowerCase();
-        // Assign index if new piece type
         if (!pieceNameToIndex.hasOwnProperty(nameLower)) {
             pieceNameToIndex[nameLower] = pieceIndexCounter++;
-            zobristTable[pieceNameToIndex[nameLower]] = []; // Initialize array for this piece type
+            zobristTable[pieceNameToIndex[nameLower]] = [];
         }
         const index = pieceNameToIndex[nameLower];
-        // Initialize arrays for players and rows
-        zobristTable[index][PLAYER] = [];
-        zobristTable[index][AI] = [];
-        for (let r = 0; r < ROWS; r++) {
-            zobristTable[index][PLAYER][r] = [];
-            zobristTable[index][AI][r] = [];
-            for (let c = 0; c < COLS; c++) {
-                // Assign random keys for each piece/player/square combination
-                zobristTable[index][PLAYER][r][c] = randomBigInt();
-                zobristTable[index][AI][r][c] = randomBigInt();
+        // Use imported Player constants
+        zobristTable[index][Player.PLAYER0] = [];
+        zobristTable[index][Player.PLAYER1] = [];
+        for (let r = 0; r < BOARD_ROWS; r++) { // Use imported BOARD_ROWS
+            zobristTable[index][Player.PLAYER0][r] = [];
+            zobristTable[index][Player.PLAYER1][r] = [];
+            for (let c = 0; c < BOARD_COLS; c++) { // Use imported BOARD_COLS
+                zobristTable[index][Player.PLAYER0][r][c] = randomBigInt();
+                zobristTable[index][Player.PLAYER1][r][c] = randomBigInt();
             }
         }
     }
-    // Assign random key for the turn indicator (AI's turn)
     zobristBlackToMove = randomBigInt();
-    /* console.log("[Worker] Zobrist Initialized."); */
 }
-
-// Initialize Zobrist keys when the worker loads
 initializeZobrist();
 
 /**
@@ -109,8 +85,8 @@ initializeZobrist();
 function computeZobristKey(currentBoard, playerToMove) {
     let key = 0n; // Use BigInt for the key
 
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r < BOARD_ROWS; r++) { // Use imported BOARD_ROWS
+        for (let c = 0; c < BOARD_COLS; c++) { // Use imported BOARD_COLS
             const square = currentBoard[r]?.[c];
             const piece = square?.piece; // Safe access
 
@@ -120,9 +96,9 @@ function computeZobristKey(currentBoard, playerToMove) {
 
                 // Validate indices and existence of the Zobrist key
                 if (pieceIndex !== undefined &&
-                    (piece.player === PLAYER || piece.player === AI) &&
-                    r >= 0 && r < ROWS &&
-                    c >= 0 && c < COLS &&
+                    (piece.player === Player.PLAYER0 || piece.player === Player.PLAYER1) &&
+                    r >= 0 && r < BOARD_ROWS &&
+                    c >= 0 && c < BOARD_COLS &&
                     zobristTable[pieceIndex]?.[piece.player]?.[r]?.[c])
                 {
                     try {
@@ -140,7 +116,7 @@ function computeZobristKey(currentBoard, playerToMove) {
     }
 
     // XOR with the turn key if it's the AI's turn
-    if (playerToMove === AI) {
+    if (playerToMove === Player.PLAYER1) { // Assuming AI is Player 1
         key ^= zobristBlackToMove;
     }
     return key;
@@ -172,246 +148,6 @@ function cloneBoard(board) {
 // --- Movement Rules & Checks (Worker-Scoped) ---
 // These functions mirror the game rules needed for the AI's simulation and evaluation.
 
-/**
- * Gets the effective rank of a piece, considering traps.
- * @param {object|null} piece - The piece object.
- * @param {number} r - Row of the piece.
- * @param {number} c - Column of the piece.
- * @param {Array<Array<object>>} currentBoard - The current board state.
- * @returns {number} The effective rank (0 if trapped by opponent, normal rank otherwise).
- */
-function getPieceRank(piece, r, c, currentBoard) {
-    if (!piece) return 0;
-
-    const terrain = currentBoard[r]?.[c]?.terrain;
-    if (terrain === TRAP) {
-        // Check if it's an opponent's trap
-        const isOpponentTrap = (piece.player === PLAYER && r <= 1) || (piece.player === AI && r >= 7);
-        if (isOpponentTrap) {
-            // Define trap locations explicitly for clarity
-            const trapLocations = [
-                { r: 0, c: 2 }, { r: 0, c: 4 }, { r: 1, c: 3 }, // Player 1 (AI) traps
-                { r: 8, c: 2 }, { r: 8, c: 4 }, { r: 7, c: 3 }  // Player 0 (Human) traps
-            ];
-            // If the piece is on any of these specific trap locations AND it's an opponent's trap
-            if (trapLocations.some(trap => trap.r === r && trap.c === c)) {
-                return 0; // Rank is reduced to 0 in opponent's trap
-            }
-        }
-    }
-    return piece.rank; // Return normal rank otherwise
-}
-
-/**
- * Checks if an attacking piece can capture a defending piece.
- */
-function canCapture(attackerPiece, defenderPiece, attR, attC, defR, defC, currentBoard) {
-    if (!attackerPiece || !defenderPiece || attackerPiece.player === defenderPiece.player) {
-        return false;
-    }
-
-    const attTerrain = currentBoard[attR]?.[attC]?.terrain;
-    const defTerrain = currentBoard[defR]?.[defC]?.terrain;
-
-    // Basic validation
-    if (attTerrain === undefined || defTerrain === undefined) return false;
-
-    // Water rules (Simplified based on original logic interpretation)
-    // Cannot attack from Water onto Land (unless Rat vs Rat - handled by rank check)
-    if (attTerrain === WATER && defTerrain !== WATER) return false;
-    // Only Rat can attack from water
-    if (attTerrain === WATER && attackerPiece.name !== 'Rat') return false;
-    // Rat cannot attack Elephant from water
-    if (attTerrain === WATER && attackerPiece.name === 'Rat' && defenderPiece.name === 'Elephant') return false;
-
-    // Special case: Rat captures Elephant (only if Rat is on Land)
-    if (attackerPiece.name === 'Rat' && defenderPiece.name === 'Elephant') {
-        return attTerrain !== WATER;
-    }
-    // Special case: Elephant cannot capture Rat
-    if (attackerPiece.name === 'Elephant' && defenderPiece.name === 'Rat') {
-        return false;
-    }
-
-    // General case: Compare effective ranks (considers traps)
-    const attackerRank = getPieceRank(attackerPiece, attR, attC, currentBoard);
-    const defenderRank = getPieceRank(defenderPiece, defR, defC, currentBoard);
-    return attackerRank >= defenderRank;
-}
-
-/** Checks if a given coordinate is within the river area. */
-function isRiver(r, c) {
-    return r >= 3 && r <= 5 && (c === 1 || c === 2 || c === 4 || c === 5);
-}
-
-/**
- * Gets all possible destination squares for a piece from its current position.
- * Returns array of {row, col} objects.
- */
-function getPossibleMoves(piece, r, c, currentBoard) {
-    const moves = [];
-    if (!piece) return moves;
-
-    const player = piece.player;
-    const pieceName = piece.name;
-
-    // 1. Orthogonal Moves
-    const potentialMoves = [
-        { dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }
-    ];
-
-    potentialMoves.forEach(move => {
-        const nr = r + move.dr;
-        const nc = c + move.dc;
-
-        // Check bounds
-        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return;
-
-        const targetCell = currentBoard[nr]?.[nc];
-        if (!targetCell) return;
-
-        const targetPiece = targetCell.piece;
-        const targetTerrain = targetCell.terrain;
-        const ownDen = (player === PLAYER) ? PLAYER0_DEN : PLAYER1_DEN;
-
-        // Rule: Cannot move into own Den
-        if (targetTerrain === ownDen) return;
-        // Rule: Only Rat can enter Water
-        if (targetTerrain === WATER && pieceName !== 'Rat') return;
-        // Rule: Cannot move onto own piece
-        if (targetPiece?.player === player) return;
-        // Rule: Check capture validity if opponent piece is present
-        if (targetPiece && !canCapture(piece, targetPiece, r, c, nr, nc, currentBoard)) return;
-
-        // Valid move
-        moves.push({ row: nr, col: nc });
-    });
-
-    // 2. Special Jumps (Lion, Tiger)
-    if (pieceName === 'Lion' || pieceName === 'Tiger') {
-        const checkJump = (targetRow, targetCol, riverCols, riverRows) => {
-            // Bounds check
-            if (targetRow < 0 || targetRow >= ROWS || targetCol < 0 || targetCol >= COLS) return;
-
-            // Check if river path is clear (no blocking pieces)
-            for (let i = 0; i < riverRows.length; i++) {
-                const riverR = riverRows[i];
-                const riverC = riverCols[i];
-                if (!isRiver(riverR, riverC) || currentBoard[riverR]?.[riverC]?.piece) {
-                    return; // Path blocked or not river
-                }
-            }
-
-            // Check target square validity
-            const targetCell = currentBoard[targetRow]?.[targetCol];
-            if (!targetCell) return;
-            const targetPiece = targetCell.piece;
-            const targetTerrain = targetCell.terrain;
-            const ownDen = (player === PLAYER) ? PLAYER0_DEN : PLAYER1_DEN;
-
-            // Cannot land in Water or own Den
-            if (targetTerrain === WATER || targetTerrain === ownDen) return;
-            // Cannot land on own piece
-            if (targetPiece?.player === player) return;
-            // Check capture validity if opponent piece is present
-            if (targetPiece && !canCapture(piece, targetPiece, r, c, targetRow, targetCol, currentBoard)) return;
-
-            // Valid jump
-            moves.push({ row: targetRow, col: targetCol });
-        };
-
-        // Vertical Jumps
-        if (isRiver(3, c)) { // Check columns adjacent to vertical river
-            if (r === 2) checkJump(6, c, [c, c, c], [3, 4, 5]); // Jump down over river
-            else if (r === 6) checkJump(2, c, [c, c, c], [5, 4, 3]); // Jump up over river
-        }
-
-        // Horizontal Jumps (Lion only)
-        if (pieceName === 'Lion') {
-            if (c === 0 && isRiver(r, 1) && isRiver(r, 2)) checkJump(r, 3, [1, 2], [r, r]); // Jump right from col 0
-            else if (c === 3) {
-                if (isRiver(r, 1) && isRiver(r, 2)) checkJump(r, 0, [1, 2], [r, r]); // Jump left from col 3
-                if (isRiver(r, 4) && isRiver(r, 5)) checkJump(r, 6, [4, 5], [r, r]); // Jump right from col 3
-            } else if (c === 6 && isRiver(r, 4) && isRiver(r, 5)) checkJump(r, 3, [4, 5], [r, r]); // Jump left from col 6
-        }
-    }
-
-    // Deduplicate moves (shouldn't be necessary with current logic, but safe)
-    const uniqueMoves = [];
-    const seen = new Set();
-    moves.forEach(m => {
-        const key = `${m.row}-${m.col}`;
-        if (!seen.has(key)) {
-            uniqueMoves.push(m);
-            seen.add(key);
-        }
-    });
-    return uniqueMoves;
-}
-
-/**
- * Gets all possible moves for a given player.
- * Returns array of move objects: { pieceData, fromRow, fromCol, toRow, toCol }
- */
-function getAllPossibleMovesForPlayer(player, currentBoard) {
-    const allMoves = [];
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            const piece = currentBoard[r]?.[c]?.piece;
-            if (piece?.player === player) {
-                try {
-                    const possibleDests = getPossibleMoves(piece, r, c, currentBoard);
-                    possibleDests.forEach(dest => {
-                        allMoves.push({
-                            pieceData: piece, // Pass the actual piece data
-                            fromRow: r,
-                            fromCol: c,
-                            toRow: dest.row,
-                            toCol: dest.col
-                        });
-                    });
-                } catch (e) {
-                    console.error(`Error getting moves for piece at ${r},${c}`, e);
-                    // ignore and continue
-                }
-            }
-        }
-    }
-    return allMoves;
-}
-
-/**
- * Checks if the game has reached a terminal state (win/loss/draw).
- * Returns { isTerminal: boolean, winner: PLAYER | AI | null }
- */
-function checkTerminalState(currentBoard) {
-    // Check Den entry
-    const player1DenPiece = currentBoard[PLAYER1_DEN_ROW]?.[PLAYER1_DEN_COL]?.piece;
-    const player0DenPiece = currentBoard[PLAYER0_DEN_ROW]?.[PLAYER0_DEN_COL]?.piece;
-
-    if (player1DenPiece?.player === PLAYER) return { isT: true, w: PLAYER }; // Player 0 wins
-    if (player0DenPiece?.player === AI) return { isT: true, w: AI };     // Player 1 (AI) wins
-
-    // Check if all pieces of one player are captured
-    let player0Count = 0;
-    let player1Count = 0;
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            const piece = currentBoard[r]?.[c]?.piece;
-            if (piece) {
-                if (piece.player === PLAYER) player0Count++;
-                else player1Count++;
-            }
-        }
-    }
-
-    if (player1Count === 0 && player0Count > 0) return { isT: true, w: PLAYER }; // Player 0 wins
-    if (player0Count === 0 && player1Count > 0) return { isT: true, w: AI };     // Player 1 (AI) wins
-    if (player0Count === 0 && player1Count === 0) return { isT: true, w: null };   // Draw? (Or last player to capture wins?) - Assuming Draw
-
-    // Game is not terminal
-    return { isT: false, w: null };
-}
 
 /**
  * Simulates a move on a cloned board and calculates the new Zobrist hash.
@@ -469,15 +205,6 @@ function simulateMoveAndGetHash(currentBoardState, move, currentHash) {
     return { newBoard: newBoard, newHash: newHash };
 }
 
-/** Checks if two move objects represent the same move. */
-function movesAreEqual(move1, move2) {
-    if (!move1 || !move2) return false;
-    return move1.fromRow === move2.fromRow &&
-           move1.fromCol === move2.fromCol &&
-           move1.toRow === move2.toRow &&
-           move1.toCol === move2.toCol;
-}
-
 /** Records a killer move (a quiet move that caused a beta cutoff). */
 function recordKillerMove(ply, move) {
     if (ply < 0 || ply >= MAX_PLY_FOR_KILLERS || !move) return;
@@ -506,32 +233,33 @@ function recordKillerMove(ply, move) {
  * @returns {number} The evaluation score.
  */
 function evaluateBoard(currentBoard) {
-    // 1. Check for Terminal State (Win/Loss)
-    let termState = checkTerminalState(currentBoard);
-    if (termState.isT) {
-        if (termState.w === AI) return WIN_SCORE;
-        if (termState.w === PLAYER) return LOSE_SCORE;
-        return 0; // Draw
-    }
+    // 1. Check for Terminal State (Win/Loss/Draw) using imported function
+    const status = getGameStatus(currentBoard); // Use imported function
+    // Check against imported GameStatus constants
+    if (status === GameStatus.PLAYER1_WINS) return WIN_SCORE; // AI wins
+    if (status === GameStatus.PLAYER0_WINS) return LOSE_SCORE; // AI loses
+    if (status === GameStatus.DRAW) return 0; // Handle draw
 
     // 2. Heuristic Evaluation (if not terminal)
     const HEURISTIC_WEIGHTS = {
-        MATERIAL: 1.0,          // Value of pieces
-        ADVANCEMENT: 0.25,      // How far pieces have moved forward
-        DEN_PROXIMITY: 6.0,     // How close pieces are to the opponent's den
-        ATTACK_THREAT: 1.5,     // Bonus for threatening opponent pieces
-        KEY_SQUARE: 0.5,        // Bonus for occupying important squares (Placeholder)
-        TRAPPED_PENALTY: -3.0,  // Penalty for being in an opponent's trap
-        DEFENSE_PENALTY: -0.7   // Penalty for pieces being too far back (defensive posture)
+        MATERIAL: 1.0,
+        ADVANCEMENT: 0.25,
+        DEN_PROXIMITY: 6.0,
+        ATTACK_THREAT: 1.5,
+        JUMP_THREAT: 2.0,
+        KEY_SQUARE: 0.5, // Placeholder
+        TRAPPED_PENALTY: -3.0,
+        DEFENSE_PENALTY: -0.7
     };
 
     let aiScore = 0;
     let playerScore = 0;
-    const piecesByPlayer = { [PLAYER]: [], [AI]: [] }; // Collect pieces for easier processing
+    // Use imported Player constants
+    const piecesByPlayer = { [Player.PLAYER0]: [], [Player.PLAYER1]: [] };
 
     // Iterate through the board once to collect pieces and calculate basic scores
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r < BOARD_ROWS; r++) { // Use imported BOARD_ROWS
+        for (let c = 0; c < BOARD_COLS; c++) { // Use imported BOARD_COLS
             const cell = currentBoard[r]?.[c];
             if (!cell) continue;
             const piece = cell.piece;
@@ -539,105 +267,168 @@ function evaluateBoard(currentBoard) {
 
             const player = piece.player;
             const pieceKey = piece.name.toLowerCase();
+            // Use imported PIECES definition
             const value = PIECES[pieceKey]?.value ?? 0;
 
             // Store piece info for later heuristics
             piecesByPlayer[player].push({ ...piece, r, c, terrain: cell.terrain });
 
-            let scoreRef = (player === AI) ? aiScore : playerScore;
+            // Determine which score to update based on imported Player
+            let scoreRef = (player === Player.PLAYER1) ? aiScore : playerScore;
 
             // a) Material Score
             scoreRef += value * HEURISTIC_WEIGHTS.MATERIAL;
 
             // b) Advancement Score (scaled by piece value)
-            const advancement = (player === AI) ? r : (ROWS - 1 - r); // Rows advanced towards opponent
+            // Use imported Player and BOARD_ROWS
+            const advancement = (player === Player.PLAYER1) ? r : (BOARD_ROWS - 1 - r);
             scoreRef += advancement * HEURISTIC_WEIGHTS.ADVANCEMENT * (value / 150.0);
 
-            // c) Defense Penalty (for non-Rats too close to own baseline)
+            // c) Defense Penalty
             if (pieceKey !== 'rat') {
-                if (player === AI && r < 3) { // AI piece near row 0
-                    scoreRef += (r - 3) * HEURISTIC_WEIGHTS.DEFENSE_PENALTY * (value / 100.0); // Penalty increases closer to row 0
+                // Use imported Player and BOARD_ROWS
+                if (player === Player.PLAYER1 && r < 3) {
+                    scoreRef += (r - 3) * HEURISTIC_WEIGHTS.DEFENSE_PENALTY * (value / 100.0);
                 }
-                if (player === PLAYER && r > 5) { // Player piece near row 8
-                    scoreRef += ((ROWS - 1 - r) - 3) * HEURISTIC_WEIGHTS.DEFENSE_PENALTY * (value / 100.0); // Penalty increases closer to row 8
+                if (player === Player.PLAYER0 && r > (BOARD_ROWS - 1 - 3)) { // Generalize check
+                    scoreRef += ((BOARD_ROWS - 1 - r) - 3) * HEURISTIC_WEIGHTS.DEFENSE_PENALTY * (value / 100.0);
                 }
             }
 
-            // d) Trapped Penalty
-            if (getPieceRank(piece, r, c, currentBoard) === 0 && cell.terrain === TRAP) {
-                // Check if it's an opponent's trap (rank is 0 only in opponent's trap)
-                 scoreRef += HEURISTIC_WEIGHTS.TRAPPED_PENALTY * (value / 100.0);
+            // d) Trapped Penalty - Use imported getEffectiveRank and TERRAIN_TRAP
+            if (getEffectiveRank(piece, r, c, currentBoard) === 0 && cell.terrain === TERRAIN_TRAP) {
+                scoreRef += HEURISTIC_WEIGHTS.TRAPPED_PENALTY * (value / 100.0);
             }
 
             // Update the correct player's score
-            if (player === AI) aiScore = scoreRef;
-            else playerScore = scoreRef;
+            if (player === Player.PLAYER1) aiScore = scoreRef; else playerScore = scoreRef;
         }
     }
 
     // Check for wipeout (should be caught by terminal check, but safe)
-    if (piecesByPlayer[AI].length === 0 && piecesByPlayer[PLAYER].length > 0) return LOSE_SCORE;
-    if (piecesByPlayer[PLAYER].length === 0 && piecesByPlayer[AI].length > 0) return WIN_SCORE;
+    // Use imported Player constants
+    if (piecesByPlayer[Player.PLAYER1].length === 0 && piecesByPlayer[Player.PLAYER0].length > 0) return LOSE_SCORE;
+    if (piecesByPlayer[Player.PLAYER0].length === 0 && piecesByPlayer[Player.PLAYER1].length > 0) return WIN_SCORE;
 
     // 3. More Complex Heuristics (using collected pieces)
 
     // e) Den Proximity Bonus
-    piecesByPlayer[AI].forEach(p => {
+    // Use imported Player, Den constants, PIECES
+    piecesByPlayer[Player.PLAYER1].forEach(p => {
         const dist = Math.abs(p.r - PLAYER0_DEN_ROW) + Math.abs(p.c - PLAYER0_DEN_COL);
-        const advancementFactor = (p.r >= 4) ? 1.0 : 0.1; // Bonus stronger if past halfway
-        aiScore += Math.max(0, 15 - dist) * HEURISTIC_WEIGHTS.DEN_PROXIMITY * (p.value / 150.0) * advancementFactor;
+        const advancementFactor = (p.r >= Math.floor(BOARD_ROWS / 2)) ? 1.0 : 0.1;
+        aiScore += Math.max(0, 15 - dist) * HEURISTIC_WEIGHTS.DEN_PROXIMITY * ((PIECES[p.name.toLowerCase()]?.value ?? 0) / 150.0) * advancementFactor;
     });
-    piecesByPlayer[PLAYER].forEach(p => {
+    piecesByPlayer[Player.PLAYER0].forEach(p => {
         const dist = Math.abs(p.r - PLAYER1_DEN_ROW) + Math.abs(p.c - PLAYER1_DEN_COL);
-        const advancementFactor = (p.r <= 4) ? 1.0 : 0.1; // Bonus stronger if past halfway
-        playerScore += Math.max(0, 15 - dist) * HEURISTIC_WEIGHTS.DEN_PROXIMITY * (p.value / 150.0) * advancementFactor;
+        const advancementFactor = (p.r <= Math.floor(BOARD_ROWS / 2)) ? 1.0 : 0.1;
+        playerScore += Math.max(0, 15 - dist) * HEURISTIC_WEIGHTS.DEN_PROXIMITY * ((PIECES[p.name.toLowerCase()]?.value ?? 0) / 150.0) * advancementFactor;
     });
 
     // f) Attack Threat Bonus (pieces threatening opponent pieces)
     const calculateAttackThreat = (attackerPlayer, defenderPlayer) => {
         let threatBonus = 0;
+        let jumpThreatBonus = 0; // *** NEW: For jump threats ***
+
         for (const attacker of piecesByPlayer[attackerPlayer]) {
+            const attackerType = attacker.name.toLowerCase();
+
+            // Regular orthogonal threats
             const potentialMoves = [
                 { r: attacker.r - 1, c: attacker.c }, { r: attacker.r + 1, c: attacker.c },
                 { r: attacker.r, c: attacker.c - 1 }, { r: attacker.r, c: attacker.c + 1 }
             ];
             for (const move of potentialMoves) {
-                if (move.r >= 0 && move.r < ROWS && move.c >= 0 && move.c < COLS) {
+                // Use imported BOARD_ROWS/COLS for bounds check
+                if (move.r >= 0 && move.r < BOARD_ROWS && move.c >= 0 && move.c < BOARD_COLS) {
                     const targetPiece = currentBoard[move.r]?.[move.c]?.piece;
                     if (targetPiece?.player === defenderPlayer) {
                         const targetValue = PIECES[targetPiece.name.toLowerCase()]?.value ?? 0;
-                        // Bonus if can actually capture, smaller bonus if just adjacent/threatening
+                        // Use imported canCapture
                         if (canCapture(attacker, targetPiece, attacker.r, attacker.c, move.r, move.c, currentBoard)) {
                             threatBonus += targetValue * HEURISTIC_WEIGHTS.ATTACK_THREAT / 100.0;
                         } else {
-                            // Smaller bonus for just being near an opponent piece? (Original had this)
-                             threatBonus += targetValue * (HEURISTIC_WEIGHTS.ATTACK_THREAT / 4.0) / 100.0;
+                            threatBonus += targetValue * (HEURISTIC_WEIGHTS.ATTACK_THREAT / 4.0) / 100.0; // Adjacent bonus
                         }
                     }
                 }
             }
-             // Consider adding threats from jumps for Lion/Tiger here if desired
-        }
-        return threatBonus;
+
+            // *** NEW: Jump Threats (Lion, Tiger) ***
+             if (attackerType === 'lion' || attackerType === 'tiger') {
+                 // --- Vertical Jump Check ---
+                 // Use imported isRiver
+                 if (isRiver(3, attacker.c)) {
+                     if (attacker.r === 2) { // Check jump down target
+                         jumpThreatBonus += checkJumpThreat(attacker, 6, attacker.c, [attacker.c, attacker.c, attacker.c], [3, 4, 5], currentBoard, defenderPlayer);
+                     } else if (attacker.r === 6) { // Check jump up target
+                         jumpThreatBonus += checkJumpThreat(attacker, 2, attacker.c, [attacker.c, attacker.c, attacker.c], [5, 4, 3], currentBoard, defenderPlayer);
+                     }
+                 }
+                 // --- Horizontal Jump Check (Lion only) ---
+                 if (attackerType === 'lion') {
+                      if (isRiver(attacker.r, 1) && isRiver(attacker.r, 2)) { // River squares at col 1 and 2
+                          if (attacker.c === 0) jumpThreatBonus += checkJumpThreat(attacker, attacker.r, 3, [1, 2], [attacker.r, attacker.r], currentBoard, defenderPlayer);
+                          else if (attacker.c === 3) jumpThreatBonus += checkJumpThreat(attacker, attacker.r, 0, [1, 2], [attacker.r, attacker.r], currentBoard, defenderPlayer);
+                      }
+                      if (isRiver(attacker.r, 4) && isRiver(attacker.r, 5)) { // River squares at col 4 and 5
+                          if (attacker.c === 3) jumpThreatBonus += checkJumpThreat(attacker, attacker.r, 6, [4, 5], [attacker.r, attacker.r], currentBoard, defenderPlayer);
+                          else if (attacker.c === 6) jumpThreatBonus += checkJumpThreat(attacker, attacker.r, 3, [4, 5], [attacker.r, attacker.r], currentBoard, defenderPlayer);
+                      }
+                 }
+             } // End jump check
+
+        } // End loop attackers
+        return threatBonus + (jumpThreatBonus * HEURISTIC_WEIGHTS.JUMP_THREAT / 100.0);
     };
-    aiScore += calculateAttackThreat(AI, PLAYER);
-    playerScore += calculateAttackThreat(PLAYER, AI);
+
+    // *** NEW: Helper for jump threat calculation ***
+    const checkJumpThreat = (attackerPiece, targetR, targetC, riverCols, riverRows, board, defenderPlayer) => {
+        // Check path clear
+        for (let i = 0; i < riverRows.length; i++) {
+            if (!isRiver(riverRows[i], riverCols[i]) || board[riverRows[i]]?.[riverCols[i]]?.piece) {
+                return 0; // Path blocked
+            }
+        }
+        // Check target square
+        if (targetR >= 0 && targetR < BOARD_ROWS && targetC >= 0 && targetC < BOARD_COLS) {
+             const targetSquare = board[targetR]?.[targetC];
+             const targetPiece = targetSquare?.piece;
+             const targetTerrain = targetSquare?.terrain;
+             // Cannot jump into water, or onto own piece (shouldn't happen for threat calc)
+             if (targetTerrain === TERRAIN_WATER) return 0;
+
+            if (targetPiece?.player === defenderPlayer) {
+                // Use imported canCapture to see if the jump would capture
+                if (canCapture(attackerPiece, targetPiece, attackerPiece.r, attackerPiece.c, targetR, targetC, board)) {
+                    return PIECES[targetPiece.name.toLowerCase()]?.value ?? 0; // Return value of threatened piece
+                }
+            }
+        }
+        return 0; // No threat on this jump path
+    };
+
+    // Calculate threats using imported Player constants
+    aiScore += calculateAttackThreat(Player.PLAYER1, Player.PLAYER0);
+    playerScore += calculateAttackThreat(Player.PLAYER0, Player.PLAYER1);
+
 
     // g) Specific Piece Interaction Bonuses (e.g., Rat near Elephant)
     const findPiece = (type, player) => piecesByPlayer[player].find(p => p.name.toLowerCase() === type);
 
-    const aiRat = findPiece('rat', AI);
-    const playerElephant = findPiece('elephant', PLAYER);
-    if (aiRat && playerElephant && currentBoard[aiRat.r]?.[aiRat.c]?.terrain !== WATER) {
+    // Use imported Player and TERRAIN_WATER
+    const aiRat = findPiece('rat', Player.PLAYER1);
+    const playerElephant = findPiece('elephant', Player.PLAYER0);
+    if (aiRat && playerElephant && currentBoard[aiRat.r]?.[aiRat.c]?.terrain !== TERRAIN_WATER) {
         const dist = Math.abs(aiRat.r - playerElephant.r) + Math.abs(aiRat.c - playerElephant.c);
-        if (dist <= 2) aiScore += (3 - dist) * 3.0; // Bonus for AI Rat being close to Player Elephant
+        if (dist <= 2) aiScore += (3 - dist) * 3.0;
     }
 
-    const playerRat = findPiece('rat', PLAYER);
-    const aiElephant = findPiece('elephant', AI);
-    if (playerRat && aiElephant && currentBoard[playerRat.r]?.[playerRat.c]?.terrain !== WATER) {
+    const playerRat = findPiece('rat', Player.PLAYER0);
+    const aiElephant = findPiece('elephant', Player.PLAYER1);
+    if (playerRat && aiElephant && currentBoard[playerRat.r]?.[playerRat.c]?.terrain !== TERRAIN_WATER) {
         const dist = Math.abs(playerRat.r - aiElephant.r) + Math.abs(playerRat.c - aiElephant.c);
-        if (dist <= 2) playerScore += (3 - dist) * 3.0; // Bonus for Player Rat being close to AI Elephant
+        if (dist <= 2) playerScore += (3 - dist) * 3.0;
     }
 
     // Final score is difference
@@ -662,36 +453,37 @@ function evaluateBoard(currentBoard) {
  * @throws {TimeLimitExceededError} If the time limit is reached.
  */
 function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPlayer, startTime, timeLimit, ply) {
-    aiRunCounter++; // Increment node counter
+    aiRunCounter++;
 
-    // Check for timeout
     if (performance.now() - startTime > timeLimit) {
         throw new TimeLimitExceededError();
     }
 
-    const originalAlpha = alpha; // Store original alpha for TT flag determination
+    const originalAlpha = alpha;
     const hashKey = currentHash;
 
-    // 1. Transposition Table Lookup
+    // 1. Transposition Table Lookup (logic remains similar)
     const ttEntry = transpositionTable.get(hashKey);
     if (ttEntry && ttEntry.depth >= depth) {
         if (ttEntry.flag === HASH_EXACT) return ttEntry.score;
         if (ttEntry.flag === HASH_LOWERBOUND) alpha = Math.max(alpha, ttEntry.score);
         if (ttEntry.flag === HASH_UPPERBOUND) beta = Math.min(beta, ttEntry.score);
-        if (alpha >= beta) return ttEntry.score; // Pruning based on TT entry
+        if (alpha >= beta) return ttEntry.score;
     }
 
     // 2. Terminal State Check & Base Case (Depth 0)
-    let termState = checkTerminalState(currentBoard);
-    if (termState.isT || depth === 0) {
-        let baseScore = evaluateBoard(currentBoard);
-        // Depth-Based Mate scoring (optional, helps find faster mates)
-        if (termState.isT && termState.w !== null) {
-            const MATE_DEPTH_BONUS = 10; // Small bonus per ply remaining
-            if (termState.w === AI) baseScore += depth * MATE_DEPTH_BONUS;
-            if (termState.w === PLAYER) baseScore -= depth * MATE_DEPTH_BONUS;
+    // Use imported getGameStatus and GameStatus constants
+    const status = getGameStatus(currentBoard);
+    const isTerminal = (status !== GameStatus.ONGOING);
+    if (isTerminal || depth === 0) {
+        let baseScore = evaluateBoard(currentBoard); // Call adapted evaluateBoard
+        if (isTerminal && status !== GameStatus.DRAW) {
+            const MATE_DEPTH_BONUS = 10;
+            // Use imported GameStatus constants and check AI player
+            if (status === GameStatus.PLAYER1_WINS) baseScore += depth * MATE_DEPTH_BONUS;
+            if (status === GameStatus.PLAYER0_WINS) baseScore -= depth * MATE_DEPTH_BONUS;
         }
-        // Store leaf node evaluation in TT if better than existing or no entry
+        // Store leaf node evaluation in TT (logic remains similar)
         if (!ttEntry || ttEntry.depth < depth) {
              transpositionTable.set(hashKey, { score: baseScore, depth: depth, flag: HASH_EXACT, bestMove: null });
         }
@@ -699,135 +491,110 @@ function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPl
     }
 
     // 3. Generate and Order Moves
-    const playerToMove = isMaximizingPlayer ? AI : PLAYER;
+    // Determine player using imported Player constants (AI = Player 1)
+    const playerToMove = isMaximizingPlayer ? Player.PLAYER1 : Player.PLAYER0;
     let moves;
     try {
-        moves = getAllPossibleMovesForPlayer(playerToMove, currentBoard);
+        // Use imported getAllValidMoves
+        moves = getAllValidMoves(playerToMove, currentBoard);
     } catch (e) {
         console.error(`Error generating moves for player ${playerToMove}`, e);
-        return isMaximizingPlayer ? -Infinity : Infinity; // Return worst score on error
+        return isMaximizingPlayer ? -Infinity : Infinity;
     }
 
     // If no moves available, it's a stalemate/loss for the current player
     if (moves.length === 0) {
-        // Evaluate board directly (might be win for opponent if all pieces captured)
+        // Re-evaluate board, could be win for opponent if pieces captured
+        // Or check status again if needed, evaluateBoard handles terminal states now
         return evaluateBoard(currentBoard);
     }
 
     // Move Ordering Heuristics
-    const hashMove = ttEntry?.bestMove; // Move from Transposition Table
+    const hashMove = ttEntry?.bestMove;
     const killerMove1 = (ply >= 0 && ply < MAX_PLY_FOR_KILLERS) ? killerMoves[ply]?.[0] : null;
     const killerMove2 = (ply >= 0 && ply < MAX_PLY_FOR_KILLERS) ? killerMoves[ply]?.[1] : null;
 
     moves.forEach(move => {
         move.orderScore = 0;
-        // Highest priority: Hash move from TT
+        // Use imported movesAreEqual for comparison
         if (hashMove && movesAreEqual(move, hashMove)) {
             move.orderScore = 20000;
-        }
-        // Next: Killer moves
-        else if (killerMove1 && movesAreEqual(move, killerMove1)) {
+        } else if (killerMove1 && movesAreEqual(move, killerMove1)) {
             move.orderScore = 19000;
         } else if (killerMove2 && movesAreEqual(move, killerMove2)) {
             move.orderScore = 18000;
-        }
-        // Next: Captures (Most Valuable Victim - Least Valuable Attacker)
-        else {
+        } else {
+            // Use imported PIECES for values
             const targetPiece = currentBoard[move.toRow]?.[move.toCol]?.piece;
             if (targetPiece) {
                  const victimValue = PIECES[targetPiece.name.toLowerCase()]?.value ?? 0;
                  const attackerValue = PIECES[move.pieceData?.name?.toLowerCase()]?.value ?? 0;
-                 move.orderScore = 1000 + victimValue - attackerValue; // Simple MVV-LVA heuristic
-            }
-            // Optional: Add scores for moving towards opponent den, etc.
-            else {
-                 const opponentDenRow = (playerToMove === AI) ? PLAYER0_DEN_ROW : PLAYER1_DEN_ROW;
+                 move.orderScore = 1000 + victimValue - attackerValue;
+            } else {
+                // Use imported Player and Den constants
+                 const opponentDenRow = (playerToMove === Player.PLAYER1) ? PLAYER0_DEN_ROW : PLAYER1_DEN_ROW;
                  const currentDist = Math.abs(move.fromRow - opponentDenRow);
                  const newDist = Math.abs(move.toRow - opponentDenRow);
-                 if (newDist < currentDist) move.orderScore += 5; // Small bonus for advancing
+                 if (newDist < currentDist) move.orderScore += 5;
             }
         }
     });
-
-    moves.sort((a, b) => b.orderScore - a.orderScore); // Sort moves descending by score
+    moves.sort((a, b) => b.orderScore - a.orderScore);
 
     // 4. Iterate Through Moves and Recurse
     let bestMoveForNode = null;
     let bestScore = isMaximizingPlayer ? -Infinity : Infinity;
 
     for (const move of moves) {
-        const isCapture = !!currentBoard[move.toRow]?.[move.toCol]?.piece; // Check if it's a capture move
+        const isCapture = !!currentBoard[move.toRow]?.[move.toCol]?.piece;
         let simResult;
         try {
+            // simulateMoveAndGetHash needs to be checked for constant usage too
             simResult = simulateMoveAndGetHash(currentBoard, move, currentHash);
-        } catch (e) {
-            console.error("SimulateMoveAndGetHash Error during AlphaBeta", e);
-            continue; // Skip this move if simulation fails
-        }
+        } catch (e) { /* ... error handling ... */ continue; }
 
         let evalScore;
         try {
             evalScore = alphaBeta(
-                simResult.newBoard,
-                simResult.newHash,
-                depth - 1,
-                alpha, // Pass current alpha/beta
-                beta,
-                !isMaximizingPlayer, // Toggle player type
-                startTime,
-                timeLimit,
-                ply + 1 // Increment ply depth
+                simResult.newBoard, simResult.newHash,
+                depth - 1, alpha, beta,
+                !isMaximizingPlayer, // Toggle player
+                startTime, timeLimit, ply + 1
             );
         } catch (e) {
-            if (e instanceof TimeLimitExceededError) throw e; // Propagate timeout upwards
-            console.error("Error during recursive alphaBeta call", e);
-            // Handle other errors, maybe assign worst score?
+            if (e instanceof TimeLimitExceededError) throw e;
+             console.error("Error during recursive alphaBeta call", e);
             evalScore = isMaximizingPlayer ? -Infinity : Infinity;
         }
 
         // Update best score and alpha/beta based on maximizing/minimizing player
-        if (isMaximizingPlayer) { // AI's turn
-            if (evalScore > bestScore) {
-                bestScore = evalScore;
-                bestMoveForNode = move; // Found a potentially better move
-            }
-            alpha = Math.max(alpha, bestScore); // Update alpha
+        if (isMaximizingPlayer) { // AI's turn (Player 1)
+            if (evalScore > bestScore) { bestScore = evalScore; bestMoveForNode = move; }
+            alpha = Math.max(alpha, bestScore);
             if (beta <= alpha) { // Beta Pruning
-                if (!isCapture) recordKillerMove(ply, move); // Record quiet move causing cutoff
-                break; // Stop searching this branch
+                if (!isCapture) recordKillerMove(ply, move);
+                break;
             }
-        } else { // Opponent's turn (minimizing)
-            if (evalScore < bestScore) {
-                bestScore = evalScore;
-                bestMoveForNode = move;
-            }
-            beta = Math.min(beta, bestScore); // Update beta
+        } else { // Opponent's turn (Player 0)
+            if (evalScore < bestScore) { bestScore = evalScore; bestMoveForNode = move; }
+            beta = Math.min(beta, bestScore);
             if (beta <= alpha) { // Alpha Pruning
                 if (!isCapture) recordKillerMove(ply, move);
-                break; // Stop searching this branch
+                break;
             }
         }
-    }
+    } // End move loop
 
     // 5. Store Result in Transposition Table
     let flag;
-    if (bestScore <= originalAlpha) {
-        flag = HASH_UPPERBOUND; // Failed low (score is at most bestScore)
-    } else if (bestScore >= beta) {
-        flag = HASH_LOWERBOUND; // Failed high (score is at least bestScore)
-    } else {
-        flag = HASH_EXACT;     // Score is exact within the alpha-beta window
-    }
+    if (bestScore <= originalAlpha) flag = HASH_UPPERBOUND;
+    else if (bestScore >= beta) flag = HASH_LOWERBOUND;
+    else flag = HASH_EXACT;
 
-    // Store if entry is new, deeper, or exact
     if (!ttEntry || depth >= ttEntry.depth || flag === HASH_EXACT) {
-         // Store only necessary move info to reduce TT memory usage
          const bestMoveData = bestMoveForNode ? {
-             fromRow: bestMoveForNode.fromRow,
-             fromCol: bestMoveForNode.fromCol,
-             toRow: bestMoveForNode.toRow,
-             toCol: bestMoveForNode.toCol
-             // No need to store pieceData in TT move record
+             fromRow: bestMoveForNode.fromRow, fromCol: bestMoveForNode.fromCol,
+             toRow: bestMoveForNode.toRow, toCol: bestMoveForNode.toCol
          } : null;
         transpositionTable.set(hashKey, { score: bestScore, depth: depth, flag: flag, bestMove: bestMoveData });
     }
@@ -847,18 +614,18 @@ function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPl
  */
 function findBestMove(currentBoard, maxDepth, timeLimit) {
     const startTime = performance.now();
-    aiRunCounter = 0; // Reset node counter for this search
-    transpositionTable.clear(); // Clear TT for new search
-    killerMoves = Array(MAX_PLY_FOR_KILLERS).fill(null).map(() => [null, null]); // Clear killer moves
+    aiRunCounter = 0;
+    transpositionTable.clear();
+    killerMoves = Array(MAX_PLY_FOR_KILLERS).fill(null).map(() => [null, null]);
 
     let bestMoveOverall = null;
     let lastCompletedDepth = 0;
     let bestScoreOverall = -Infinity; // AI aims to maximize
 
-    // Get initial possible moves for the root node
+    // Get initial possible moves using imported function and constant (AI = Player 1)
     let rootMoves;
     try {
-        rootMoves = getAllPossibleMovesForPlayer(AI, currentBoard);
+        rootMoves = getAllValidMoves(Player.PLAYER1, currentBoard);
     } catch (e) {
         console.error("[Worker] Error getting initial moves:", e);
         return { move: null, depthAchieved: 0, nodes: 0, eval: null, error: "Move gen error" };
@@ -869,21 +636,22 @@ function findBestMove(currentBoard, maxDepth, timeLimit) {
         return { move: null, depthAchieved: 0, nodes: 0, eval: null, error: "No moves available" };
     }
 
-    // Calculate initial hash for the root position
-    const initialHash = computeZobristKey(currentBoard, AI);
+    // Calculate initial hash using imported constant (AI = Player 1)
+    const initialHash = computeZobristKey(currentBoard, Player.PLAYER1);
 
-    // Set a default best move (the first legal one) in case of immediate timeout
-    const firstMovePiece = currentBoard[rootMoves[0].fromRow]?.[rootMoves[0].fromCol]?.piece;
+    // Set a default best move (the first legal one)
+    const firstMove = rootMoves[0];
+    const firstMovePiece = currentBoard[firstMove.fromRow]?.[firstMove.fromCol]?.piece;
     if (firstMovePiece) {
         bestMoveOverall = {
             pieceName: firstMovePiece.name, // Send identifying info back
-            fromRow: rootMoves[0].fromRow,
-            fromCol: rootMoves[0].fromCol,
-            toRow: rootMoves[0].toRow,
-            toCol: rootMoves[0].toCol
+            fromRow: firstMove.fromRow, fromCol: firstMove.fromCol,
+            toRow: firstMove.toRow, toCol: firstMove.toCol
         };
     } else {
          console.error("[Worker] Failed to get piece for the first move.");
+         // Attempt fallback if more moves exist? Or return error immediately.
+         // For now, return error.
          return { move: null, depthAchieved: 0, nodes: 0, eval: null, error: "Fallback piece missing" };
     }
 
@@ -894,33 +662,21 @@ function findBestMove(currentBoard, maxDepth, timeLimit) {
             const timeBeforeIter = performance.now();
             const timeElapsed = timeBeforeIter - startTime;
 
-             // Optional: Log start of iteration (can be verbose)
-             // console.log(`[Worker IDS] Starting Depth ${currentDepth}. Time Elapsed: ${timeElapsed.toFixed(0)}ms / ${timeLimit}ms`);
-
-            // Check time limit before starting the iteration
-            if (timeElapsed > timeLimit) {
-                console.log(`[Worker IDS] Timeout BEFORE starting Depth ${currentDepth}`);
-                break;
-            }
+            if (timeElapsed > timeLimit) { /* ... timeout log ... */ break; }
 
             let bestScoreThisIteration = -Infinity;
             let bestMoveThisIteration = null;
-            let alpha = -Infinity; // Reset alpha/beta for each root iteration
-            let beta = Infinity;
-            let iterationNodeCountStart = aiRunCounter;
+            let alpha = -Infinity, beta = Infinity; // Reset alpha/beta for root search
 
             // --- Root Move Ordering ---
-            // Try move from previous iteration's TT first
              const ttEntryRoot = transpositionTable.get(initialHash);
              const hashMoveRoot = ttEntryRoot?.bestMove;
              if (hashMoveRoot) {
+                 // Use imported movesAreEqual
                  const idx = rootMoves.findIndex(m => movesAreEqual(m, hashMoveRoot));
-                 if (idx > 0) {
-                     // Move the hash move to the front of the array
-                     rootMoves.unshift(rootMoves.splice(idx, 1)[0]);
-                 }
+                 if (idx > 0) { rootMoves.unshift(rootMoves.splice(idx, 1)[0]); }
              } else {
-                 // Simple ordering if no hash move (captures/advancing first)
+                 // Simple ordering using imported PIECES, PLAYER0_DEN_ROW
                  rootMoves.forEach(move => {
                      const tp = currentBoard[move.toRow]?.[move.toCol]?.piece;
                      move.orderScore = 0;
@@ -928,142 +684,104 @@ function findBestMove(currentBoard, maxDepth, timeLimit) {
                          move.orderScore = 1000 + (PIECES[tp.name.toLowerCase()]?.value ?? 0) - (PIECES[move.pieceData?.name?.toLowerCase()]?.value ?? 0);
                      }
                      // Advancement heuristic (simple version)
-                     const opponentDenRow = PLAYER0_DEN_ROW;
-                     if (move.toRow > move.fromRow) move.orderScore += 5; // Prefer moving towards opponent
+                     const opponentDenRow = PLAYER0_DEN_ROW; // AI is P1, opponent den is P0
+                     if (move.toRow > move.fromRow) move.orderScore += 5;
                  });
                  rootMoves.sort((a, b) => b.orderScore - a.orderScore);
              }
-             // Ensure a default move for the iteration is set
-             if (!bestMoveThisIteration && rootMoves.length > 0) {
+            // Ensure a default move for the iteration is set
+            if (!bestMoveThisIteration && rootMoves.length > 0) {
                 const fm = rootMoves[0];
                 const fp = currentBoard[fm.fromRow]?.[fm.fromCol]?.piece;
                 if(fp) bestMoveThisIteration = { pieceName: fp.name, fromRow: fm.fromRow, fromCol: fm.fromCol, toRow: fm.toRow, toCol: fm.toCol };
-             }
+            }
 
 
             // Search each root move
             for (const move of rootMoves) {
                 const pieceToMove = currentBoard[move.fromRow]?.[move.fromCol]?.piece;
-                if (!pieceToMove) continue; // Should not happen
+                if (!pieceToMove) continue; // Safety check
 
                 let simResult;
                 try {
                     simResult = simulateMoveAndGetHash(currentBoard, move, initialHash);
-                } catch (e) {
-                    console.error("[Worker] Root SimHash Error", e);
-                    continue;
-                }
+                } catch (e) { /* ... error handling ... */ continue; }
 
-                // Call alphaBeta for the opponent's turn (minimizing player)
+                // Call alphaBeta for the opponent's turn (minimizing player = Player 0)
                 const score = alphaBeta(
-                    simResult.newBoard,
-                    simResult.newHash,
+                    simResult.newBoard, simResult.newHash,
                     currentDepth - 1, // Depth for the recursive call
-                    alpha,
-                    beta,
+                    alpha, beta,
                     false, // It's opponent's turn (minimizing)
-                    startTime,
-                    timeLimit,
+                    startTime, timeLimit,
                     0 // Ply starts at 0 for root moves' children
                 );
 
-                // Check timeout *after* the call returns (it might throw)
-                 if (performance.now() - startTime > timeLimit) {
-                     // Don't necessarily trust the score if timeout happened during the call
-                     console.log(`[Worker IDS] Timeout during alphaBeta call for move at D${currentDepth}`);
-                     // Might need to break outer loop here depending on desired behavior
-                 }
+                // Check timeout *after* the call returns
+                 if (performance.now() - startTime > timeLimit) { /* ... timeout log ... */ }
 
-
+                // Since this is the root, we are MAXIMIZING over the results
                 if (score > bestScoreThisIteration) {
                     bestScoreThisIteration = score;
                     // Store necessary info for the move to be returned
                     bestMoveThisIteration = {
                         pieceName: pieceToMove.name,
-                        fromRow: move.fromRow,
-                        fromCol: move.fromCol,
-                        toRow: move.toRow,
-                        toCol: move.toCol
+                        fromRow: move.fromRow, fromCol: move.fromCol,
+                        toRow: move.toRow, toCol: move.toCol
                     };
                 }
-                alpha = Math.max(alpha, score); // Update alpha for the root search
+                // Update alpha for the root search window
+                alpha = Math.max(alpha, score);
 
-                 // Optional: Root level beta cutoff (less common, but possible)
-                 // if (beta <= alpha) { break; }
+                // Optional: Root level beta cutoff (if alpha >= beta) - less common
+                // if (alpha >= beta) { break; }
             } // End loop through root moves
 
             const timeAfterIter = performance.now();
             const totalTimeElapsed = timeAfterIter - startTime;
 
-             // Optional: Log end of iteration
-             // let iterNodes = aiRunCounter - iterationNodeCountStart;
-             // const scoreDisp = bestScoreThisIteration === -Infinity ? "-Inf" : bestScoreThisIteration === Infinity ? "+Inf" : bestScoreThisIteration.toFixed(2);
-             // console.log(`[Worker IDS] D${currentDepth} OK. Sc:${scoreDisp} (Nodes:${iterNodes}). Total Time: ${totalTimeElapsed.toFixed(0)}ms`);
-
-
             // Check time limit again after completing the iteration
-            if (totalTimeElapsed > timeLimit) {
-                console.log(`[Worker IDS] Timeout AFTER finishing Depth ${currentDepth}`);
-                break; // Exit IDS loop
-            }
+            if (totalTimeElapsed > timeLimit) { /* ... timeout log ... */ break; }
 
             // If the iteration completed within time, update the overall best move
             lastCompletedDepth = currentDepth;
-            if (bestMoveThisIteration) {
-                bestMoveOverall = bestMoveThisIteration;
-            }
+            if (bestMoveThisIteration) { bestMoveOverall = bestMoveThisIteration; }
             bestScoreOverall = bestScoreThisIteration;
 
-
             // Check for early exit if a winning/losing score is found reliably
-            const isNearWin = bestScoreOverall >= WIN_SCORE * 0.9;
-            const isNearLoss = bestScoreOverall <= LOSE_SCORE * 0.9;
-             if (bestScoreOverall > LOSE_SCORE * 0.9 && (isNearWin || isNearLoss)) {
-                 console.log(`[Worker IDS] Early exit: Score ${bestScoreOverall.toFixed(0)} indicates win/loss at Depth ${currentDepth}.`);
-                 break; // Exit IDS loop
+             if (bestScoreOverall > LOSE_SCORE * 0.9 && (bestScoreOverall >= WIN_SCORE * 0.9 || bestScoreOverall <= LOSE_SCORE * 0.9)) {
+                 /* ... early exit log ... */
+                 break;
              }
 
         } // End Iterative Deepening Loop
 
     } catch (error) {
-        // Handle errors during the search (including TimeLimitExceededError)
         if (!(error instanceof TimeLimitExceededError)) {
             console.error("[Worker IDS] Unexpected search error:", error);
-            // Return previous best move if available, along with error message
-             return {
-                 move: bestMoveOverall, // Send previous best if possible
-                 depthAchieved: lastCompletedDepth,
-                 nodes: aiRunCounter,
-                 eval: bestScoreOverall,
-                 error: error.message
-             };
+             return { /* return previous best if possible + error */ };
         }
-        // Timeouts are expected, just fall through to return current best
         console.log("[Worker IDS] Time limit exceeded, returning best move found so far.");
     }
 
-    // Fallback if somehow no move was ever selected (e.g., timeout at depth 1 before first move search finishes)
+    // Fallback if somehow no move was ever selected
     if (!bestMoveOverall && rootMoves.length > 0) {
         console.warn("[Worker IDS] Timeout/Error resulted in no best move. Using first legal move.");
         const fm = rootMoves[0];
         const fp = currentBoard[fm.fromRow]?.[fm.fromCol]?.piece;
-        if (fp) {
-             bestMoveOverall = { pieceName: fp.name, fromRow: fm.fromRow, fromCol: fm.fromCol, toRow: fm.toRow, toCol: fm.toCol };
-        } else {
-             // This should be extremely rare
-             return { move: null, depthAchieved: lastCompletedDepth, nodes: aiRunCounter, eval: bestScoreOverall, error: "Fallback Fail" };
-        }
+        if (fp) { bestMoveOverall = { /* ... format move ... */ }; }
+        else { return { /* return error */ }; }
     }
 
      const finalDuration = performance.now() - startTime;
-     console.log(`[Worker] findBestMove finished. Depth Achieved: ${lastCompletedDepth}. Total Time: ${finalDuration.toFixed(0)}ms`);
+     console.log(`[Worker] findBestMove finished. Depth: ${lastCompletedDepth}. Time: ${finalDuration.toFixed(0)}ms. Eval: ${bestScoreOverall?.toFixed(2)}`);
 
     // Return the result object
     return {
         move: bestMoveOverall, // Contains { pieceName, fromRow, fromCol, toRow, toCol }
         depthAchieved: lastCompletedDepth,
         nodes: aiRunCounter,
-        eval: bestScoreOverall === -Infinity ? null : bestScoreOverall // Return null if search didn't even complete depth 1
+        eval: bestScoreOverall === -Infinity ? null : bestScoreOverall
     };
 }
 

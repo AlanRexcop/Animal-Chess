@@ -14,13 +14,13 @@ import {
 
 // --- Helper Functions ---
 
-function isRiver(r, c) {
+export function isRiver(r, c) {
     return r >= 3 && r <= 5 && (c === 1 || c === 2 || c === 4 || c === 5);
 }
 
 // Determines effective rank, considering traps
 // boardState should be the format from board.getState() or board.getClonedStateForWorker()
-function getEffectiveRank(piece, r, c, boardState) {
+export function getEffectiveRank(piece, r, c, boardState) {
     if (!piece) return 0;
     const terrain = boardState[r]?.[c]?.terrain;
 
