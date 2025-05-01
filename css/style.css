@@ -6,7 +6,7 @@ body {
   padding: 10px;
   min-height: 100vh;
   box-sizing: border-box;
-  background-image: url('assets/background.png');
+  background-image: url('../assets/background.png');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -201,8 +201,8 @@ h1 {
   cursor: pointer; position: relative;
   transition: background-color 0.2s ease;
 }
-.land { background-color: rgba(144, 238, 144, 0.85); }
-.water { background-color: rgba(173, 216, 230, 0.85); }
+.land { /*background-color: rgba(144, 238, 144, 0.85);*/ background-image: url('../assets/tiles/land_3.png'); }
+.water {/* background-color: rgba(173, 216, 230, 0.85);*/ background-image: url('../assets/tiles/water.gif'); }
 .trap { background-color: rgba(255, 182, 193, 0.85); }
 .player0-den { background-color: rgba(210, 180, 255, 0.85); border: 2px dashed #0000FF;}
 .player1-den { background-color: rgba(255, 218, 185, 0.85); border: 2px dashed #FF0000; }
