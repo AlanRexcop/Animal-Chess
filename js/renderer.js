@@ -1,11 +1,10 @@
 // js/renderer.js
-// ****** ADDED ANIMATION_DURATION to import ******
 import { BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, Player, getPieceKey, PIECES, ANIMATION_DURATION } from './constants.js';
-// ****** END ADD ******
 import { getString } from './localization.js';
 
 // DOM Elements Cache
 const boardElement = document.getElementById('board');
+const boardContainerElement = document.getElementById('board-container'); // ** Need board container **
 const statusElement = document.getElementById('status');
 const turnElement = document.getElementById('turn');
 const capturedByPlayer0Container = document.querySelector('#captured-by-player0 .pieces-container');
@@ -61,8 +60,8 @@ export function initializeLandTilePatterns(boardState) {
 }
 
 /**
- * Initiates the animation and updates state for a move. This function is now internal to the renderer.
- * It relies on game.js calling updateBoardState first.
+ * Animates a piece moving visually from start to end square using absolute positioning
+ * relative to the board container.
  * @param {HTMLElement} pieceElement The DOM element of the piece being moved.
  * @param {HTMLElement} startSquare The starting square DOM element.
  * @param {HTMLElement} endSquare The ending square DOM element.
@@ -71,55 +70,80 @@ export function initializeLandTilePatterns(boardState) {
  * @param {Function} onComplete Callback function to execute after animation completes.
  */
 export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture, capturedPieceType, onComplete) {
-    if (!pieceElement || !startSquare || !endSquare) {
-        console.warn("Animation elements not found, completing move directly.");
-        onComplete(); // Execute completion logic immediately
+    if (!pieceElement || !startSquare || !endSquare || !boardContainerElement) {
+        console.warn("Animation elements (piece, squares, or board container) not found, completing move directly.");
+        onComplete();
         return;
     }
 
-    const startRect = startSquare.getBoundingClientRect();
-    const endRect = endSquare.getBoundingClientRect();
-    const deltaX = endRect.left - startRect.left;
-    const deltaY = endRect.top - startRect.top;
-
-    // 1. Remove captured piece element *before* moving the attacker element
-    const capturedElement = endSquare.querySelector('.piece:not(.piece-animating)'); // Ensure not to remove the animating piece if moving to same square (unlikely)
+    // 1. Remove captured piece element from endSquare immediately
+    const capturedElement = endSquare.querySelector('.piece');
     if (isCapture && capturedElement) {
-         capturedElement.remove();
+        capturedElement.remove();
     }
 
-    // 2. Prepare for animation
-    pieceElement.classList.add('piece-animating'); // Add animating class for high z-index
-    endSquare.appendChild(pieceElement);          // Move piece to end square in DOM
-    pieceElement.style.transition = 'none';       // Disable transitions for initial placement
-    // Set initial transform to make it appear at the start position visually
-    pieceElement.style.transform = `translate(calc(-50% - ${deltaX}px), calc(-50% - ${deltaY}px))`;
+    // 2. Calculate positions relative to the board container
+    const containerRect = boardContainerElement.getBoundingClientRect();
+    const startRect = pieceElement.getBoundingClientRect(); // Get initial position
+    const endRect = endSquare.getBoundingClientRect();
 
-    // 3. Force reflow & Start the transition
-    requestAnimationFrame(() => { // Ensure initial transform is applied
-        requestAnimationFrame(() => { // Start transition in the next frame
-            pieceElement.style.transition = `transform ${ANIMATION_DURATION / 1000}s ease-out`; // Apply transition
-            pieceElement.style.transform = 'translate(-50%, -50%)'; // Animate to final position
+    // Initial top/left relative to container
+    const initialTop = startRect.top - containerRect.top;
+    const initialLeft = startRect.left - containerRect.left;
+
+    // Target top/left (center of end square) relative to container
+    const targetLeft = endRect.left - containerRect.left + (endRect.width / 2) - (startRect.width / 2);
+    const targetTop = endRect.top - containerRect.top + (endRect.height / 2) - (startRect.height / 2);
+
+
+    // 3. Prepare piece for global animation
+    // Move piece physically to board container
+    boardContainerElement.appendChild(pieceElement);
+    pieceElement.classList.add('piece-global-animating'); // Add class for absolute positioning and high z-index
+    // Set initial absolute position
+    pieceElement.style.left = `${initialLeft}px`;
+    pieceElement.style.top = `${initialTop}px`;
+    pieceElement.style.transform = 'none'; // Ensure no leftover transform interferes
+    pieceElement.style.transition = 'none';
+
+    // 4. Start the animation (animate top/left)
+    requestAnimationFrame(() => { // Allow browser to apply initial state
+        requestAnimationFrame(() => { // Start transition on next frame
+            // Apply CSS transition for top and left properties
+            pieceElement.style.transition = `left ${ANIMATION_DURATION / 1000}s ease-out, top ${ANIMATION_DURATION / 1000}s ease-out`;
+            // Set target position
+            pieceElement.style.left = `${targetLeft}px`;
+            pieceElement.style.top = `${targetTop}px`;
         });
     });
 
-    // 4. After animation finishes
+    // 5. After animation finishes
     setTimeout(() => {
-        pieceElement.style.transition = 'none'; // Clean up transition
-        pieceElement.classList.remove('piece-animating'); // Remove high z-index class
+        // --- Clean up visual styles ---
+        pieceElement.style.transition = 'none';         // Remove transition property
+        pieceElement.classList.remove('piece-global-animating'); // Remove absolute positioning class
 
-        // Play sound based on move type (Only if a sound name is provided)
+        // --- Physically move DOM element back into the grid ---
+        endSquare.appendChild(pieceElement);            // Append to the destination square
+
+        // --- Reset styles for positioning within the square ---
+        pieceElement.style.position = ''; // Reset to default (absolute via .piece class)
+        pieceElement.style.top = '';      // Reset top/left
+        pieceElement.style.left = '';
+        pieceElement.style.transform = ''; // Reset transform (translate(-50%, -50%) comes from .piece class)
+
+        // Play sound
         const soundName = isCapture ? `capture_${capturedPieceType}` : 'move';
-        if (soundName && (!isCapture || capturedPieceType)) { // Check capturedPieceType exists if capture
+        if (soundName && (!isCapture || capturedPieceType)) {
             playSound(soundName);
         }
 
-
-        // Execute the completion callback provided by game.js
+        // Execute completion callback
         onComplete();
 
-    }, ANIMATION_DURATION); // Use the imported constant
+    }, ANIMATION_DURATION);
 }
+
 
 
 /**
@@ -129,15 +153,13 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
     if (!boardElement) { console.error("Board element not found!"); return; }
     if (!landTilePatterns) { console.error("Land tile patterns not initialized!"); }
 
-    const fragment = document.createDocumentFragment(); // Use fragment for performance
+    const fragment = document.createDocumentFragment();
 
-    // --- Clear ALL Last Move Highlights from Overlays ---
+    // Clear ALL Last Move Highlights & Selection
     boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
         overlay.classList.remove(...ALL_LAST_MOVE_CLASSES);
     });
      clearHighlights('selected');
-    // --- End Clear ---
-
 
     for (let r = 0; r < BOARD_ROWS; r++) {
         for (let c = 0; c < BOARD_COLS; c++) {
@@ -151,7 +173,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             const terrain = cellData.terrain;
             const pieceData = cellData.piece;
 
-            // --- Terrain Rendering ---
+            // Terrain Rendering
             squareElement.classList.add(`terrain-${terrain}`);
             switch (terrain) {
                  case TERRAIN_LAND:
@@ -177,14 +199,15 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 case TERRAIN_PLAYER1_DEN: squareElement.classList.add('player1-den-bg'); break;
             }
 
-            // --- Add Highlight Overlay Element ---
+            // Add Highlight Overlay Element
             const highlightOverlay = document.createElement('div');
             highlightOverlay.className = 'highlight-overlay';
             squareElement.appendChild(highlightOverlay);
 
-            // --- Piece Rendering ---
+            // Piece Rendering
             if (pieceData && pieceData.type) {
                 const pieceElement = document.createElement('div');
+                // Set default styles for piece *within* a square
                 pieceElement.className = `piece player${pieceData.player}`;
                 const imgElement = document.createElement('img');
                 imgElement.src = `assets/images/head_no_background/${pieceData.type}.png`;
@@ -195,27 +218,23 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 squareElement.appendChild(pieceElement);
             }
 
-            // --- Attach Click Handler ---
+            // Attach Click Handler
             squareElement.addEventListener('click', () => clickHandler(r, c));
 
-            // --- Highlight Last Move (Deferred to separate step) ---
-            // Highlights will be added *after* all squares are in the DOM for efficiency
-
-            fragment.appendChild(squareElement); // Add to fragment
+            fragment.appendChild(squareElement);
         }
     }
 
     // Append the entire fragment at once
-    boardElement.innerHTML = ''; // Clear previous content
+    boardElement.innerHTML = '';
     boardElement.appendChild(fragment);
 
-    // --- Apply Last Move Highlights AFTER squares are in DOM ---
+    // Apply Last Move Highlights AFTER squares are in DOM
     if (lastMove && lastMove.player !== undefined) {
         const playerSuffix = `p${lastMove.player}`;
         highlightSquare(lastMove.start.r, lastMove.start.c, `last-move-start-${playerSuffix}`);
         highlightSquare(lastMove.end.r, lastMove.end.c, `last-move-end-${playerSuffix}`);
     }
-    // --- End Apply Highlights ---
 
     renderCoordinatesIfNeeded();
 }
@@ -237,14 +256,11 @@ function renderCoordinatesIfNeeded() {
 export function highlightSquare(row, col, className) {
     const square = boardElement?.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
     if (!square) return;
-
     const targetSelector = highlightClassTargets[className];
     if (!targetSelector) { console.warn(`Unknown highlight target for class: ${className}`); return; }
-
     const targetElement = (targetSelector === '.square') ? square : square.querySelector(targetSelector);
     targetElement?.classList.add(className);
 }
-
 
 /**
  * Removes a specific CSS highlight class from the correct elements.
@@ -265,7 +281,6 @@ export function clearHighlights(className) {
         el.classList.remove(className);
     });
 }
-
 
 // --- (updateStatus, updateTurnDisplay, renderCapturedPieces, addMoveToHistory, clearMoveHistory, playSound, updateAiDepthDisplay, updateWinChanceDisplay - unchanged) ---
 export function updateStatus(messageKey, params = {}, isError = false) {

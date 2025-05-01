@@ -287,14 +287,18 @@ h1 {
 
 /* --- Piece Styling --- */
 .piece {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  /* Default state: centered within its parent square */
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   width: 50px;
   height: 50px;
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0,0,0,0.4);
   z-index: 10; /* Layer 10: Default piece layer */
   cursor: pointer; user-select: none;
-  transition: transform 0.3s ease-out;
+  /* Remove transition from default, apply only during animation */
+  /* transition: transform 0.3s ease-out; */
   box-sizing: border-box;
   display: flex;
   justify-content: center;
@@ -312,10 +316,19 @@ h1 {
   object-fit: contain;
 }
 
-/* Class for animating piece */
-.piece-animating {
-    z-index: 100 !important; /* Layer 100: Temporarily highest during animation */
+/* ****** UPDATED: Class for globally animating piece ****** */
+.piece-global-animating {
+    position: absolute !important; /* Override default position */
+    /* top/left set by JS */
+    /* transform not needed when animating top/left */
+    z-index: 100 !important; /* Layer 100: Highest during animation */
+    /* Transition for top/left set by JS */
 }
+/* ****** END UPDATED ****** */
+
+
+/* --- Outline Highlights (Applied to the .square) --- */
+/* ... (rest of the styles remain the same) ... */
 
 
 /* --- Outline Highlights (Applied to the .square) --- */
@@ -324,6 +337,7 @@ h1 {
     outline-offset: -3px;
     z-index: 6; /* Layer 6: Above overlay, below piece */
 }
+
 
 /* --- Side Panels Common Style --- */
 .captured-panel, #move-history {
