@@ -4,7 +4,7 @@ import { getString } from './localization.js';
 
 // DOM Elements Cache
 const boardElement = document.getElementById('board');
-const boardContainerElement = document.getElementById('board-container'); // ** Need board container **
+const boardContainerElement = document.getElementById('board-container');
 const statusElement = document.getElementById('status');
 const turnElement = document.getElementById('turn');
 const capturedByPlayer0Container = document.querySelector('#captured-by-player0 .pieces-container');
@@ -46,6 +46,7 @@ export function initializeLandTilePatterns(boardState) {
     landTilePatterns = Array(BOARD_ROWS).fill(null).map(() => Array(BOARD_COLS).fill(null));
     for (let r = 0; r < BOARD_ROWS; r++) {
         for (let c = 0; c < BOARD_COLS; c++) {
+            // Only generate patterns for actual LAND squares
             if (boardState[r]?.[c]?.terrain === TERRAIN_LAND) {
                 landTilePatterns[r][c] = [
                     landTileFiles[Math.floor(Math.random() * landTileFiles.length)],
@@ -59,103 +60,58 @@ export function initializeLandTilePatterns(boardState) {
     console.log("Land tile patterns initialized.");
 }
 
-/**
- * Animates a piece moving visually from start to end square using absolute positioning
- * relative to the board container.
- * @param {HTMLElement} pieceElement The DOM element of the piece being moved.
- * @param {HTMLElement} startSquare The starting square DOM element.
- * @param {HTMLElement} endSquare The ending square DOM element.
- * @param {boolean} isCapture Indicates if the move is a capture.
- * @param {string | null} capturedPieceType The type ('rat', 'cat'...) of the captured piece, if any.
- * @param {Function} onComplete Callback function to execute after animation completes.
- */
 export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture, capturedPieceType, onComplete) {
     if (!pieceElement || !startSquare || !endSquare || !boardContainerElement) {
-        console.warn("Animation elements (piece, squares, or board container) not found, completing move directly.");
+        console.warn("Animation elements not found, completing move directly.");
         onComplete();
         return;
     }
-
-    // 1. Remove captured piece element from endSquare immediately
-    const capturedElement = endSquare.querySelector('.piece');
-    if (isCapture && capturedElement) {
-        capturedElement.remove();
-    }
-
-    // 2. Calculate positions relative to the board container
     const containerRect = boardContainerElement.getBoundingClientRect();
-    const startRect = pieceElement.getBoundingClientRect(); // Get initial position
+    const startRect = pieceElement.getBoundingClientRect();
     const endRect = endSquare.getBoundingClientRect();
-
-    // Initial top/left relative to container
     const initialTop = startRect.top - containerRect.top;
     const initialLeft = startRect.left - containerRect.left;
-
-    // Target top/left (center of end square) relative to container
     const targetLeft = endRect.left - containerRect.left + (endRect.width / 2) - (startRect.width / 2);
     const targetTop = endRect.top - containerRect.top + (endRect.height / 2) - (startRect.height / 2);
-
-
-    // 3. Prepare piece for global animation
-    // Move piece physically to board container
+    const capturedElement = endSquare.querySelector('.piece');
+    if (isCapture && capturedElement) { capturedElement.remove(); }
     boardContainerElement.appendChild(pieceElement);
-    pieceElement.classList.add('piece-global-animating'); // Add class for absolute positioning and high z-index
-    // Set initial absolute position
+    pieceElement.classList.add('piece-global-animating');
     pieceElement.style.left = `${initialLeft}px`;
     pieceElement.style.top = `${initialTop}px`;
-    pieceElement.style.transform = 'none'; // Ensure no leftover transform interferes
+    pieceElement.style.transform = 'none';
     pieceElement.style.transition = 'none';
-
-    // 4. Start the animation (animate top/left)
-    requestAnimationFrame(() => { // Allow browser to apply initial state
-        requestAnimationFrame(() => { // Start transition on next frame
-            // Apply CSS transition for top and left properties
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
             pieceElement.style.transition = `left ${ANIMATION_DURATION / 1000}s ease-out, top ${ANIMATION_DURATION / 1000}s ease-out`;
-            // Set target position
             pieceElement.style.left = `${targetLeft}px`;
             pieceElement.style.top = `${targetTop}px`;
         });
     });
-
-    // 5. After animation finishes
     setTimeout(() => {
-        // --- Clean up visual styles ---
-        pieceElement.style.transition = 'none';         // Remove transition property
-        pieceElement.classList.remove('piece-global-animating'); // Remove absolute positioning class
-
-        // --- Physically move DOM element back into the grid ---
-        endSquare.appendChild(pieceElement);            // Append to the destination square
-
-        // --- Reset styles for positioning within the square ---
-        pieceElement.style.position = ''; // Reset to default (absolute via .piece class)
-        pieceElement.style.top = '';      // Reset top/left
+        pieceElement.style.transition = 'none';
+        pieceElement.classList.remove('piece-global-animating');
+        endSquare.appendChild(pieceElement);
+        pieceElement.style.position = '';
+        pieceElement.style.top = '';
         pieceElement.style.left = '';
-        pieceElement.style.transform = ''; // Reset transform (translate(-50%, -50%) comes from .piece class)
-
-        // Play sound
+        pieceElement.style.transform = '';
         const soundName = isCapture ? `capture_${capturedPieceType}` : 'move';
-        if (soundName && (!isCapture || capturedPieceType)) {
-            playSound(soundName);
-        }
-
-        // Execute completion callback
+        if (soundName && (!isCapture || capturedPieceType)) { playSound(soundName); }
         onComplete();
-
     }, ANIMATION_DURATION);
 }
-
-
 
 /**
  * Renders the entire game board.
  */
 export function renderBoard(boardState, clickHandler, lastMove = null) {
     if (!boardElement) { console.error("Board element not found!"); return; }
-    if (!landTilePatterns) { console.error("Land tile patterns not initialized!"); }
+    if (!landTilePatterns) { console.error("Land tile patterns not initialized!"); return;} // Added return
 
     const fragment = document.createDocumentFragment();
 
-    // Clear ALL Last Move Highlights & Selection
+    // Clear Last Move Highlights & Selection
     boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
         overlay.classList.remove(...ALL_LAST_MOVE_CLASSES);
     });
@@ -173,12 +129,15 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             const terrain = cellData.terrain;
             const pieceData = cellData.piece;
 
-            // Terrain Rendering
-            squareElement.classList.add(`terrain-${terrain}`);
+            // --- Terrain Rendering (MODIFIED FOR TRAP/DEN TEXTURES) ---
+            squareElement.classList.add(`terrain-${terrain}`); // Generic terrain type
+
+            let textureContainer = null; // Container for texture images
+
             switch (terrain) {
-                 case TERRAIN_LAND:
+                case TERRAIN_LAND:
                     const landContainer = document.createElement('div');
-                    landContainer.className = 'land-tile-container';
+                    landContainer.className = 'land-tile-container'; // Uses grid
                     const pattern = landTilePatterns?.[r]?.[c];
                     if (pattern) {
                         pattern.forEach(tileFile => {
@@ -193,21 +152,57 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                     }
                     squareElement.appendChild(landContainer);
                     break;
-                case TERRAIN_WATER: squareElement.classList.add('water-bg'); break;
-                case TERRAIN_TRAP: squareElement.classList.add('trap-bg'); break;
-                case TERRAIN_PLAYER0_DEN: squareElement.classList.add('player0-den-bg'); break;
-                case TERRAIN_PLAYER1_DEN: squareElement.classList.add('player1-den-bg'); break;
+
+                case TERRAIN_WATER:
+                    squareElement.classList.add('water-bg'); // Apply GIF background via CSS
+                    break;
+
+                case TERRAIN_TRAP:
+                    squareElement.classList.add('trap-bg'); // Apply pink background color via CSS
+                    // Add trap texture overlay
+                    textureContainer = document.createElement('div');
+                    textureContainer.className = 'trap-texture-container'; // Specific class for trap texture
+                    const trapImg = document.createElement('img');
+                    trapImg.src = `assets/images/elements/trap.png`;
+                    trapImg.alt = 'Trap';
+                    trapImg.className = 'terrain-texture-img'; // Reusable class for texture images
+                    textureContainer.appendChild(trapImg);
+                    squareElement.appendChild(textureContainer);
+                    break;
+
+                case TERRAIN_PLAYER0_DEN:
+                    squareElement.classList.add('player0-den-bg'); // Apply border + fallback color via CSS
+                    textureContainer = document.createElement('div');
+                    textureContainer.className = 'den-texture-container'; // Reusable for dens
+                    const den0Img = document.createElement('img');
+                    den0Img.src = `assets/images/elements/den_p1.png`; // Player 0's den uses p2 image (opponent's perspective) - CHECK FILENAME
+                    den0Img.alt = 'Player 1 Den';
+                    den0Img.className = 'terrain-texture-img';
+                    textureContainer.appendChild(den0Img);
+                    squareElement.appendChild(textureContainer);
+                    break;
+
+                case TERRAIN_PLAYER1_DEN:
+                    squareElement.classList.add('player1-den-bg'); // Apply border + fallback color via CSS
+                    textureContainer = document.createElement('div');
+                    textureContainer.className = 'den-texture-container'; // Reusable for dens
+                    const den1Img = document.createElement('img');
+                    den1Img.src = `assets/images/elements/den_p2.png`; // Player 1's den uses p1 image - CHECK FILENAME
+                    den1Img.alt = 'Player 0 Den';
+                    den1Img.className = 'terrain-texture-img';
+                    textureContainer.appendChild(den1Img);
+                    squareElement.appendChild(textureContainer);
+                    break;
             }
 
-            // Add Highlight Overlay Element
+            // --- Add Highlight Overlay Element ---
             const highlightOverlay = document.createElement('div');
             highlightOverlay.className = 'highlight-overlay';
             squareElement.appendChild(highlightOverlay);
 
-            // Piece Rendering
+            // --- Piece Rendering ---
             if (pieceData && pieceData.type) {
                 const pieceElement = document.createElement('div');
-                // Set default styles for piece *within* a square
                 pieceElement.className = `piece player${pieceData.player}`;
                 const imgElement = document.createElement('img');
                 imgElement.src = `assets/images/head_no_background/${pieceData.type}.png`;
@@ -218,7 +213,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 squareElement.appendChild(pieceElement);
             }
 
-            // Attach Click Handler
+            // --- Attach Click Handler ---
             squareElement.addEventListener('click', () => clickHandler(r, c));
 
             fragment.appendChild(squareElement);
