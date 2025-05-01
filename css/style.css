@@ -1,3 +1,5 @@
+/* css/style.css */
+
 body {
   font-family: sans-serif;
   display: flex;
@@ -6,7 +8,7 @@ body {
   padding: 10px;
   min-height: 100vh;
   box-sizing: border-box;
-  background-image: url('assets/background.png');
+  background-image: url('../assets/background.png'); /* Adjusted path assuming assets is sibling to css */
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -96,7 +98,7 @@ h1 {
 #game-layout {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: flex-start; /* Keep items aligned to the top */
   width: 98%;
   max-width: 850px;
   gap: 15px;
@@ -109,8 +111,8 @@ h1 {
 /* --- Column Wrappers --- */
 #left-panel, #right-panel {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: column; /* Stack children vertically */
+  gap: 10px; /* Space between children (captured panel, history, etc.) */
   min-width: 180px;
   flex-grow: 0;
   flex-shrink: 0;
@@ -207,32 +209,30 @@ h1 {
 .player0-den { background-color: rgba(210, 180, 255, 0.85); border: 2px dashed #0000FF;}
 .player1-den { background-color: rgba(255, 218, 185, 0.85); border: 2px dashed #FF0000; }
 
-/* *** MODIFIED: Style .piece and the img inside it *** */
+/* Style .piece and the img inside it */
 .piece {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 50px; /* Increased slightly for better fit */
+  width: 50px;
   height: 50px;
-  /* line-height, font-size removed */
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.65); /* Less opaque background */
+  background-color: rgba(255, 255, 255, 0.65);
   box-shadow: 0 1px 3px rgba(0,0,0,0.4);
   z-index: 2; cursor: pointer; user-select: none;
   transition: transform 0.3s ease-out;
   box-sizing: border-box;
-  /* Add flex to center image inside */
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2px; /* Small padding inside border */
+  padding: 2px;
 }
 .player0 { border: 2px solid blue; }
 .player1 { border: 2px solid red; }
 
 .piece img {
-  display: block; /* Remove extra space below img */
-  width: 95%; /* Fit image inside padding/border */
+  display: block;
+  width: 95%;
   height: 95%;
-  object-fit: contain; /* Scale image down to fit */
+  object-fit: contain;
 }
 
 
@@ -251,10 +251,6 @@ h1 {
 }
 
 /* --- Specific Side Panel Items --- */
-#captured-pieces-player0, #captured-pieces-player1 {
-   min-height: 80px;
-}
-
 .captured-panel h2, #move-history h2 {
   font-size: 1em;
   margin-top: 0;
@@ -270,33 +266,42 @@ h1 {
   outline: 2px solid rgba(0, 80, 200, 0.9);
    outline-offset: -3px;
 }
+
+/* *** MODIFIED: Style .pieces-container for wrapping *** */
 .pieces-container {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  min-height: 30px;
-  align-content: flex-start;
+  flex-wrap: wrap; /* Allow wrapping */
+  gap: 4px; /* Gap between pieces */
+  align-content: flex-start; /* Align wrapped lines to the top */
+  /* Calculate max-width for 5 pieces + 4 gaps */
+  /* Piece width = 28px, gap = 4px */
+  /* (5 * 28px) + (4 * 4px) = 140px + 16px = 156px */
+  max-width: 160px; /* Give a little buffer, forces wrap after 5 */
+  /* Calculate min-height for 3 rows + 2 gaps */
+  /* (3 * 28px) + (2 * 4px) = 84px + 8px = 92px */
+  min-height: 92px;
+  /* Center the container horizontally within its parent panel */
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
 }
 
 /* *** MODIFIED: Style .captured-piece and the img inside it *** */
 .captured-piece {
-  /* font-size removed */
-  width: 28px; /* Slightly larger */
+  width: 28px;
   height: 28px;
-  /* line-height removed */
   border-radius: 4px;
   box-sizing: border-box;
   background-color: rgba(255, 255, 255, 0.7);
   border: 1px solid #bbb; /* Basic border */
-  /* Add flex */
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 1px;
 }
-/* Override border color based on capturing player still */
-.captured-piece.player0 { border-color: red; }
-.captured-piece.player1 { border-color: blue; }
+/* Style based on the CAPTURING player */
+.captured-piece.player0 { border-color: red; } /* Captured by P0 (Blue), piece was Red */
+.captured-piece.player1 { border-color: blue; } /* Captured by P1 (Red), piece was Blue */
 
 .captured-piece img {
   display: block;
@@ -306,7 +311,7 @@ h1 {
 }
 
 #move-history {
-  flex-grow: 1;
+  /* flex-grow: 1; */ /* Removed flex-grow */
   min-height: 150px;
   max-height: 350px;
   display: flex;
@@ -319,7 +324,7 @@ h1 {
   margin: 0;
   padding: 0 0 0 25px;
   font-size: 0.85em;
-  flex-grow: 1;
+  flex-grow: 1; /* List grows to fill move-history container */
   overflow-y: auto;
   background-color: rgba(253, 253, 253, 0.9);
   border: 1px solid #eee;
@@ -329,32 +334,30 @@ h1 {
 #move-list li {
   padding: 3px 0;
   border-bottom: 1px solid #f0f0f0;
-  line-height: 1.4; /* May need slight adjustment */
+  line-height: 1.4;
   color: #333;
-  display: flex; /* Use flex for alignment with image */
+  display: flex;
   align-items: center;
 }
 #move-list li:last-child {
   border-bottom: none;
 }
 
-/* *** MODIFIED: Style .piece-hist and the img inside it *** */
+/* Style .piece-hist and the img inside it */
 .piece-hist {
-  display: inline-flex; /* Use inline-flex */
+  display: inline-flex;
   justify-content: center;
   align-items: center;
   vertical-align: middle;
-  /* font-size removed */
-  /* line-height removed */
-  width: 1.3em; /* Control size */
+  width: 1.3em;
   height: 1.3em;
   margin-right: 4px;
-  /* border/padding removed, handled by image? Or add padding if needed*/
-  /* background-color removed */
-  /* box-shadow removed */
   position: relative;
   top: -1px;
 }
+/* player class added to piece-hist span for potential styling */
+.piece-hist.player0 img { /* Optional: style history image based on player */ }
+.piece-hist.player1 img { /* Optional: style history image based on player */ }
 
 .piece-hist img {
   display: block;
@@ -389,20 +392,43 @@ h1 {
 #status { font-size: 1em; font-weight: bold; background-color: rgba(255, 255, 255, 0.7); color: #111; text-align: center; min-height: 1.2em; width: 95%; max-width: calc(420px + 2 * 20px); padding: 4px 8px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin: 0 auto; }
 .turn-info { font-size: 0.9em; font-weight: bold; text-align: center; margin-top: 10px; padding: 5px; background-color: rgba(233, 233, 233, 0.9); border-radius: 4px; color: #333; }
 
-/* Responsive adjustments */
+/* --- MODIFIED: Responsive adjustments --- */
 @media (max-width: 880px) {
   #game-layout { flex-direction: column; align-items: center; max-width: 100%; gap: 10px; }
-  #left-panel, #right-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; min-width: 95%; width: 95%; max-width: calc(420px + 2 * 20px); gap: 8px; }
-  .captured-panel, #move-history { flex-basis: calc(50% - 10px); flex-grow: 1; min-width: 150px; }
-   #move-history { max-height: 200px; }
+  #left-panel, #right-panel {
+      flex-direction: row; /* Side panels become horizontal */
+      flex-wrap: wrap; /* Allow items inside side panels to wrap */
+      justify-content: center;
+      min-width: 95%;
+      width: 95%;
+      max-width: calc(420px + 2 * 20px);
+      gap: 8px;
+    }
+  .captured-panel, #move-history {
+      flex-basis: calc(50% - 10px); /* Try to fit side-by-side */
+      flex-grow: 1;
+      min-width: 150px;
+      min-height: 120px; /* Give both some min height */
+    }
+   #move-history {
+      max-height: 200px;
+      /* min-height already set above */
+    }
+   .pieces-container {
+       max-width: 160px; /* Keep max width */
+       min-height: 92px; /* Keep min height */
+       /* Don't center horizontally when panels are side-by-side */
+       margin-left: 0;
+       margin-right: 0;
+   }
    #move-list { font-size: 0.8em; }
-   .piece-hist { width: 1.2em; height: 1.2em; } /* Adjust history image size */
+   .piece-hist { width: 1.2em; height: 1.2em; }
    h1 { font-size: 1.5em; }
 }
 
 @media (max-width: 520px) {
    #board-container { width: calc(350px + 2 * 15px); height: calc(450px + 2 * 15px); padding: 15px; margin-bottom: 8px; }
-   #game-board { grid-template-columns: repeat(7, 50px); grid-template-rows: repeat(9, 50px); width: 350px; height: 450px; top: 15px; left: 15px; }
+   #board { grid-template-columns: repeat(7, 50px); grid-template-rows: repeat(9, 50px); width: 350px; height: 450px; top: 15px; left: 15px; }
    .coord-labels { font-size: 0.7em; }
    .col-labels { left: 15px; right: 15px; height: 15px; }
    #col-labels-top { top: 0; } #col-labels-bottom { bottom: 0; }
@@ -411,17 +437,39 @@ h1 {
    #row-labels-left { left: 0; } #row-labels-right { right: 0; }
    .row-labels span { height: 50px; line-height: 50px; }
    .square { width: 50px; height: 50px; }
-   .piece { width: 40px; height: 40px; border-width: 1px; } /* Adjusted size slightly */
+   .piece { width: 40px; height: 40px; border-width: 1px; }
    .player0 { border-color: blue; } .player1 { border-color: red; }
    #game-controls { gap: 8px; padding: 8px; } #ai-controls { gap: 5px 10px; }
    #game-layout { padding: 10px; width: 100%; }
-   #left-panel, #right-panel { gap: 5px; max-width: calc(350px + 2 * 15px); width: 100%; }
-   .captured-panel, #move-history { flex-basis: 100%; min-width: unset; }
+   #left-panel, #right-panel {
+       flex-direction: column; /* Stack vertically again */
+       gap: 5px;
+       max-width: calc(350px + 2 * 15px);
+       width: 100%;
+       align-items: center; /* Center items */
+    }
+   .captured-panel, #move-history {
+       flex-basis: auto; /* Let them take full width */
+       width: 90%; /* Or some percentage */
+       min-width: unset;
+       min-height: unset; /* Reset min-height */
+    }
    .captured-piece { width: 24px; height: 24px; } /* Smaller captured images */
-   #move-history { max-height: 150px; min-height: 100px; }
+    .pieces-container {
+       max-width: calc(5 * 24px + 4 * 4px + 4px); /* Recalculate for smaller pieces: ~140px */
+       min-height: calc(3 * 24px + 2 * 4px); /* Recalculate for 3 rows: ~80px */
+       margin-left: auto; /* Center again */
+       margin-right: auto;
+       justify-content: center; /* Center pieces horizontally if row not full */
+    }
+   #move-history {
+       max-height: 150px;
+       min-height: 100px;
+       width: 90%; /* Match captured panel width */
+    }
    #game-rules { font-size: 0.85em; padding: 10px 15px; width: 98%; }
    #move-list { font-size: 0.75em; padding-left: 20px;}
-   .piece-hist { width: 1.1em; height: 1.1em; } /* Smaller history images */
+   .piece-hist { width: 1.1em; height: 1.1em; }
    h1 { font-size: 1.3em; }
    #status { width: 90%; font-size: 0.9em; max-width: calc(350px + 2 * 15px); }
 }
