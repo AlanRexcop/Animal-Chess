@@ -68,12 +68,13 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             if (pieceData && pieceData.type) { // Check if piece exists and has a type
                 const pieceElement = document.createElement('div');
                 // Use pieceData.player (should be 0 or 1)
+                // Still apply player class for border color
                 pieceElement.className = `piece player${pieceData.player}`;
 
                 const imgElement = document.createElement('img');
-                // Construct image source based on piece type and player
-                const color = pieceData.player === Player.PLAYER0 ? 'blue' : 'red';
-                imgElement.src = `assets/images/${pieceData.type}_${color}.webp`;
+                // ****** MODIFIED IMAGE PATH ******
+                imgElement.src = `assets/images/head_no_background/${pieceData.type}.png`;
+                // ****** END MODIFIED IMAGE PATH ******
                 imgElement.alt = pieceData.name || pieceData.type; // Use name if available, else type
                 pieceElement.appendChild(imgElement);
 
@@ -197,9 +198,9 @@ export function renderCapturedPieces(capturedByPlayer0, capturedByPlayer1) {
             el.className = `captured-piece player${capturingPlayer}`; // Class indicates capturer for border
 
             const img = document.createElement('img');
-            // Image source uses the piece's *original* color/player
-            const originalColor = p.player === Player.PLAYER0 ? 'blue' : 'red';
-            img.src = `assets/images/${p.type}_${originalColor}.webp`;
+            // ****** MODIFIED IMAGE PATH ******
+            img.src = `assets/images/head_no_background/${p.type}.png`;
+            // ****** END MODIFIED IMAGE PATH ******
             img.alt = p.name || p.type;
             img.title = getString(`animal_${p.type}`) || p.name || p.type; // Tooltip with localized name
             el.appendChild(img);
@@ -228,8 +229,8 @@ export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPiec
     const startNotation = getAlgebraic(fromR, fromC);
     const endNotation = getAlgebraic(toR, toC);
 
-    const pieceColor = pieceData.player === Player.PLAYER0 ? 'blue' : 'red';
-    const pieceImgSrc = `assets/images/${pieceData.type}_${pieceColor}.webp`;
+    // ****** MODIFIED IMAGE PATH ******
+    const pieceImgSrc = `assets/images/head_no_background/${pieceData.type}.png`;
     const pieceName = getString(`animal_${pieceData.type}`) || pieceData.name || pieceData.type;
     const pieceAlt = `${PIECES[pieceData.type]?.symbol || pieceName}`;
 
@@ -239,8 +240,8 @@ export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPiec
                     </span> ${startNotation} → ${endNotation}`;
 
     if (capturedPieceData) {
-        const capturedColor = capturedPieceData.player === Player.PLAYER0 ? 'blue' : 'red';
-        const capturedImgSrc = `assets/images/${capturedPieceData.type}_${capturedColor}.webp`;
+        // ****** MODIFIED IMAGE PATH ******
+        const capturedImgSrc = `assets/images/head_no_background/${capturedPieceData.type}.png`;
         const capturedName = getString(`animal_${capturedPieceData.type}`) || capturedPieceData.name || capturedPieceData.type;
         const capturedAlt = `${PIECES[capturedPieceData.type]?.symbol || capturedName}`;
         // Add player class to the captured piece span
@@ -248,6 +249,7 @@ export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPiec
                             <img src="${capturedImgSrc}" alt="${capturedAlt}" title="${capturedName}">
                          </span>)`;
     }
+    // ****** END MODIFIED IMAGE PATHS ******
 
     const li = document.createElement('li');
     li.innerHTML = moveHtml;
