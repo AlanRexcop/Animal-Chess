@@ -131,7 +131,7 @@ h1 {
   height: calc(540px + 2 * 20px);
   padding: 3px; /* Keep 3px padding for labels */
   box-sizing: content-box;
-  margin-bottom: 10px;
+  /* Remove margin-bottom from board container, add to main area */
 }
 
 .coord-labels {
@@ -193,7 +193,7 @@ h1 {
   left: 20px;
   background-color: rgba(204, 204, 204, 0.8);
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
-  margin-bottom: 0;
+  margin-bottom: 0; /* Board itself has no bottom margin */
 }
 
 .square {
@@ -267,7 +267,7 @@ h1 {
    outline-offset: -3px;
 }
 
-/* *** MODIFIED: Style .pieces-container for wrapping *** */
+/* Style .pieces-container for wrapping */
 .pieces-container {
   display: flex;
   flex-wrap: wrap; /* Allow wrapping */
@@ -286,7 +286,7 @@ h1 {
   box-sizing: border-box;
 }
 
-/* *** MODIFIED: Style .captured-piece and the img inside it *** */
+/* Style .captured-piece and the img inside it */
 .captured-piece {
   width: 28px;
   height: 28px;
@@ -389,10 +389,51 @@ h1 {
 #game-rules strong { color: #111; }
 
 /* Status and Turn styling */
-#status { font-size: 1em; font-weight: bold; background-color: rgba(255, 255, 255, 0.7); color: #111; text-align: center; min-height: 1.2em; width: 95%; max-width: calc(420px + 2 * 20px); padding: 4px 8px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin: 0 auto; }
-.turn-info { font-size: 0.9em; font-weight: bold; text-align: center; margin-top: 10px; padding: 5px; background-color: rgba(233, 233, 233, 0.9); border-radius: 4px; color: #333; }
+#status {
+  font-size: 1em;
+  font-weight: bold;
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #111;
+  text-align: center;
+  min-height: 1.2em;
+  width: 95%;
+  max-width: calc(420px + 2 * 20px);
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  margin: 5px auto 0 auto; /* Adjusted margin */
+}
+.turn-info {
+  font-size: 0.9em;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 10px;
+  padding: 5px;
+  background-color: rgba(233, 233, 233, 0.9);
+  border-radius: 4px;
+  color: #333;
+}
 
-/* --- MODIFIED: Responsive adjustments --- */
+/* ****** NEW WIN CHANCE DISPLAY STYLE ****** */
+#win-chance-display {
+  font-size: 0.9em; /* Slightly smaller than status */
+  font-weight: normal;
+  background-color: rgba(240, 248, 255, 0.7); /* Alice blue, slightly transparent */
+  color: #333;
+  text-align: center;
+  width: 95%;
+  max-width: calc(420px + 2 * 20px);
+  padding: 3px 8px;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  margin: 5px auto 10px auto; /* Margin top/bottom */
+  min-height: 1.1em;
+  box-sizing: border-box;
+}
+/* ****** END WIN CHANCE DISPLAY STYLE ****** */
+
+
+/* Responsive adjustments */
 @media (max-width: 880px) {
   #game-layout { flex-direction: column; align-items: center; max-width: 100%; gap: 10px; }
   #left-panel, #right-panel {
@@ -424,6 +465,10 @@ h1 {
    #move-list { font-size: 0.8em; }
    .piece-hist { width: 1.2em; height: 1.2em; }
    h1 { font-size: 1.5em; }
+   #status, #win-chance-display {
+       max-width: calc(420px + 2 * 20px);
+       width: 95%;
+   }
 }
 
 @media (max-width: 520px) {
@@ -471,5 +516,10 @@ h1 {
    #move-list { font-size: 0.75em; padding-left: 20px;}
    .piece-hist { width: 1.1em; height: 1.1em; }
    h1 { font-size: 1.3em; }
-   #status { width: 90%; font-size: 0.9em; max-width: calc(350px + 2 * 15px); }
+   #status, #win-chance-display { /* Apply styling to both */
+        width: 90%;
+        font-size: 0.9em;
+        max-width: calc(350px + 2 * 15px);
+    }
+   #win-chance-display { font-size: 0.85em; } /* Make win chance slightly smaller */
 }

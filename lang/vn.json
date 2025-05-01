@@ -18,7 +18,7 @@
   "statusWaitingPlayer": "{player}, chọn một quân cờ.",
   "statusPlayerSelected": "{player}, đã chọn {pieceName}. Chọn điểm đến.",
   "statusAIMoving": "Đang di chuyển...",
-  "statusAIThinking": "AI ({aiName}) đang suy nghĩ...",
+  "statusAIThinking": "Máy ({aiName}) đang suy nghĩ...",
   "statusGameOver": "Kết thúc!",
   "statusWin": "{winner} Thắng!",
   "statusDraw": "Hòa!",
@@ -42,5 +42,7 @@
   "animal_leopard": "Báo",
   "animal_tiger": "Hổ",
   "animal_lion": "Sư tử",
-  "animal_elephant": "Voi"
+  "animal_elephant": "Voi",
+  "winChanceCalculating": "Cơ hội thắng: Đang tính...",
+  "winChanceValue": "Cơ hội thắng: {value}%"
 }

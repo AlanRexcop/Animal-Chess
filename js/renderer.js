@@ -14,6 +14,12 @@ const colLabelsTop = document.getElementById('col-labels-top');
 const colLabelsBottom = document.getElementById('col-labels-bottom');
 const rowLabelsLeft = document.getElementById('row-labels-left');
 const rowLabelsRight = document.getElementById('row-labels-right');
+const winChanceDisplayElement = document.getElementById('win-chance-display'); // <-- Cache new element
+
+// Constants for eval conversion (adjust k as needed based on score range)
+const WIN_SCORE_THRESHOLD = 19000; // Use slightly less than absolute max
+const LOSE_SCORE_THRESHOLD = -19000;
+const SIGMOID_SCALE_FACTOR = 0.0003; // Adjust this to control steepness of the % curve
 
 
 /**
@@ -186,11 +192,9 @@ export function renderCapturedPieces(capturedByPlayer0, capturedByPlayer1) {
             if (!p || !p.type) return; // Skip invalid piece data
 
             const el = document.createElement('span');
-            // Style based on the *original* player of the captured piece, or capturing player?
-            // Original style used capturing player: player${1 - p.player}
-            // Let's stick to that for border color consistency.
-            const capturingPlayer = Player.getOpponent(p.player);
-            el.className = `captured-piece player${capturingPlayer}`;
+            // Style based on the *original* player of the captured piece
+            const capturingPlayer = Player.getOpponent(p.player); // Get who captured it
+            el.className = `captured-piece player${capturingPlayer}`; // Class indicates capturer for border
 
             const img = document.createElement('img');
             // Image source uses the piece's *original* color/player
@@ -229,6 +233,7 @@ export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPiec
     const pieceName = getString(`animal_${pieceData.type}`) || pieceData.name || pieceData.type;
     const pieceAlt = `${PIECES[pieceData.type]?.symbol || pieceName}`;
 
+    // Add player class to the span for potential styling
     let moveHtml = `<span class="piece-hist player${pieceData.player}">
                         <img src="${pieceImgSrc}" alt="${pieceAlt}" title="${pieceName}">
                     </span> ${startNotation} → ${endNotation}`;
@@ -238,6 +243,7 @@ export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPiec
         const capturedImgSrc = `assets/images/${capturedPieceData.type}_${capturedColor}.webp`;
         const capturedName = getString(`animal_${capturedPieceData.type}`) || capturedPieceData.name || capturedPieceData.type;
         const capturedAlt = `${PIECES[capturedPieceData.type]?.symbol || capturedName}`;
+        // Add player class to the captured piece span
          moveHtml += ` (x <span class="piece-hist player${capturedPieceData.player}">
                             <img src="${capturedImgSrc}" alt="${capturedAlt}" title="${capturedName}">
                          </span>)`;
@@ -283,4 +289,35 @@ export function updateAiDepthDisplay(depth) {
     if (el) {
         el.textContent = depth.toString();
     }
+}
+
+/**
+ * Updates the win chance display based on the AI evaluation score.
+ * Converts the score (from AI's perspective) to Player 0's win percentage.
+ * @param {number | null} aiEvalScore - The raw evaluation score from the AI worker, or null.
+ */
+export function updateWinChanceDisplay(aiEvalScore) {
+    if (!winChanceDisplayElement) return;
+
+    if (aiEvalScore === null || aiEvalScore === undefined || !isFinite(aiEvalScore)) {
+        // Show calculating text if score is invalid or not yet available
+        winChanceDisplayElement.textContent = getString('winChanceCalculating');
+        return;
+    }
+
+    // 1. Convert score to Player 0's perspective (negate AI score)
+    const playerEvalScore = -aiEvalScore;
+
+    // 2. Clamp the score to prevent extreme values from sigmoid calculation
+    const clampedScore = Math.max(LOSE_SCORE_THRESHOLD, Math.min(WIN_SCORE_THRESHOLD, playerEvalScore));
+
+    // 3. Apply sigmoid function for a 0-1 probability
+    // The scaling factor determines how quickly the probability changes around 0 score
+    const probability = 1 / (1 + Math.exp(-SIGMOID_SCALE_FACTOR * clampedScore));
+
+    // 4. Convert probability to percentage and round
+    const percentage = Math.round(probability * 100);
+
+    // 5. Display the localized string
+    winChanceDisplayElement.textContent = getString('winChanceValue', { value: percentage });
 }

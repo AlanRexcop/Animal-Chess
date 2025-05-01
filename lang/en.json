@@ -42,5 +42,7 @@
   "animal_leopard": "Leopard",
   "animal_tiger": "Tiger",
   "animal_lion": "Lion",
-  "animal_elephant": "Elephant"
+  "animal_elephant": "Elephant",
+  "winChanceCalculating": "Win Chance: Calculating...",
+  "winChanceValue": "Win Chance: {value}%"
 }
