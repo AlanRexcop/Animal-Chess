@@ -169,29 +169,58 @@ loadLanguage, getString, applyLocalizationToPage, getCurrentLanguage.
 Called By (Important Functions):
 main.js: startApp calls loadLanguage and applyLocalizationToPage.
 game.js: setupUIListeners calls loadLanguage, applyLocalizationToPage, getString, renderCapturedPieces, updateGameStatusUI. updateStatus calls getString. updateTurnDisplay calls getString. renderCapturedPieces calls getString. updateGameStatusUI calls getString.
-10. js/aiWorker.js
-Summary: Runs in a separate Web Worker thread. Contains the implementation of the AI player using Iterative Deepening Alpha-Beta search with Zobrist Hashing and a Transposition Table. Evaluates board states based on heuristics (material, position, threats, etc.). Receives board state and search parameters via onmessage, calculates the best move within limits, and sends the result back via postMessage.
-Global State Variables (Worker-scoped): aiRunCounter, killerMoves (for move ordering), zobristTable, zobristBlackToMove, pieceNameToIndex, pieceIndexCounter, transpositionTable (stores results for previously evaluated positions).
+10. js/aiWorker.js (Updated)
+Summary: Runs in a separate Web Worker thread. Contains the core implementation of the AI player's search algorithm (Iterative Deepening Alpha-Beta search) using Zobrist Hashing and a Transposition Table. It orchestrates the search process, manages search depth and time limits, handles move ordering, but delegates the board state evaluation to aiEvaluate.js. Receives board state and search parameters via onmessage, calculates the best move within limits, and sends the result back via postMessage.
+Global State Variables (Worker-scoped): aiRunCounter (nodes visited), killerMoves (stores moves causing beta cutoffs for ordering), zobristTable (random keys for hashing positions), zobristBlackToMove (key for player turn hash), pieceNameToIndex (mapping piece names to Zobrist indices), pieceIndexCounter (counter for assigning Zobrist indices), transpositionTable (caches search results for positions).
 Important Function Signatures:
-self.onmessage(e): The entry point when a message is received from the main thread. Parses input, calls findBestMove, and sends the result back using self.postMessage. Handles basic error wrapping.
-findBestMove(currentBoard, maxDepth, timeLimit): The main AI search function. Implements iterative deepening, manages the search time/depth, and calls the alphaBeta function for each depth. Handles initial move ordering and returns the best move found.
-alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPlayer, startTime, timeLimit, ply): The recursive Alpha-Beta search function. Uses the Transposition Table, handles base cases (depth 0, game over), generates and orders moves (using killers), and recursively calls itself. Manages alpha and beta pruning. Records killer moves.
-evaluateBoard(currentBoard): Calculates a heuristic score for a given board state from the AI's perspective. Includes material, advancement, den proximity, attack/jump threat, and trap penalties. Calls rule helper functions.
-simulateMoveAndGetHash(currentBoardState, move, currentHash): Applies a move to a clone of the board state and calculates the new Zobrist hash incrementally. Returns the new state and hash.
-computeZobristKey(currentBoard, playerToMove): Calculates the Zobrist hash for a given board state from scratch.
-initializeZobrist(): Generates random keys for the Zobrist table upon worker initialization.
-randomBigInt(): Generates a random BigInt (used by Zobrist).
-cloneBoard(board): Creates a deep copy of the board state array.
-recordKillerMove(ply, move): Stores a move that caused a beta cutoff.
-checkJumpThreat(...): Helper function used by evaluateBoard to assess jump threats.
-TimeLimitExceededError: Custom error class for indicating timeout.
+self.onmessage(e): The entry point for communication with the main thread. Receives the board state and search parameters, initiates the findBestMove search, and posts the calculated best move or error back to the main thread.
+Calls: findBestMove(), self.postMessage().
+findBestMove(currentBoard, maxDepth, timeLimit): The main driver function for the AI search. Implements iterative deepening. Initializes search state (counters, TT, killers). Calls getAllValidMoves for root moves. Computes the initial Zobrist hash. Loops through increasing search depths, calling alphaBeta. Manages time limits and updates the best move found so far. Returns the final result object.
+Calls: getAllValidMoves() (from rules.js), computeZobristKey(), alphaBeta(), simulateMoveAndGetHash(), movesAreEqual() (from rules.js). Uses constants Player, PIECES, PLAYER0_DEN_ROW, WIN_SCORE, LOSE_SCORE.
+alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPlayer, startTime, timeLimit, ply): The recursive Alpha-Beta search function. Implements the core pruning logic. Checks Transposition Table first. Handles terminal states and depth 0 base cases (calling evaluateBoard from aiEvaluate.js). Generates and orders moves (using TT hash move, killer moves, captures, advancement). Calls simulateMoveAndGetHash to explore child nodes. Recursively calls itself (alphaBeta). Updates alpha/beta values and records killer moves on cutoffs. Stores results in the Transposition Table.
+Calls: evaluateBoard() (from aiEvaluate.js), getGameStatus() (from rules.js), getAllValidMoves() (from rules.js), simulateMoveAndGetHash(), movesAreEqual() (from rules.js), recordKillerMove(). Uses constants GameStatus, Player, PIECES, PLAYER0_DEN_ROW, WIN_SCORE, LOSE_SCORE, HASH_EXACT, HASH_LOWERBOUND, HASH_UPPERBOUND, MAX_PLY_FOR_KILLERS.
+simulateMoveAndGetHash(currentBoardState, move, currentHash): Applies a given move to a cloned board state and incrementally updates the Zobrist hash to get the new hash. Returns the new board state clone and its hash.
+Calls: cloneBoard(). Uses constants BOARD_ROWS, BOARD_COLS, Player, PIECES. Interacts with worker-scoped Zobrist tables (zobristTable, pieceNameToIndex, zobristBlackToMove).
+computeZobristKey(currentBoard, playerToMove): Calculates the Zobrist hash for a board state from scratch. Used once at the root of the search.
+Calls: None (internal logic). Uses constants BOARD_ROWS, BOARD_COLS, Player, PIECES. Interacts with worker-scoped Zobrist tables (zobristTable, pieceNameToIndex, zobristBlackToMove).
+initializeZobrist(): Generates all random 64-bit BigInt keys needed for the Zobrist hashing table. Called once when the worker script starts.
+Calls: randomBigInt(). Uses constants BOARD_ROWS, BOARD_COLS, Player, PIECES. Populates worker-scoped Zobrist tables.
+randomBigInt(): Generates a single random BigInt.
+Calls: Math.random(), BigInt().
+cloneBoard(board): Creates a deep copy of the board state array, including piece objects.
+Calls: Array.map().
+recordKillerMove(ply, move): Adds a move to the killerMoves array for a specific search depth (ply). Used when a move causes a beta cutoff.
+Calls: movesAreEqual() (from rules.js). Uses constant MAX_PLY_FOR_KILLERS.
+TimeLimitExceededError: Custom error class thrown when the search time limit is reached.
 Imports:
 BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL, Player, PIECES, GameStatus from ./constants.js.
-canCapture, getValidMovesForPiece, getAllValidMoves, getGameStatus, isValidMove, movesAreEqual, getEffectiveRank, isRiver from ./rules.js.
+getAllValidMoves, getGameStatus, movesAreEqual from ./rules.js.
+evaluateBoard, WIN_SCORE, LOSE_SCORE from ./aiEvaluate.js.
 Exports: None (communicates via self.onmessage and self.postMessage).
-Called By (Important Functions):
+Called By (Important Functions in Main Thread):
 game.js: initializeAiWorker creates the worker. handleAiWorkerMessage receives results. handleAiWorkerError handles errors. triggerAiTurn calls aiWorker.postMessage.
-11. js/game.js
+11. js/aiEvaluate.js (New File - Dedicated Evaluation Logic)
+Summary: Contains the heuristic evaluation function used by the AI worker. This function takes a board state and calculates a numerical score representing how favorable the position is for the AI player (Player.PLAYER1). Includes standard evaluation components like material count, positional bonuses (advancement, den proximity), control of key squares, penalties (traps, defense), and threat assessment (orthogonal and jump threats). Exports scoring constants used by the search algorithm.
+Key Constants (Specific to this module):
+WIN_SCORE, LOSE_SCORE: Constants for terminal game scores. Exported.
+EVAL_PARAMS: Object containing weights and scaling factors for various heuristic components.
+keySquaresPlayer0, keySquaresPlayer1: Sets defining strategic 'key squares' for each player.
+Important Function Signatures:
+evaluateBoard(currentBoard): Calculates the heuristic score for currentBoard from Player.PLAYER1's perspective. Checks terminal states first (using imported getGameStatus). Iterates through the board to gather pieces and calculate per-piece heuristics (material, advancement, defense penalty, trapped penalty, key square bonus). Calculates more complex heuristics using piece lists (den proximity, attack threat, Rat/Elephant proximity). Returns the final score (AI score - Player score). Exported.
+Calls: getGameStatus() (from rules.js), getEffectiveRank() (from rules.js), canCapture() (from rules.js), isRiver() (from rules.js), checkJumpThreat(), calculateAttackThreat(). Uses constants BOARD_ROWS, BOARD_COLS, TERRAIN_TRAP, TERRAIN_WATER, PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL, Player, PIECES, WIN_SCORE, LOSE_SCORE, GameStatus.
+checkJumpThreat(attackerPiece, targetR, targetC, riverCols, riverRows, board, defenderPlayer): Helper used by calculateAttackThreat. Checks if a potential jump threat is valid (path clear, target valid) and returns the value of the threatened piece if so.
+Calls: isRiver() (from rules.js), canCapture() (from rules.js). Uses constants BOARD_ROWS, BOARD_COLS, TERRAIN_WATER, PIECES.
+calculateAttackThreat(attackerPlayer, defenderPlayer, piecesByPlayer, currentBoard, EVAL_PARAMS): Helper used by evaluateBoard. Calculates the total threat score (orthogonal and jump threats) posed by attackerPlayer to defenderPlayer.
+Calls: canCapture() (from rules.js), isRiver() (from rules.js), checkJumpThreat(). Uses constants BOARD_ROWS, BOARD_COLS, PIECES, Player.
+Global State Variables: None.
+Imports:
+BOARD_ROWS, BOARD_COLS, TERRAIN_TRAP, TERRAIN_WATER, PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL, Player, PIECES, GameStatus from ./constants.js.
+getGameStatus, getEffectiveRank, canCapture, isRiver from ./rules.js.
+Exports:
+evaluateBoard, WIN_SCORE, LOSE_SCORE.
+Called By (Important Functions):
+aiWorker.js: alphaBeta calls evaluateBoard and uses WIN_SCORE, LOSE_SCORE. findBestMove uses WIN_SCORE, LOSE_SCORE.
+12 js/game.js
 Summary: The main game controller. Handles game initialization, managing player turns (human and AI), processing user clicks, validating moves and captures (using rules.js), updating the board state (using board.js), coordinating rendering and UI updates (using renderer.js and localization.js), managing game status, integrating the AI worker, handling animation, and tracking move history and captured pieces.
 Global State Variables: board, currentPlayer, selectedPieceInfo, gameStatus, validMovesCache, isGameOver, isAiThinking, aiWorker, lastMove, capturedByPlayer0, capturedByPlayer1, moveHistory. Also caches UI elements (difficultySelect, etc.).
 Important Function Signatures:
@@ -234,7 +263,7 @@ Player, GameStatus, aiPlayer, DEFAULT_AI_TARGET_DEPTH, DEFAULT_AI_TIME_LIMIT_MS,
 * as rules from ./rules.js.
 Exports:
 initGame.
-12. js/main.js
+13. js/main.js
 Summary: The entry point for the application. Waits for the DOM to load, determines the initial language (basic browser check), loads the language file using localization.js, applies localization to the page, and then calls the main game initialization function initGame from game.js. Includes basic error handling for language loading and game initialization.
 Important Function Signatures:
 startApp(): Async function that orchestrates the initial setup process.
