@@ -6,7 +6,7 @@ import { Piece } from './piece.js'; // Needed if we instantiate pieces here, but
 // DOM Elements (Cache them if accessed frequently)
 const boardElement = document.getElementById('board');
 const statusElement = document.getElementById('status');
-const turnElement = document.getElementById('turn');
+const turnElement = document.getElementById('turn'); // Cached turn element
 const capturedByPlayer0Container = document.querySelector('#captured-by-player0 .pieces-container');
 const capturedByPlayer1Container = document.querySelector('#captured-by-player1 .pieces-container');
 const moveListElement = document.getElementById('move-list');
@@ -117,13 +117,6 @@ export function highlightSquare(row, col, className) {
     const square = boardElement?.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
     if (square) {
         square.classList.add(className);
-         // Add capture-move class specifically if it's a possible move and occupied by opponent
-         if (className === 'possible-move') {
-             const pieceEl = square.querySelector('.piece');
-             // This requires knowledge of the current player - better handled in game.js calling this
-             // Or pass currentPlayer as an argument if needed here.
-             // For now, game.js can add 'capture-move' separately if needed.
-         }
     } else {
         // console.warn(`Highlight: Square not found for ${row}, ${col}`);
     }
@@ -154,9 +147,16 @@ export function updateStatus(messageKey, params = {}, isError = false) {
  * Updates the turn indicator display with localized text.
  * @param {number} currentPlayer - Player.PLAYER0 or Player.PLAYER1
  * @param {string} gameMode - 'PVA' or 'PVP'
+ * @param {boolean} isGameOver - Flag indicating if the game is over.
  */
-export function updateTurnDisplay(currentPlayer, gameMode = 'PVA') {
+export function updateTurnDisplay(currentPlayer, gameMode = 'PVA', isGameOver = false) { // Added isGameOver parameter
      if (!turnElement) return;
+
+     if (isGameOver) { // <-- Check if game is over
+         turnElement.textContent = '---'; // Clear turn display
+         return;
+     }
+
      let playerLabelKey;
      if (gameMode === 'PVP') {
          playerLabelKey = (currentPlayer === Player.PLAYER0) ? 'player1Name' : 'player2Name'; // Assuming P1=Blue, P2=Red
@@ -197,7 +197,7 @@ export function renderCapturedPieces(capturedByPlayer0, capturedByPlayer1) {
             const originalColor = p.player === Player.PLAYER0 ? 'blue' : 'red';
             img.src = `assets/images/${p.type}_${originalColor}.webp`;
             img.alt = p.name || p.type;
-            img.title = p.name || p.type; // Tooltip
+            img.title = getString(`animal_${p.type}`) || p.name || p.type; // Tooltip with localized name
             el.appendChild(img);
             container.appendChild(el);
         });
@@ -226,18 +226,20 @@ export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPiec
 
     const pieceColor = pieceData.player === Player.PLAYER0 ? 'blue' : 'red';
     const pieceImgSrc = `assets/images/${pieceData.type}_${pieceColor}.webp`;
-    const pieceAlt = `${PIECES[pieceData.type]?.symbol || pieceData.name || pieceData.type}`;
+    const pieceName = getString(`animal_${pieceData.type}`) || pieceData.name || pieceData.type;
+    const pieceAlt = `${PIECES[pieceData.type]?.symbol || pieceName}`;
 
     let moveHtml = `<span class="piece-hist player${pieceData.player}">
-                        <img src="${pieceImgSrc}" alt="${pieceAlt}" title="${pieceData.name || pieceData.type}">
+                        <img src="${pieceImgSrc}" alt="${pieceAlt}" title="${pieceName}">
                     </span> ${startNotation} → ${endNotation}`;
 
     if (capturedPieceData) {
         const capturedColor = capturedPieceData.player === Player.PLAYER0 ? 'blue' : 'red';
         const capturedImgSrc = `assets/images/${capturedPieceData.type}_${capturedColor}.webp`;
-        const capturedAlt = `${PIECES[capturedPieceData.type]?.symbol || capturedPieceData.name || capturedPieceData.type}`;
+        const capturedName = getString(`animal_${capturedPieceData.type}`) || capturedPieceData.name || capturedPieceData.type;
+        const capturedAlt = `${PIECES[capturedPieceData.type]?.symbol || capturedName}`;
          moveHtml += ` (x <span class="piece-hist player${capturedPieceData.player}">
-                            <img src="${capturedImgSrc}" alt="${capturedAlt}" title="${capturedPieceData.name || capturedPieceData.type}">
+                            <img src="${capturedImgSrc}" alt="${capturedAlt}" title="${capturedName}">
                          </span>)`;
     }
 
@@ -263,9 +265,10 @@ export function playSound(soundName) {
             console.warn("playSound: Invalid sound name provided:", soundName);
             return;
         }
+        // Ensure consistency in sound file names (e.g., all lowercase)
         const soundPath = `assets/sounds/${soundName.toLowerCase()}.mp3`;
         const audio = new Audio(soundPath);
-        audio.play().catch(e => console.warn(`Sound playback failed for ${soundPath}:`, e));
+        audio.play().catch(e => console.warn(`Sound playback failed for ${soundPath}:`, e.message || e)); // Log specific error message
     } catch (e) {
         console.error("Error creating or playing sound:", e);
     }

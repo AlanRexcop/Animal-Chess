@@ -4,8 +4,9 @@ import { Piece } from './piece.js';
 import {
     renderBoard, highlightSquare, clearHighlights, updateStatus,
     renderCapturedPieces, addMoveToHistory, clearMoveHistory, playSound,
-    updateTurnDisplay, updateAiDepthDisplay
-} from './renderer.js';
+    updateTurnDisplay, // <-- Make sure updateTurnDisplay is imported
+    updateAiDepthDisplay
+} from './renderer.js'; // <-- Ensure renderer.js exports updateTurnDisplay
 import { loadLanguage, getString, applyLocalizationToPage } from './localization.js';
 import {
     Player, GameStatus, aiPlayer, DEFAULT_AI_TARGET_DEPTH,
@@ -397,7 +398,7 @@ function animateAndMakeMove(piece, toRow, toCol, fromRow, fromCol, targetPiece) 
         // Fallback: Update state directly without animation
         updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData);
         addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData);
-        playSound(isCapture ? `capture_${capturedPieceData.type}` : 'move');
+        playSound(isCapture ? `capture_${getPieceKey(capturedPieceData.name)}` : 'move'); // Adjusted sound key
         postMoveChecks();
         return;
     }
@@ -442,7 +443,7 @@ function animateAndMakeMove(piece, toRow, toCol, fromRow, fromCol, targetPiece) 
         addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData);
 
         // Play sound after animation
-        playSound(isCapture ? `capture_${capturedPieceData.type}` : 'move');
+        playSound(isCapture ? `capture_${getPieceKey(capturedPieceData.name)}` : 'move'); // Adjusted sound key
 
         // Perform post-move checks (win condition, switch player)
         postMoveChecks();
@@ -465,7 +466,15 @@ function postMoveChecks() {
                        (currentStatus === GameStatus.PLAYER1_WINS) ? Player.PLAYER1 :
                        Player.NONE; // Handle draw if implemented
         setGameOver(winner, currentStatus);
-        playSound(winner === Player.PLAYER0 ? 'victory' : 'defeat'); // Sound from Player 0's perspective
+        // Determine sound based on Player 0's perspective (Player vs AI)
+        let soundToPlay = 'defeat'; // Assume defeat
+        if (winner === Player.PLAYER0) soundToPlay = 'victory';
+        if (winner === Player.NONE) soundToPlay = 'draw'; // Add a draw sound if desired
+        // For PVP, sound might need context or just a generic end sound
+        if (gameModeSelect.value === 'PVP' && winner !== Player.NONE) soundToPlay = 'victory'; // Generic win sound for PVP?
+
+        playSound(soundToPlay);
+
     } else {
         // Game continues, switch player
         switchPlayer();
@@ -490,7 +499,7 @@ function setGameOver(winner, status) {
     if (isGameOver) return; // Prevent setting multiple times
     console.log(`Game Over! Winner: ${winner}, Status: ${status}`);
     isGameOver = true;
-    gameStatus = status;
+    gameStatus = status; // Store the final status
     deselectPiece(); // Ensure no piece is selected
     // Optionally disable board interaction further? (already checked in handleSquareClick)
 }
@@ -502,31 +511,35 @@ function updateGameStatusUI() {
     const playerLabel = getString(currentPlayer === Player.PLAYER0 ? 'player1Name' : 'player2Name'); // Get localized name P1/P2
 
     if (isGameOver) {
-        statusKey = 'statusGameOver';
-         let winnerLabel = '';
-         if (gameStatus === GameStatus.PLAYER0_WINS) winnerLabel = getString('player1Name');
-         else if (gameStatus === GameStatus.PLAYER1_WINS) winnerLabel = getString('player2Name');
-         else winnerLabel = getString('statusDraw'); // Or handle draw specifically
+        // Determine winner label based on the stored gameStatus
+        let winnerLabel = '';
+        if (gameStatus === GameStatus.PLAYER0_WINS) winnerLabel = getString('player1Name');
+        else if (gameStatus === GameStatus.PLAYER1_WINS) winnerLabel = getString('player2Name');
+        else winnerLabel = getString('statusDraw'); // Handle draw
 
-         // Combine "Game Over!" and "Winner is..."
-         // We might need a combined key or handle it here:
-         statusElement.textContent = `${getString('statusGameOver')} ${getString('statusWin', { winner: winnerLabel })}`;
-         turnElement.textContent = '---'; // Clear turn indicator
-         return; // Don't override with other statuses
+        // Use the statusWin key which includes the winner placeholder
+        statusKey = 'statusWin';
+        statusParams = { winner: winnerLabel };
+        // The status message will now be handled by the updateStatus call below
 
     } else if (isAiThinking) {
         statusKey = 'statusAIThinking';
         statusParams = { aiName: getString('aiName') };
     } else if (selectedPieceInfo) {
         statusKey = 'statusPlayerSelected';
-        statusParams = { player: playerLabel, pieceName: selectedPieceInfo.piece.name };
+        statusParams = {
+            player: playerLabel,
+            // Use localized animal name if available, otherwise use piece.name
+            pieceName: getString(`animal_${selectedPieceInfo.piece.type}`) || selectedPieceInfo.piece.name
+        };
     } else {
         statusKey = 'statusWaitingPlayer';
         statusParams = { player: playerLabel };
     }
 
+    // Call renderer functions to update the UI
     updateStatus(statusKey, statusParams);
-    updateTurnDisplay(currentPlayer, gameModeSelect.value);
+    updateTurnDisplay(currentPlayer, gameModeSelect.value, isGameOver); // Pass isGameOver
 }
 
 
@@ -545,8 +558,6 @@ function triggerAiTurn() {
     let boardStateForWorker;
     try {
         boardStateForWorker = board.getClonedStateForWorker();
-        // Optional: Deep log to verify structure if worker has issues
-        // console.log("Board state for worker:", JSON.stringify(boardStateForWorker));
     } catch (e) {
         console.error("Error cloning board state for AI:", e);
         updateStatus('errorBoardClone', {}, true);
@@ -558,30 +569,14 @@ function triggerAiTurn() {
 
     const currentTargetDepth = aiTargetDepth; // Use the module variable
     const currentTimeLimit = aiTimeLimitMs; // Use the module variable
-    console.log(boardStateForWorker);
-    console.log(`[Main] Sending job to AI Worker: Depth=${currentTargetDepth}, TimeLimit=${currentTimeLimit}ms`); // Log the actual values
+
+    console.log(`[Main] Sending job to AI Worker: Depth=${currentTargetDepth}, TimeLimit=${currentTimeLimit}ms`);
 
     aiWorker.postMessage({
         boardState: boardStateForWorker,
-        targetDepth: currentTargetDepth, // Pass the correct variable
-        timeLimit: currentTimeLimit      // Pass the correct variable
+        targetDepth: currentTargetDepth,
+        timeLimit: currentTimeLimit
     });
 }
-function triggerAiMove() {
-    if (gameMode !== 'PVA' || currentPlayer !== AI || isAnimating || gameOver || isAiCalculating ) return;
-    if (!aiWorker) { console.error("AI Worker not initialized!"); updateStatus("AI Worker Error!"); if (!gameOver) { gameOver = true; winner = PLAYER; playSound('victory'); renderBoard(); } return; } // Play sound on error
 
-    isAiCalculating = true;
-    updateStatus("AI is thinking...");
-    aiDepthElement.textContent = '-';
-
-    const currentTargetDepth = parseInt(difficultySelect.value, 10);
-    const currentTimeLimit = aiTimeLimitMs;
-
-    let boardStateToSend;
-    try { boardStateToSend = JSON.parse(JSON.stringify(board)); }
-    catch(e) { console.error("Board clone error:", e); updateStatus("AI Error!"); isAiCalculating = false; if (!gameOver) { gameOver = true; winner = PLAYER; playSound('victory'); renderBoard();} return; } // Play sound on error
-
-     console.log(`[Main] Sending job: D=${currentTargetDepth}, T=${currentTimeLimit}ms`);
-     aiWorker.postMessage({ boardState: boardStateToSend, targetDepth: currentTargetDepth, timeLimit: currentTimeLimit });
-}
+// --- Removed the duplicate triggerAiMove function ---
