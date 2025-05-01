@@ -1,3 +1,4 @@
+// aiWorker.js
 import {
     BOARD_ROWS, BOARD_COLS,
     TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP,
