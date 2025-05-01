@@ -7,8 +7,9 @@ import {
     updateTurnDisplay,
     updateAiDepthDisplay,
     updateWinChanceDisplay,
-    initializeLandTilePatterns
-} from './renderer.js';
+    initializeLandTilePatterns,
+    animatePieceMove // <-- Import the NEW animation function
+} from './renderer.js'; // <-- Make sure renderer exports animatePieceMove
 import { loadLanguage, getString, applyLocalizationToPage } from './localization.js';
 import {
     Player, GameStatus, aiPlayer, DEFAULT_AI_TARGET_DEPTH,
@@ -17,7 +18,7 @@ import {
 } from './constants.js';
 import * as rules from './rules.js';
 
-// --- Module State ---
+// --- Module State (no changes) ---
 let board = new Board();
 let currentPlayer = Player.PLAYER0;
 let selectedPieceInfo = null;
@@ -26,22 +27,19 @@ let validMovesCache = [];
 let isGameOver = false;
 let isAiThinking = false;
 let aiWorker = null;
-let lastMove = null; // Object: { start: {r, c}, end: {r, c}, player: number } <-- Added player
+let lastMove = null;
 let capturedByPlayer0 = [];
 let capturedByPlayer1 = [];
 let moveHistory = [];
 let lastEvalScore = null;
 
-// --- (UI Elements Cache, AI Config, initializeAiWorker, handleAiWorkerMessage, handleAiWorkerError - remain the same) ---
-// UI Elements (Cached)
+// --- UI Elements Cache, AI Config, AI Worker Interaction (no changes) ---
 let difficultySelect;
 let timeLimitInput;
 let resetButton;
 let langSelect;
 let gameModeSelect;
 let aiControlsContainer;
-
-// AI Config
 let aiTargetDepth = DEFAULT_AI_TARGET_DEPTH;
 let aiTimeLimitMs = DEFAULT_AI_TIME_LIMIT_MS;
 
@@ -60,7 +58,7 @@ function initializeAiWorker() {
         console.error("Failed to create AI Worker:", e);
         updateStatus('errorWorkerInit', {}, true);
         setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS);
-        updateWinChanceDisplay(null); // Clear win chance on error
+        updateWinChanceDisplay(null);
     }
 }
 
@@ -100,7 +98,8 @@ function handleAiWorkerMessage(e) {
 
         if (pieceToMove && pieceToMove.player === aiPlayer && pieceToMove.name === expectedPieceName) {
             const targetPiece = board.getPiece(bestMoveData.toRow, bestMoveData.toCol);
-            animateAndMakeMove(pieceToMove, bestMoveData.toRow, bestMoveData.toCol, bestMoveData.fromRow, bestMoveData.fromCol, targetPiece);
+            // ** Call the refactored function **
+            performMoveWithAnimation(pieceToMove, bestMoveData.toRow, bestMoveData.toCol, bestMoveData.fromRow, bestMoveData.fromCol, targetPiece);
         } else {
             console.error("AI Error: Piece mismatch or missing!", { bestMoveData, pieceOnBoard: pieceToMove });
             updateStatus('errorAISync', {}, true);
@@ -140,7 +139,6 @@ function handleAiWorkerError(event) {
 
 // --- Game Initialization ---
 
-/** Initializes the game state and renders the initial board. */
 export function initGame() {
     console.log("Initializing game...");
     difficultySelect = document.getElementById('difficulty');
@@ -160,7 +158,7 @@ export function initGame() {
     validMovesCache = [];
     isGameOver = false;
     isAiThinking = false;
-    lastMove = null; // Reset last move
+    lastMove = null;
     capturedByPlayer0 = [];
     capturedByPlayer1 = [];
     moveHistory = [];
@@ -171,7 +169,7 @@ export function initGame() {
     if (timeLimitInput) timeLimitInput.value = aiTimeLimitMs;
     clearMoveHistory();
 
-    renderBoard(board.getState(), handleSquareClick, lastMove); // Pass lastMove (null initially)
+    renderBoard(board.getState(), handleSquareClick, lastMove);
     renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
     updateGameStatusUI();
     updateWinChanceDisplay(lastEvalScore);
@@ -189,8 +187,7 @@ export function initGame() {
     console.log("Game Initialized. Player:", currentPlayer);
 }
 
-// --- (setupUIListeners, handleSquareClick, selectPiece, deselectPiece - remain the same) ---
-
+// --- (setupUIListeners, selectPiece, deselectPiece - unchanged) ---
 function setupUIListeners() {
     if (setupUIListeners.alreadyRun) return;
     setupUIListeners.alreadyRun = true;
@@ -235,45 +232,6 @@ function setupUIListeners() {
 }
 setupUIListeners.alreadyRun = false;
 
-
-function handleSquareClick(row, col) {
-    console.log(`Clicked on: ${row}, ${col}`);
-    if (isGameOver || isAiThinking || (gameModeSelect.value === 'PVA' && currentPlayer === aiPlayer)) {
-        console.log("Ignoring click (Game Over, AI Thinking, or AI's turn)");
-        return;
-    }
-
-    const clickedPiece = board.getPiece(row, col);
-
-    if (selectedPieceInfo) {
-        const isValidDestination = validMovesCache.some(move => move.row === row && move.col === col);
-
-        if (isValidDestination) {
-            const pieceToMove = selectedPieceInfo.piece;
-            const fromRow = selectedPieceInfo.row;
-            const fromCol = selectedPieceInfo.col;
-            const targetPiece = board.getPiece(row, col);
-
-            deselectPiece();
-            animateAndMakeMove(pieceToMove, row, col, fromRow, fromCol, targetPiece);
-
-        } else {
-            const originalSelection = { ...selectedPieceInfo };
-            deselectPiece();
-            if (clickedPiece && clickedPiece.player === currentPlayer && !(clickedPiece.row === originalSelection.row && clickedPiece.col === originalSelection.col)) {
-                selectPiece(clickedPiece, row, col);
-            } else {
-                 renderBoard(board.getState(), handleSquareClick, lastMove);
-                 updateGameStatusUI();
-            }
-        }
-    } else if (clickedPiece && clickedPiece.player === currentPlayer) {
-        selectPiece(clickedPiece, row, col);
-    } else {
-         console.log("Clicked empty square or opponent piece without selection.");
-    }
-}
-
 function selectPiece(piece, row, col) {
     if (isGameOver || isAiThinking) return;
     deselectPiece();
@@ -294,23 +252,65 @@ function selectPiece(piece, row, col) {
 
 function deselectPiece() {
     if (selectedPieceInfo) {
-        clearHighlights('selected');
-        clearHighlights('possible-move');
-        clearHighlights('capture-move');
+        clearHighlights('selected'); // Clears outline from square
+        clearHighlights('possible-move'); // Clears background from overlay
+        clearHighlights('capture-move'); // Clears background from overlay
         selectedPieceInfo = null;
         validMovesCache = [];
         console.log("Piece deselected.");
     }
 }
 
+// --- Game Logic / Movement ---
+
+/**
+ * Main handler for clicks on board squares.
+ */
+function handleSquareClick(row, col) {
+    console.log(`Clicked on: ${row}, ${col}`);
+    if (isGameOver || isAiThinking || (gameModeSelect.value === 'PVA' && currentPlayer === aiPlayer)) {
+        console.log("Ignoring click (Game Over, AI Thinking, or AI's turn)");
+        return;
+    }
+
+    const clickedPiece = board.getPiece(row, col);
+
+    if (selectedPieceInfo) {
+        const isValidDestination = validMovesCache.some(move => move.row === row && move.col === col);
+
+        if (isValidDestination) {
+            const pieceToMove = selectedPieceInfo.piece;
+            const fromRow = selectedPieceInfo.row;
+            const fromCol = selectedPieceInfo.col;
+            const targetPiece = board.getPiece(row, col); // Piece being potentially captured
+
+            deselectPiece(); // Deselect FIRST
+
+            // ** Call the refactored function **
+            performMoveWithAnimation(pieceToMove, row, col, fromRow, fromCol, targetPiece);
+
+        } else {
+            // Clicked somewhere else - deselect or select new piece
+            const originalSelection = { ...selectedPieceInfo };
+            deselectPiece();
+            if (clickedPiece && clickedPiece.player === currentPlayer && !(clickedPiece.row === originalSelection.row && clickedPiece.col === originalSelection.col)) {
+                selectPiece(clickedPiece, row, col);
+            } else {
+                 // Clicked empty/opponent (invalid move) or same piece - just deselect
+                 // Re-render not strictly needed as deselectPiece clears highlights
+                 updateGameStatusUI(); // Update status (e.g., back to "Select a piece")
+            }
+        }
+    } else if (clickedPiece && clickedPiece.player === currentPlayer) {
+        selectPiece(clickedPiece, row, col);
+    } else {
+         console.log("Clicked empty square or opponent piece without selection.");
+    }
+}
+
+
 /**
  * Updates the board state after a move or capture.
- * @param {Piece} piece - The piece that moved.
- * @param {number} toRow
- * @param {number} toCol
- * @param {number} fromRow
- * @param {number} fromCol
- * @param {Piece | null} capturedPiece - The piece that was captured (if any).
  */
 function updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPiece) {
     board.setPiece(fromRow, fromCol, null);
@@ -324,70 +324,63 @@ function updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPiece) 
         }
         console.log(`${piece.name} captured ${capturedPiece.name}`);
     }
-    // ****** MODIFIED: Store player who made the move ******
     lastMove = {
         start: { r: fromRow, c: fromCol },
         end: { r: toRow, c: toCol },
-        player: currentPlayer // Store the player whose turn it was
+        player: currentPlayer
     };
-    // ****** END MODIFIED ******
 }
 
-
-// --- (animateAndMakeMove, postMoveChecks, switchPlayer, setGameOver, updateGameStatusUI, triggerAiTurn - remain the same) ---
-function animateAndMakeMove(piece, toRow, toCol, fromRow, fromCol, targetPiece) {
+/**
+ * Handles the entire move process including state update, animation, and post-move checks.
+ */
+function performMoveWithAnimation(piece, toRow, toCol, fromRow, fromCol, targetPiece) {
     if (isGameOver) return;
 
     const isCapture = targetPiece !== null && targetPiece.player !== piece.player;
-    const capturedPieceData = isCapture ? { ...targetPiece } : null;
+    const capturedPieceData = isCapture ? { ...targetPiece } : null; // Store data *before* state change
 
-    const boardElement = document.getElementById('board');
+    // --- Find DOM elements BEFORE updating state ---
+    const boardElement = document.getElementById('board'); // Should be cached?
     const startSquare = boardElement?.querySelector(`.square[data-row="${fromRow}"][data-col="${fromCol}"]`);
     const endSquare = boardElement?.querySelector(`.square[data-row="${toRow}"][data-col="${toCol}"]`);
     const pieceElement = startSquare?.querySelector('.piece');
 
-    if (!boardElement || !startSquare || !endSquare || !pieceElement) {
-        console.warn("Animation elements not found, moving directly.");
+    if (!pieceElement || !startSquare || !endSquare) {
+        console.warn("DOM elements for animation not found, moving directly.");
+        // Fallback: Update state directly without animation
         updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData);
         addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData);
         playSound(isCapture ? `capture_${getPieceKey(capturedPieceData.name)}` : 'move');
-        postMoveChecks();
+        postMoveChecks(); // Still need to check game end and switch player
         return;
     }
 
-    const startRect = startSquare.getBoundingClientRect();
-    const endRect = endSquare.getBoundingClientRect();
-    const deltaX = endRect.left - startRect.left;
-    const deltaY = endRect.top - startRect.top;
-
+    // --- Update the logical board state FIRST ---
     updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData);
+    addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData); // Log move right after state update
 
-    const capturedElement = endSquare.querySelector('.piece');
-    if (capturedElement && capturedElement !== pieceElement) {
-         capturedElement.remove();
-    }
-
-    endSquare.appendChild(pieceElement);
-    pieceElement.style.transition = 'none';
-    pieceElement.style.transform = `translate(calc(-50% - ${deltaX}px), calc(-50% - ${deltaY}px))`;
-    pieceElement.offsetHeight;
-
-    requestAnimationFrame(() => {
-        pieceElement.style.transition = `transform ${ANIMATION_DURATION / 1000}s ease-out`;
-        pieceElement.style.transform = 'translate(-50%, -50%)';
-    });
-
-    setTimeout(() => {
-        pieceElement.style.transition = 'none';
-        addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData);
-        playSound(isCapture ? `capture_${getPieceKey(capturedPieceData.name)}` : 'move');
-        postMoveChecks();
-    }, ANIMATION_DURATION);
+    // --- Trigger the animation ---
+    animatePieceMove(
+        pieceElement,
+        startSquare,
+        endSquare,
+        isCapture,
+        isCapture ? getPieceKey(capturedPieceData.name) : null,
+        () => {
+            // --- Completion callback ---
+            // This runs AFTER the animation timeout in renderer.js
+            console.log("Animation complete, running post-move checks.");
+            postMoveChecks(); // Check win/loss, switch player
+        }
+    );
 }
 
 
+/** Performs checks after a move is completed (win condition, switch player). */
 function postMoveChecks() {
-    // Note: renderBoard now takes lastMove object which includes the player
+    // Re-render board (with latest lastMove) and captured pieces
+    // This happens AFTER animation is complete
     renderBoard(board.getState(), handleSquareClick, lastMove);
     renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
 
@@ -405,17 +398,19 @@ function postMoveChecks() {
         if (gameModeSelect.value === 'PVP' && winner !== Player.NONE) soundToPlay = 'victory';
 
         playSound(soundToPlay);
-        updateGameStatusUI();
+        updateGameStatusUI(); // Update status to show winner
 
     } else {
+        // Game continues, switch player
         switchPlayer();
-        updateGameStatusUI();
+        updateGameStatusUI(); // Update status for new turn
     }
 }
 
+// --- (switchPlayer, setGameOver, updateGameStatusUI, triggerAiTurn unchanged) ---
 function switchPlayer() {
     currentPlayer = Player.getOpponent(currentPlayer);
-    deselectPiece();
+    deselectPiece(); // Always deselect after a move/switch
     console.log("Switched player to:", currentPlayer);
 
     if (!isGameOver && gameModeSelect.value === 'PVA' && currentPlayer === aiPlayer && !isAiThinking) {

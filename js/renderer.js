@@ -1,5 +1,7 @@
 // js/renderer.js
-import { BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, Player, getPieceKey, PIECES } from './constants.js';
+// ****** ADDED ANIMATION_DURATION to import ******
+import { BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, Player, getPieceKey, PIECES, ANIMATION_DURATION } from './constants.js';
+// ****** END ADD ******
 import { getString } from './localization.js';
 
 // DOM Elements Cache
@@ -24,20 +26,17 @@ const SIGMOID_SCALE_FACTOR = 0.0003;
 let landTilePatterns = null;
 const landTileFiles = ['1.png', '2.png', '3.png', '4.png'];
 
-// Helper map for highlight targets
+// Highlight Targets Map
 const highlightClassTargets = {
     'possible-move': '.highlight-overlay',
     'capture-move': '.highlight-overlay',
-    'selected': '.square', // Keep selected as outline on square
-    // ****** MODIFIED: Last move classes target overlay ******
+    'selected': '.square',
     'last-move-start-p0': '.highlight-overlay',
     'last-move-start-p1': '.highlight-overlay',
     'last-move-end-p0': '.highlight-overlay',
     'last-move-end-p1': '.highlight-overlay'
-    // ****** END MODIFIED ******
 };
 
-// List of all possible last move highlight classes for easier clearing
 const ALL_LAST_MOVE_CLASSES = [
     'last-move-start-p0', 'last-move-start-p1',
     'last-move-end-p0', 'last-move-end-p1'
@@ -62,24 +61,81 @@ export function initializeLandTilePatterns(boardState) {
 }
 
 /**
+ * Initiates the animation and updates state for a move. This function is now internal to the renderer.
+ * It relies on game.js calling updateBoardState first.
+ * @param {HTMLElement} pieceElement The DOM element of the piece being moved.
+ * @param {HTMLElement} startSquare The starting square DOM element.
+ * @param {HTMLElement} endSquare The ending square DOM element.
+ * @param {boolean} isCapture Indicates if the move is a capture.
+ * @param {string | null} capturedPieceType The type ('rat', 'cat'...) of the captured piece, if any.
+ * @param {Function} onComplete Callback function to execute after animation completes.
+ */
+export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture, capturedPieceType, onComplete) {
+    if (!pieceElement || !startSquare || !endSquare) {
+        console.warn("Animation elements not found, completing move directly.");
+        onComplete(); // Execute completion logic immediately
+        return;
+    }
+
+    const startRect = startSquare.getBoundingClientRect();
+    const endRect = endSquare.getBoundingClientRect();
+    const deltaX = endRect.left - startRect.left;
+    const deltaY = endRect.top - startRect.top;
+
+    // 1. Remove captured piece element *before* moving the attacker element
+    const capturedElement = endSquare.querySelector('.piece:not(.piece-animating)'); // Ensure not to remove the animating piece if moving to same square (unlikely)
+    if (isCapture && capturedElement) {
+         capturedElement.remove();
+    }
+
+    // 2. Prepare for animation
+    pieceElement.classList.add('piece-animating'); // Add animating class for high z-index
+    endSquare.appendChild(pieceElement);          // Move piece to end square in DOM
+    pieceElement.style.transition = 'none';       // Disable transitions for initial placement
+    // Set initial transform to make it appear at the start position visually
+    pieceElement.style.transform = `translate(calc(-50% - ${deltaX}px), calc(-50% - ${deltaY}px))`;
+
+    // 3. Force reflow & Start the transition
+    requestAnimationFrame(() => { // Ensure initial transform is applied
+        requestAnimationFrame(() => { // Start transition in the next frame
+            pieceElement.style.transition = `transform ${ANIMATION_DURATION / 1000}s ease-out`; // Apply transition
+            pieceElement.style.transform = 'translate(-50%, -50%)'; // Animate to final position
+        });
+    });
+
+    // 4. After animation finishes
+    setTimeout(() => {
+        pieceElement.style.transition = 'none'; // Clean up transition
+        pieceElement.classList.remove('piece-animating'); // Remove high z-index class
+
+        // Play sound based on move type (Only if a sound name is provided)
+        const soundName = isCapture ? `capture_${capturedPieceType}` : 'move';
+        if (soundName && (!isCapture || capturedPieceType)) { // Check capturedPieceType exists if capture
+            playSound(soundName);
+        }
+
+
+        // Execute the completion callback provided by game.js
+        onComplete();
+
+    }, ANIMATION_DURATION); // Use the imported constant
+}
+
+
+/**
  * Renders the entire game board.
- * @param {Array<Array<object>>} boardState
- * @param {function} clickHandler
- * @param {object | null} lastMove - Includes { start: {r, c}, end: {r, c}, player: number }
  */
 export function renderBoard(boardState, clickHandler, lastMove = null) {
     if (!boardElement) { console.error("Board element not found!"); return; }
     if (!landTilePatterns) { console.error("Land tile patterns not initialized!"); }
 
-    boardElement.innerHTML = ''; // Clear previous state
+    const fragment = document.createDocumentFragment(); // Use fragment for performance
 
     // --- Clear ALL Last Move Highlights from Overlays ---
-    // It's efficient to clear all possible last move classes from all overlays at once.
     boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
         overlay.classList.remove(...ALL_LAST_MOVE_CLASSES);
     });
-     // Also clear 'selected' from squares if needed, though deselectPiece handles it
-     clearHighlights('selected'); // Clear selection outline
+     clearHighlights('selected');
     // --- End Clear ---
 
 
@@ -142,18 +198,25 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             // --- Attach Click Handler ---
             squareElement.addEventListener('click', () => clickHandler(r, c));
 
-            // --- Add Player-Specific Last Move Highlight (Using highlightSquare) ---
-            if (lastMove && lastMove.player !== undefined) {
-                const playerSuffix = `p${lastMove.player}`;
-                // Apply highlights using the function which now targets the overlay
-                highlightSquare(lastMove.start.r, lastMove.start.c, `last-move-start-${playerSuffix}`);
-                highlightSquare(lastMove.end.r, lastMove.end.c, `last-move-end-${playerSuffix}`);
-            }
-            // --- End Add Highlight ---
+            // --- Highlight Last Move (Deferred to separate step) ---
+            // Highlights will be added *after* all squares are in the DOM for efficiency
 
-            boardElement.appendChild(squareElement);
+            fragment.appendChild(squareElement); // Add to fragment
         }
     }
+
+    // Append the entire fragment at once
+    boardElement.innerHTML = ''; // Clear previous content
+    boardElement.appendChild(fragment);
+
+    // --- Apply Last Move Highlights AFTER squares are in DOM ---
+    if (lastMove && lastMove.player !== undefined) {
+        const playerSuffix = `p${lastMove.player}`;
+        highlightSquare(lastMove.start.r, lastMove.start.c, `last-move-start-${playerSuffix}`);
+        highlightSquare(lastMove.end.r, lastMove.end.c, `last-move-end-${playerSuffix}`);
+    }
+    // --- End Apply Highlights ---
+
     renderCoordinatesIfNeeded();
 }
 
@@ -175,17 +238,10 @@ export function highlightSquare(row, col, className) {
     const square = boardElement?.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
     if (!square) return;
 
-    const targetSelector = highlightClassTargets[className]; // Get target element selector
+    const targetSelector = highlightClassTargets[className];
+    if (!targetSelector) { console.warn(`Unknown highlight target for class: ${className}`); return; }
 
-    if (!targetSelector) {
-        console.warn(`Unknown highlight target for class: ${className}`);
-        return;
-    }
-
-    // Find the target element (either the square itself or the overlay within it)
     const targetElement = (targetSelector === '.square') ? square : square.querySelector(targetSelector);
-
-    // Add the class if the target element exists
     targetElement?.classList.add(className);
 }
 
@@ -196,7 +252,6 @@ export function highlightSquare(row, col, className) {
 export function clearHighlights(className) {
     const targetSelector = highlightClassTargets[className];
     if (!targetSelector) {
-        // If trying to clear a base last-move class, clear all variants from overlays
         if (className === 'last-move-start' || className === 'last-move-end') {
             ALL_LAST_MOVE_CLASSES.forEach(cls => {
                 boardElement?.querySelectorAll(`.highlight-overlay.${cls}`).forEach(el => el.classList.remove(cls));
@@ -206,8 +261,6 @@ export function clearHighlights(className) {
         }
         return;
     }
-
-    // Find all target elements (squares or overlays) that have the class and remove it
     boardElement?.querySelectorAll(`${targetSelector}.${className}`).forEach(el => {
         el.classList.remove(className);
     });
