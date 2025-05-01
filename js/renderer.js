@@ -2,7 +2,7 @@
 import { BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, Player, getPieceKey, PIECES } from './constants.js';
 import { getString } from './localization.js';
 
-// DOM Elements (Cache them if accessed frequently)
+// DOM Elements Cache
 const boardElement = document.getElementById('board');
 const statusElement = document.getElementById('status');
 const turnElement = document.getElementById('turn');
@@ -15,28 +15,34 @@ const rowLabelsLeft = document.getElementById('row-labels-left');
 const rowLabelsRight = document.getElementById('row-labels-right');
 const winChanceDisplayElement = document.getElementById('win-chance-display');
 
-// Constants for eval conversion
+// Eval Conversion Constants
 const WIN_SCORE_THRESHOLD = 19000;
 const LOSE_SCORE_THRESHOLD = -19000;
 const SIGMOID_SCALE_FACTOR = 0.0003;
 
-// Land Tile Pattern Storage
+// Land Tile Patterns
 let landTilePatterns = null;
 const landTileFiles = ['1.png', '2.png', '3.png', '4.png'];
 
-// --- NEW: Helper map to determine where to apply highlights ---
+// Helper map for highlight targets
 const highlightClassTargets = {
-    'possible-move': '.highlight-overlay', // Background highlights target overlay
+    'possible-move': '.highlight-overlay',
     'capture-move': '.highlight-overlay',
-    'selected': '.square',                // Outline highlights target square
-    'last-move-start': '.square',
-    'last-move-end': '.square'
+    'selected': '.square', // Keep selected as outline on square
+    // ****** MODIFIED: Last move classes target overlay ******
+    'last-move-start-p0': '.highlight-overlay',
+    'last-move-start-p1': '.highlight-overlay',
+    'last-move-end-p0': '.highlight-overlay',
+    'last-move-end-p1': '.highlight-overlay'
+    // ****** END MODIFIED ******
 };
-// --- END NEW ---
 
-/**
- * Initializes the random tile patterns for land squares ONCE per game.
- */
+// List of all possible last move highlight classes for easier clearing
+const ALL_LAST_MOVE_CLASSES = [
+    'last-move-start-p0', 'last-move-start-p1',
+    'last-move-end-p0', 'last-move-end-p1'
+];
+
 export function initializeLandTilePatterns(boardState) {
     console.log("Initializing land tile patterns...");
     landTilePatterns = Array(BOARD_ROWS).fill(null).map(() => Array(BOARD_COLS).fill(null));
@@ -56,15 +62,26 @@ export function initializeLandTilePatterns(boardState) {
 }
 
 /**
- * Renders the entire game board, including terrain, pieces, and attaches click handlers.
+ * Renders the entire game board.
+ * @param {Array<Array<object>>} boardState
+ * @param {function} clickHandler
+ * @param {object | null} lastMove - Includes { start: {r, c}, end: {r, c}, player: number }
  */
 export function renderBoard(boardState, clickHandler, lastMove = null) {
     if (!boardElement) { console.error("Board element not found!"); return; }
     if (!landTilePatterns) { console.error("Land tile patterns not initialized!"); }
 
     boardElement.innerHTML = ''; // Clear previous state
-    clearHighlights('last-move-start');
-    clearHighlights('last-move-end');
+
+    // --- Clear ALL Last Move Highlights from Overlays ---
+    // It's efficient to clear all possible last move classes from all overlays at once.
+    boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
+        overlay.classList.remove(...ALL_LAST_MOVE_CLASSES);
+    });
+     // Also clear 'selected' from squares if needed, though deselectPiece handles it
+     clearHighlights('selected'); // Clear selection outline
+    // --- End Clear ---
+
 
     for (let r = 0; r < BOARD_ROWS; r++) {
         for (let c = 0; c < BOARD_COLS; c++) {
@@ -81,7 +98,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             // --- Terrain Rendering ---
             squareElement.classList.add(`terrain-${terrain}`);
             switch (terrain) {
-                case TERRAIN_LAND:
+                 case TERRAIN_LAND:
                     const landContainer = document.createElement('div');
                     landContainer.className = 'land-tile-container';
                     const pattern = landTilePatterns?.[r]?.[c];
@@ -108,7 +125,6 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             const highlightOverlay = document.createElement('div');
             highlightOverlay.className = 'highlight-overlay';
             squareElement.appendChild(highlightOverlay);
-            // --- END Add Highlight Overlay ---
 
             // --- Piece Rendering ---
             if (pieceData && pieceData.type) {
@@ -126,15 +142,14 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             // --- Attach Click Handler ---
             squareElement.addEventListener('click', () => clickHandler(r, c));
 
-            // --- Highlight Last Move ---
-            if (lastMove) {
-                if (lastMove.start.r === r && lastMove.start.c === c) {
-                    highlightSquare(r, c, 'last-move-start'); // Use highlight function
-                }
-                if (lastMove.end.r === r && lastMove.end.c === c) {
-                    highlightSquare(r, c, 'last-move-end'); // Use highlight function
-                }
+            // --- Add Player-Specific Last Move Highlight (Using highlightSquare) ---
+            if (lastMove && lastMove.player !== undefined) {
+                const playerSuffix = `p${lastMove.player}`;
+                // Apply highlights using the function which now targets the overlay
+                highlightSquare(lastMove.start.r, lastMove.start.c, `last-move-start-${playerSuffix}`);
+                highlightSquare(lastMove.end.r, lastMove.end.c, `last-move-end-${playerSuffix}`);
             }
+            // --- End Add Highlight ---
 
             boardElement.appendChild(squareElement);
         }
@@ -142,6 +157,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
     renderCoordinatesIfNeeded();
 }
 
+// --- (coordinatesRendered, renderCoordinatesIfNeeded unchanged) ---
 let coordinatesRendered = false;
 function renderCoordinatesIfNeeded() {
     if (coordinatesRendered) return;
@@ -151,49 +167,54 @@ function renderCoordinatesIfNeeded() {
      coordinatesRendered = true;
 }
 
+
 /**
- * Adds a specific CSS highlight class to the correct element (square or overlay).
- * @param {number} row
- * @param {number} col
- * @param {string} className - The CSS class name (e.g., 'selected', 'possible-move').
+ * Adds a specific CSS highlight class to the correct element.
  */
 export function highlightSquare(row, col, className) {
     const square = boardElement?.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
     if (!square) return;
 
-    const targetSelector = highlightClassTargets[className]; // Get '.square' or '.highlight-overlay'
-
-    if (targetSelector === '.square') {
-        // Apply class directly to the square (for outlines)
-        square.classList.add(className);
-    } else if (targetSelector === '.highlight-overlay') {
-        // Apply class to the overlay div inside the square (for backgrounds)
-        const overlay = square.querySelector(targetSelector);
-        overlay?.classList.add(className);
-    } else {
-        console.warn(`Unknown highlight target for class: ${className}`);
-    }
-}
-
-/**
- * Removes a specific CSS highlight class from the correct elements.
- * @param {string} className - The CSS class name to remove.
- */
-export function clearHighlights(className) {
-    const targetSelector = highlightClassTargets[className];
+    const targetSelector = highlightClassTargets[className]; // Get target element selector
 
     if (!targetSelector) {
-        console.warn(`Unknown highlight target for clearing class: ${className}`);
+        console.warn(`Unknown highlight target for class: ${className}`);
         return;
     }
 
-    // Find all elements (squares or overlays) that have the class and remove it
+    // Find the target element (either the square itself or the overlay within it)
+    const targetElement = (targetSelector === '.square') ? square : square.querySelector(targetSelector);
+
+    // Add the class if the target element exists
+    targetElement?.classList.add(className);
+}
+
+
+/**
+ * Removes a specific CSS highlight class from the correct elements.
+ */
+export function clearHighlights(className) {
+    const targetSelector = highlightClassTargets[className];
+    if (!targetSelector) {
+        // If trying to clear a base last-move class, clear all variants from overlays
+        if (className === 'last-move-start' || className === 'last-move-end') {
+            ALL_LAST_MOVE_CLASSES.forEach(cls => {
+                boardElement?.querySelectorAll(`.highlight-overlay.${cls}`).forEach(el => el.classList.remove(cls));
+            });
+        } else {
+            console.warn(`Unknown highlight target for clearing class: ${className}`);
+        }
+        return;
+    }
+
+    // Find all target elements (squares or overlays) that have the class and remove it
     boardElement?.querySelectorAll(`${targetSelector}.${className}`).forEach(el => {
         el.classList.remove(className);
     });
 }
 
-// --- (updateStatus, updateTurnDisplay, renderCapturedPieces, addMoveToHistory, clearMoveHistory, playSound, updateAiDepthDisplay, updateWinChanceDisplay unchanged) ---
+
+// --- (updateStatus, updateTurnDisplay, renderCapturedPieces, addMoveToHistory, clearMoveHistory, playSound, updateAiDepthDisplay, updateWinChanceDisplay - unchanged) ---
 export function updateStatus(messageKey, params = {}, isError = false) {
     if (!statusElement) return;
     const message = getString(messageKey, params);

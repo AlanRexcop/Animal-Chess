@@ -7,7 +7,7 @@ import {
     updateTurnDisplay,
     updateAiDepthDisplay,
     updateWinChanceDisplay,
-    initializeLandTilePatterns // <-- Import new function
+    initializeLandTilePatterns
 } from './renderer.js';
 import { loadLanguage, getString, applyLocalizationToPage } from './localization.js';
 import {
@@ -17,7 +17,7 @@ import {
 } from './constants.js';
 import * as rules from './rules.js';
 
-// --- (Module State variables remain the same) ---
+// --- Module State ---
 let board = new Board();
 let currentPlayer = Player.PLAYER0;
 let selectedPieceInfo = null;
@@ -26,12 +26,13 @@ let validMovesCache = [];
 let isGameOver = false;
 let isAiThinking = false;
 let aiWorker = null;
-let lastMove = null;
+let lastMove = null; // Object: { start: {r, c}, end: {r, c}, player: number } <-- Added player
 let capturedByPlayer0 = [];
 let capturedByPlayer1 = [];
 let moveHistory = [];
 let lastEvalScore = null;
 
+// --- (UI Elements Cache, AI Config, initializeAiWorker, handleAiWorkerMessage, handleAiWorkerError - remain the same) ---
 // UI Elements (Cached)
 let difficultySelect;
 let timeLimitInput;
@@ -44,7 +45,6 @@ let aiControlsContainer;
 let aiTargetDepth = DEFAULT_AI_TARGET_DEPTH;
 let aiTimeLimitMs = DEFAULT_AI_TIME_LIMIT_MS;
 
-// --- (AI Worker Interaction functions remain the same) ---
 function initializeAiWorker() {
     if (aiWorker) {
         console.log("[Main] Terminating previous AI Worker.");
@@ -72,14 +72,12 @@ function handleAiWorkerMessage(e) {
 
     updateAiDepthDisplay(depthAchieved ?? '?');
 
-    // Store the evaluation score IF it's valid
     if (score !== null && score !== undefined && isFinite(score)) {
          lastEvalScore = score;
          console.log(`[Main] Received Eval: ${lastEvalScore}`);
-    } else if (!error) { // Don't clear score if it was just an error finding a move
-        lastEvalScore = null; // Reset if AI returns invalid score without error
+    } else if (!error) {
+        lastEvalScore = null;
     }
-    // Update display immediately after receiving score
     updateWinChanceDisplay(lastEvalScore);
 
 
@@ -90,7 +88,7 @@ function handleAiWorkerMessage(e) {
                          error === "Move gen error" ? 'errorAIMove' :
                          'errorAIWorker';
         updateStatus(errorKey, {}, true);
-        setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); // Player wins on AI error
+        setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS);
         playSound('victory');
         renderBoard(board.getState(), handleSquareClick, lastMove);
         return;
@@ -154,9 +152,7 @@ export function initGame() {
 
     board = new Board();
     board.initBoard();
-    // ****** NEW: Initialize land tiles AFTER board state is ready ******
     initializeLandTilePatterns(board.getState());
-    // ****** END NEW ******
 
     currentPlayer = Player.PLAYER0;
     selectedPieceInfo = null;
@@ -164,7 +160,7 @@ export function initGame() {
     validMovesCache = [];
     isGameOver = false;
     isAiThinking = false;
-    lastMove = null;
+    lastMove = null; // Reset last move
     capturedByPlayer0 = [];
     capturedByPlayer1 = [];
     moveHistory = [];
@@ -175,8 +171,7 @@ export function initGame() {
     if (timeLimitInput) timeLimitInput.value = aiTimeLimitMs;
     clearMoveHistory();
 
-    // Render board AFTER initializing land tiles
-    renderBoard(board.getState(), handleSquareClick);
+    renderBoard(board.getState(), handleSquareClick, lastMove); // Pass lastMove (null initially)
     renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
     updateGameStatusUI();
     updateWinChanceDisplay(lastEvalScore);
@@ -194,7 +189,7 @@ export function initGame() {
     console.log("Game Initialized. Player:", currentPlayer);
 }
 
-// --- (setupUIListeners, handleSquareClick, selectPiece, deselectPiece, updateBoardState, animateAndMakeMove, postMoveChecks, switchPlayer, setGameOver, updateGameStatusUI, triggerAiTurn functions remain the same) ---
+// --- (setupUIListeners, handleSquareClick, selectPiece, deselectPiece - remain the same) ---
 
 function setupUIListeners() {
     if (setupUIListeners.alreadyRun) return;
@@ -308,6 +303,15 @@ function deselectPiece() {
     }
 }
 
+/**
+ * Updates the board state after a move or capture.
+ * @param {Piece} piece - The piece that moved.
+ * @param {number} toRow
+ * @param {number} toCol
+ * @param {number} fromRow
+ * @param {number} fromCol
+ * @param {Piece | null} capturedPiece - The piece that was captured (if any).
+ */
 function updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPiece) {
     board.setPiece(fromRow, fromCol, null);
     board.setPiece(toRow, toCol, piece);
@@ -320,9 +324,17 @@ function updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPiece) 
         }
         console.log(`${piece.name} captured ${capturedPiece.name}`);
     }
-    lastMove = { start: { r: fromRow, c: fromCol }, end: { r: toRow, c: toCol } };
+    // ****** MODIFIED: Store player who made the move ******
+    lastMove = {
+        start: { r: fromRow, c: fromCol },
+        end: { r: toRow, c: toCol },
+        player: currentPlayer // Store the player whose turn it was
+    };
+    // ****** END MODIFIED ******
 }
 
+
+// --- (animateAndMakeMove, postMoveChecks, switchPlayer, setGameOver, updateGameStatusUI, triggerAiTurn - remain the same) ---
 function animateAndMakeMove(piece, toRow, toCol, fromRow, fromCol, targetPiece) {
     if (isGameOver) return;
 
@@ -375,6 +387,7 @@ function animateAndMakeMove(piece, toRow, toCol, fromRow, fromCol, targetPiece) 
 
 
 function postMoveChecks() {
+    // Note: renderBoard now takes lastMove object which includes the player
     renderBoard(board.getState(), handleSquareClick, lastMove);
     renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
 

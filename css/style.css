@@ -264,11 +264,28 @@ h1 {
 
 /* Apply background highlights TO THE OVERLAY */
 .highlight-overlay.possible-move {
-    background-color: rgba(255, 255, 0, 0.45) !important; /* Slightly adjusted alpha */
+    background-color: rgba(255, 255, 0, 0.45) !important; /* Yellow */
 }
 .highlight-overlay.capture-move {
-    background-color: rgba(255, 0, 0, 0.45) !important; /* Slightly adjusted alpha */
+    background-color: rgba(255, 0, 0, 0.45) !important; /* Red */
 }
+
+/* ****** NEW: Player-Specific Last Move Backgrounds ****** */
+/* Applied to the .highlight-overlay */
+.highlight-overlay.last-move-start-p0 { /* Player 0 (Blue) - Darker */
+    background-color: rgba(0, 80, 200, 0.55) !important; /* Darker blue */
+}
+.highlight-overlay.last-move-start-p1 { /* Player 1 (Red) - Darker */
+    background-color: rgba(200, 0, 0, 0.55) !important; /* Darker red */
+}
+.highlight-overlay.last-move-end-p0 { /* Player 0 (Blue) - Lighter */
+    background-color: rgba(100, 150, 255, 0.55) !important; /* Lighter blue */
+}
+.highlight-overlay.last-move-end-p1 { /* Player 1 (Red) - Lighter */
+    background-color: rgba(255, 80, 80, 0.55) !important; /* Lighter red */
+}
+/* ****** END NEW ****** */
+
 
 /* --- Piece Styling --- */
 .piece {
@@ -304,17 +321,32 @@ h1 {
     outline-offset: -3px;
     z-index: 6; /* Layer 6: Above overlay, below piece */
 }
-.square.last-move-start {
-    outline: 2px dashed rgba(0, 80, 200, 0.7);
-    outline-offset: -3px;
-    z-index: 6; /* Layer 6 */
-}
-.square.last-move-end {
-    outline: 2px solid rgba(0, 80, 200, 0.9);
-    outline-offset: -3px;
-    z-index: 6; /* Layer 6 */
-}
 
+/* Remove previous outline styles for last moves */
+/*
+.square.last-move-start-p0, .square.last-move-start-p1,
+.square.last-move-end-p0, .square.last-move-end-p1 {
+    outline-width: 3px;
+    outline-offset: -3px;
+    z-index: 6;
+}
+.square.last-move-start-p0 {
+    outline-style: dashed;
+    outline-color: rgba(0, 100, 255, 0.8);
+}
+.square.last-move-start-p1 {
+    outline-style: dashed;
+    outline-color: rgba(255, 60, 60, 0.8);
+}
+.square.last-move-end-p0 {
+    outline-style: solid;
+    outline-color: rgba(0, 100, 255, 1.0);
+}
+.square.last-move-end-p1 {
+    outline-style: solid;
+    outline-color: rgba(255, 60, 60, 1.0);
+}
+*/
 
 /* --- Side Panels Common Style --- */
 .captured-panel, #move-history {
