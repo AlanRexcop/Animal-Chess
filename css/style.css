@@ -8,7 +8,7 @@ body {
   padding: 10px;
   min-height: 100vh;
   box-sizing: border-box;
-  background-image: url('../assets/background.png'); /* Adjusted path assuming assets is sibling to css */
+  background-image: url('../assets/background.png');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -32,13 +32,13 @@ h1 {
   justify-content: center;
   align-items: center;
   background-color: rgba(233, 233, 233, 0.9);
-  padding: 10px 15px; /* Slightly more padding */
+  padding: 10px 15px;
   border-radius: 8px;
   margin-bottom: 15px;
   width: 95%;
   max-width: 850px;
   box-sizing: border-box;
-  gap: 15px 20px; /* Row gap, column gap */
+  gap: 15px 20px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
@@ -76,7 +76,7 @@ h1 {
 #game-controls button:hover {
   background-color: #ccc;
 }
-#game-controls .ai-info { /* Remove border/padding from span */
+#game-controls .ai-info {
   border: none;
   padding: 0;
   margin-left: 5px;
@@ -98,7 +98,7 @@ h1 {
 #game-layout {
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Keep items aligned to the top */
+  align-items: flex-start;
   width: 98%;
   max-width: 850px;
   gap: 15px;
@@ -111,8 +111,8 @@ h1 {
 /* --- Column Wrappers --- */
 #left-panel, #right-panel {
   display: flex;
-  flex-direction: column; /* Stack children vertically */
-  gap: 10px; /* Space between children (captured panel, history, etc.) */
+  flex-direction: column;
+  gap: 10px;
   min-width: 180px;
   flex-grow: 0;
   flex-shrink: 0;
@@ -129,9 +129,8 @@ h1 {
   position: relative;
   width: calc(420px + 2 * 20px);
   height: calc(540px + 2 * 20px);
-  padding: 3px; /* Keep 3px padding for labels */
+  padding: 3px;
   box-sizing: content-box;
-  /* Remove margin-bottom from board container, add to main area */
 }
 
 .coord-labels {
@@ -191,42 +190,105 @@ h1 {
   position: absolute;
   top: 20px;
   left: 20px;
-  background-color: rgba(204, 204, 204, 0.8);
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
-  margin-bottom: 0; /* Board itself has no bottom margin */
+  margin-bottom: 0;
 }
 
 .square {
   width: 60px; height: 60px;
   border: 1px solid #bbb;
-  box-sizing: border-box; display: flex; justify-content: center; align-items: center;
-  cursor: pointer; position: relative;
-  transition: background-color 0.2s ease;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
-.land { background-color: rgba(144, 238, 144, 0.85); }
-.water { background-color: rgba(173, 216, 230, 0.85); }
-.trap { background-color: rgba(255, 182, 193, 0.85); }
-.player0-den { background-color: rgba(210, 180, 255, 0.85); border: 2px dashed #0000FF;}
-.player1-den { background-color: rgba(255, 218, 185, 0.85); border: 2px dashed #FF0000; }
 
-/* Style .piece and the img inside it */
+/* --- Terrain Backgrounds --- */
+.land-tile-container {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  z-index: 1; /* Layer 1: Base Terrain */
+  pointer-events: none;
+}
+
+.land-tile-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.land-fallback-bg {
+  background-color: rgba(144, 238, 144, 0.85);
+}
+
+.water-bg {
+  background-image: url('../assets/images/water/ezgif.com-animated-gif-maker.gif');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1; /* Also layer 1 */
+}
+
+.trap-bg {
+  background-color: rgba(255, 182, 193, 0.85);
+  z-index: 1; /* Also layer 1 */
+}
+.player0-den-bg {
+  background-color: rgba(210, 180, 255, 0.85);
+  border: 2px dashed #0000FF;
+  z-index: 1; /* Also layer 1 */
+}
+.player1-den-bg {
+  background-color: rgba(255, 218, 185, 0.85);
+  border: 2px dashed #FF0000;
+  z-index: 1; /* Also layer 1 */
+}
+
+/* --- Highlight Overlay (for background highlights) --- */
+.highlight-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: transparent; /* Default: no highlight */
+  z-index: 5; /* Layer 5: Above terrain, below pieces/outlines */
+  pointer-events: none; /* Let clicks pass through */
+  transition: background-color 0.1s ease-in-out; /* Smooth transition */
+}
+
+/* Apply background highlights TO THE OVERLAY */
+.highlight-overlay.possible-move {
+    background-color: rgba(255, 255, 0, 0.45) !important; /* Slightly adjusted alpha */
+}
+.highlight-overlay.capture-move {
+    background-color: rgba(255, 0, 0, 0.45) !important; /* Slightly adjusted alpha */
+}
+
+/* --- Piece Styling --- */
 .piece {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.65);
   box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-  z-index: 2; cursor: pointer; user-select: none;
+  z-index: 10; /* Layer 10: Highest layer for pieces */
+  cursor: pointer; user-select: none;
   transition: transform 0.3s ease-out;
   box-sizing: border-box;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 2px;
+  border: 2px solid transparent;
 }
-.player0 { border: 2px solid blue; }
-.player1 { border: 2px solid red; }
+.player0 { border-color: blue; }
+.player1 { border-color: red; }
 
 .piece img {
   display: block;
@@ -236,9 +298,23 @@ h1 {
 }
 
 
-.selected { outline: 3px solid gold !important; outline-offset: -3px; z-index: 3;}
-.possible-move { background-color: rgba(255, 255, 0, 0.5) !important; z-index: 1;}
-.capture-move { background-color: rgba(255, 0, 0, 0.5) !important; z-index: 1;}
+/* --- Outline Highlights (Applied to the .square) --- */
+.square.selected {
+    outline: 3px solid gold !important;
+    outline-offset: -3px;
+    z-index: 6; /* Layer 6: Above overlay, below piece */
+}
+.square.last-move-start {
+    outline: 2px dashed rgba(0, 80, 200, 0.7);
+    outline-offset: -3px;
+    z-index: 6; /* Layer 6 */
+}
+.square.last-move-end {
+    outline: 2px solid rgba(0, 80, 200, 0.9);
+    outline-offset: -3px;
+    z-index: 6; /* Layer 6 */
+}
+
 
 /* --- Side Panels Common Style --- */
 .captured-panel, #move-history {
@@ -258,29 +334,15 @@ h1 {
   text-align: center;
   color: #444;
 }
-.last-move-start {
-  outline: 2px dashed rgba(0, 80, 200, 0.7);
-  outline-offset: -3px;
-}
-.last-move-end {
-  outline: 2px solid rgba(0, 80, 200, 0.9);
-   outline-offset: -3px;
-}
 
 /* Style .pieces-container for wrapping */
 .pieces-container {
   display: flex;
-  flex-wrap: wrap; /* Allow wrapping */
-  gap: 4px; /* Gap between pieces */
-  align-content: flex-start; /* Align wrapped lines to the top */
-  /* Calculate max-width for 5 pieces + 4 gaps */
-  /* Piece width = 28px, gap = 4px */
-  /* (5 * 28px) + (4 * 4px) = 140px + 16px = 156px */
-  max-width: 160px; /* Give a little buffer, forces wrap after 5 */
-  /* Calculate min-height for 3 rows + 2 gaps */
-  /* (3 * 28px) + (2 * 4px) = 84px + 8px = 92px */
+  flex-wrap: wrap;
+  gap: 4px;
+  align-content: flex-start;
+  max-width: 160px;
   min-height: 92px;
-  /* Center the container horizontally within its parent panel */
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
@@ -293,15 +355,14 @@ h1 {
   border-radius: 4px;
   box-sizing: border-box;
   background-color: rgba(255, 255, 255, 0.7);
-  border: 1px solid #bbb; /* Basic border */
+  border: 1px solid #bbb;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 1px;
 }
-/* Style based on the CAPTURING player */
-.captured-piece.player0 { border-color: red; } /* Captured by P0 (Blue), piece was Red */
-.captured-piece.player1 { border-color: blue; } /* Captured by P1 (Red), piece was Blue */
+.captured-piece.player0 { border-color: red; }
+.captured-piece.player1 { border-color: blue; }
 
 .captured-piece img {
   display: block;
@@ -311,7 +372,6 @@ h1 {
 }
 
 #move-history {
-  /* flex-grow: 1; */ /* Removed flex-grow */
   min-height: 150px;
   max-height: 350px;
   display: flex;
@@ -324,7 +384,7 @@ h1 {
   margin: 0;
   padding: 0 0 0 25px;
   font-size: 0.85em;
-  flex-grow: 1; /* List grows to fill move-history container */
+  flex-grow: 1;
   overflow-y: auto;
   background-color: rgba(253, 253, 253, 0.9);
   border: 1px solid #eee;
@@ -355,9 +415,8 @@ h1 {
   position: relative;
   top: -1px;
 }
-/* player class added to piece-hist span for potential styling */
-.piece-hist.player0 img { /* Optional: style history image based on player */ }
-.piece-hist.player1 img { /* Optional: style history image based on player */ }
+.piece-hist.player0 img { /* Optional */ }
+.piece-hist.player1 img { /* Optional */ }
 
 .piece-hist img {
   display: block;
@@ -401,7 +460,7 @@ h1 {
   padding: 4px 8px;
   border-radius: 4px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-  margin: 5px auto 0 auto; /* Adjusted margin */
+  margin: 5px auto 0 auto;
 }
 .turn-info {
   font-size: 0.9em;
@@ -414,11 +473,11 @@ h1 {
   color: #333;
 }
 
-/* ****** NEW WIN CHANCE DISPLAY STYLE ****** */
+/* Win Chance Display Style */
 #win-chance-display {
-  font-size: 0.9em; /* Slightly smaller than status */
+  font-size: 0.9em;
   font-weight: normal;
-  background-color: rgba(240, 248, 255, 0.7); /* Alice blue, slightly transparent */
+  background-color: rgba(240, 248, 255, 0.7);
   color: #333;
   text-align: center;
   width: 95%;
@@ -426,19 +485,18 @@ h1 {
   padding: 3px 8px;
   border-radius: 4px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  margin: 5px auto 10px auto; /* Margin top/bottom */
+  margin: 5px auto 10px auto;
   min-height: 1.1em;
   box-sizing: border-box;
 }
-/* ****** END WIN CHANCE DISPLAY STYLE ****** */
 
 
 /* Responsive adjustments */
 @media (max-width: 880px) {
   #game-layout { flex-direction: column; align-items: center; max-width: 100%; gap: 10px; }
   #left-panel, #right-panel {
-      flex-direction: row; /* Side panels become horizontal */
-      flex-wrap: wrap; /* Allow items inside side panels to wrap */
+      flex-direction: row;
+      flex-wrap: wrap;
       justify-content: center;
       min-width: 95%;
       width: 95%;
@@ -446,19 +504,17 @@ h1 {
       gap: 8px;
     }
   .captured-panel, #move-history {
-      flex-basis: calc(50% - 10px); /* Try to fit side-by-side */
+      flex-basis: calc(50% - 10px);
       flex-grow: 1;
       min-width: 150px;
-      min-height: 120px; /* Give both some min height */
+      min-height: 120px;
     }
    #move-history {
       max-height: 200px;
-      /* min-height already set above */
     }
    .pieces-container {
-       max-width: 160px; /* Keep max width */
-       min-height: 92px; /* Keep min height */
-       /* Don't center horizontally when panels are side-by-side */
+       max-width: 160px;
+       min-height: 92px;
        margin-left: 0;
        margin-right: 0;
    }
@@ -487,39 +543,39 @@ h1 {
    #game-controls { gap: 8px; padding: 8px; } #ai-controls { gap: 5px 10px; }
    #game-layout { padding: 10px; width: 100%; }
    #left-panel, #right-panel {
-       flex-direction: column; /* Stack vertically again */
+       flex-direction: column;
        gap: 5px;
        max-width: calc(350px + 2 * 15px);
        width: 100%;
-       align-items: center; /* Center items */
+       align-items: center;
     }
    .captured-panel, #move-history {
-       flex-basis: auto; /* Let them take full width */
-       width: 90%; /* Or some percentage */
+       flex-basis: auto;
+       width: 90%;
        min-width: unset;
-       min-height: unset; /* Reset min-height */
+       min-height: unset;
     }
-   .captured-piece { width: 24px; height: 24px; } /* Smaller captured images */
+   .captured-piece { width: 24px; height: 24px; }
     .pieces-container {
-       max-width: calc(5 * 24px + 4 * 4px + 4px); /* Recalculate for smaller pieces: ~140px */
-       min-height: calc(3 * 24px + 2 * 4px); /* Recalculate for 3 rows: ~80px */
-       margin-left: auto; /* Center again */
+       max-width: calc(5 * 24px + 4 * 4px + 4px); /* ~140px */
+       min-height: calc(3 * 24px + 2 * 4px); /* ~80px */
+       margin-left: auto;
        margin-right: auto;
-       justify-content: center; /* Center pieces horizontally if row not full */
+       justify-content: center;
     }
    #move-history {
        max-height: 150px;
        min-height: 100px;
-       width: 90%; /* Match captured panel width */
+       width: 90%;
     }
    #game-rules { font-size: 0.85em; padding: 10px 15px; width: 98%; }
    #move-list { font-size: 0.75em; padding-left: 20px;}
    .piece-hist { width: 1.1em; height: 1.1em; }
    h1 { font-size: 1.3em; }
-   #status, #win-chance-display { /* Apply styling to both */
+   #status, #win-chance-display {
         width: 90%;
         font-size: 0.9em;
         max-width: calc(350px + 2 * 15px);
     }
-   #win-chance-display { font-size: 0.85em; } /* Make win chance slightly smaller */
+   #win-chance-display { font-size: 0.85em; }
 }
