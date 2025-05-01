@@ -1,176 +1,247 @@
-Overall Summary (Updated):
-This codebase implements a web-based "Mope.io Animal Chess" game with localization and a simple AI opponent. It uses HTML for structure, CSS for styling, and modular JavaScript for game logic, rendering, rules, AI, and language management. The game state remains managed primarily in game.js and board.js. rules.js encapsulates game rules. renderer.js handles visual updates. New modules localization.js and ai.js manage language support and AI gameplay respectively.
-1. index.html (Updated)
-Summary: The main HTML file. Sets up the basic page structure, includes the title (now dynamically updated via localization), links the CSS stylesheet, defines container elements for the game board, status messages, UI controls (language selector, reset button), and captured pieces display. Loads the main JavaScript module (main.js).
+Overall Summary:
+This project implements a web-based "Jungle Chess" (or Animal Chess) game. The application uses HTML for structure, CSS for styling, and modular JavaScript for game logic, rendering, rules, localization, and AI. A Web Worker is used for the AI computation to prevent blocking the main UI thread. Key modules manage the board state (board.js), game rules (rules.js), visual presentation (renderer.js), language (localization.js), and the AI player (aiWorker.js). The main game flow and user interaction are handled in game.js, initiated by main.js.
+1. index.html
+Summary: The main HTML file that defines the structure of the game interface. It includes placeholders for the board, status messages, UI controls (game mode, AI settings, language, reset button), captured pieces display, and move history. Links the CSS stylesheet and loads the main JavaScript module. Coordinates labels are included.
 DOM Element IDs:
-game-container: Main wrapper div.
-game-title: Heading for the game title (localizable).
-board: Div where the game board grid will be rendered.
-status: Div to display game messages (whose turn, win/loss, status updates).
-controls: Div containing UI controls.
+game-title: The main heading for the game title (localized).
+game-controls: Container for game mode, AI settings, language, and reset button.
+game-mode: Select dropdown for choosing Player vs AI or Player vs Player.
+ai-controls: Container for AI specific settings (depth, time limit, depth info).
+difficulty: Select dropdown for AI target depth.
+time-limit: Input field for AI time limit.
+ai-depth-achieved: Span to display the actual depth reached by the AI.
 lang-select-label: Label for the language dropdown.
 lang-select: Select dropdown for language selection.
 reset-button: Button to reset the game.
-captured-p1: Div to display pieces captured by Player 1.
-captured-p2: Div to display pieces captured by Player 2.
-2. constants.js (No significant changes, summary remains mostly the same)
-Summary: Defines essential constant values used throughout the game logic.
+game-layout: Flex container for the main game area and side panels.
+left-panel, right-panel: Containers for captured pieces and move history/turn info.
+main-game-area: Container holding the board and status.
+board-container: Position wrapper for the board and coordinates.
+col-labels-top, col-labels-bottom, row-labels-left, row-labels-right: Containers for coordinate labels.
+board: The grid container where square elements are rendered.
+status: Paragraph to display game status messages (localized).
+captured-by-player1: Section for pieces captured by Red/AI/P2.
+captured-by-player0: Section for pieces captured by Blue/P1.
+move-history: Section for the list of moves.
+move-list: Ordered list (<ol>) to display move history.
+turn: Span within the turn info paragraph to show whose turn it is (localized).
+game-rules: Section displaying basic game rules.
+Imports: N/A (HTML doesn't import/export code).
+Exports: N/A.
+Called By: N/A (This is the main application file loaded by the browser).
+2. css/style.css
+Summary: Defines the visual appearance and layout of the game elements. Styles the body background, game container, controls, board grid, squares (based on terrain classes), pieces (based on player and type classes), UI feedback (selection, valid moves, capture moves, last move highlighting), captured piece display, move history, status area, turn info, and rules panel. Includes responsive adjustments.
+Key Constants: N/A (Uses CSS properties and values).
+Class Names & Key Methods: N/A (Uses CSS selectors and properties).
+Important Function Signatures: N/A.
+Global State Variables: N/A.
+Imports: N/A.
+Exports: N/A.
+Called By: N/A (This file is linked in index.html and interpreted by the browser).
+DOM Element IDs Targeted: #game-container, #game-controls, #game-mode, #ai-controls, #difficulty, #time-limit, #ai-depth-achieved, #lang-select, #reset-button, #game-layout, #left-panel, #right-panel, #main-game-area, #board-container, #col-labels-top, #col-labels-bottom, #row-labels-left, #row-labels-right, #board, #status, #captured-by-player1, #captured-by-player0, #move-history, #move-list, #turn, #game-rules, h1, h2, label, select, button, input[type="number"], span.
+CSS Classes Targeted: .coord-labels, .col-labels, .row-labels, .square, .land, .water, .trap, .player0-den, .player1-den, .piece, .player0, .player1, piece type classes (e.g., .rat), .selected, .possible-move, .capture-move, .last-move-start, .last-move-end, .captured-panel, .pieces-container, .captured-piece, .piece-hist, .turn-info, .error-message.
+3. lang/en.json
+Summary: A JSON file containing key-value pairs for English language strings used throughout the application's user interface, status messages, and labels. Includes placeholders like {player}, {pieceName}, {aiName} that are replaced by the localization module.
+Key Structure: A JSON object where keys are string identifiers (e.g., "gameTitle", "playerTurn", "statusSelecting") and values are the corresponding English text strings.
+Key Examples (from provided file): "gameTitle", "gameModeLabel", "modePVA", "aiDifficultyLabel", "languageLabel", "resetButton", "capturedByRedLabel", "capturedNone", "moveHistoryLabel", "turnLabel", "rulesTitle", "statusLoading", "statusWaitingPlayer", "animal_rat".
+Key Constants: N/A.
+Class Names & Key Methods: N/A.
+Important Function Signatures: N/A.
+Global State Variables: N/A.
+Imports: N/A.
+Exports: N/A.
+Called By: N/A (This file is read by localization.js).
+4. js/constants.js
+Summary: Defines global, immutable values used across different JavaScript modules. Includes board dimensions, numeric terrain types, player identifiers (using an object with numeric values), detailed piece information (rank, name, symbol, value), den coordinates, game status types, AI configuration defaults, and animation duration.
 Key Constants:
-BOARD_ROWS, BOARD_COLS: Dimensions of the game board (9x7).
-TerrainType: Object mapping terrain names (e.g., NORMAL, RIVER, TRAP_P1, DEN_P2) to string identifiers.
-Player: Object defining player identifiers (NONE, PLAYER1, PLAYER2) and a helper getOpponent function.
-AnimalRanks: Object mapping animal type strings (e.g., 'rat', 'elephant') to numerical ranks (1-8).
-AnimalTypes: Array of animal type strings.
-GameStatus: Object mapping game state names (e.g., INIT, ONGOING, P1_WINS) to string identifiers.
-aiPlayer: Constant defining which player is the AI (e.g., Player.PLAYER2).
-aiDifficulty: Constant for the AI search depth.
-Exports:
-BOARD_ROWS, BOARD_COLS, TerrainType, Player, AnimalRanks, AnimalTypes, GameStatus, aiPlayer, aiDifficulty
-3. piece.js (No significant changes, summary remains mostly the same)
-Summary: Defines the Piece class.
-Class Names & Key Methods:
-Piece: Represents a single animal piece.
-constructor(type, player, row, col): Initializes a piece with its type (string), rank (derived from AnimalRanks), owner (Player), and current row/col.
-Imports:
-AnimalRanks, Player from ./constants.js
-Exports:
-Piece
-4. board.js (No significant changes, summary remains mostly the same)
-Summary: Defines the Board class, responsible for managing the game board's state, including terrain and piece locations.
-Class Names & Key Methods:
-Board: Represents the game board grid.
-constructor(): Initializes an empty state (2D array).
-initBoard(): Populates the state with terrain and initial piece placements by calling private helpers.
-_setupTerrain(): Configures river, dens, and traps.
-_setupInitialPieces(): Places starting pieces using the Piece class.
-isValidCoordinate(row, col): Checks if coordinates are within board bounds.
-getSquareData(row, col): Returns the object {piece: Piece|null, terrain: string} for a given square.
-getPiece(row, col): Returns the Piece object or null at the coordinates.
-getTerrain(row, col): Returns the terrain type string at the coordinates.
-setPiece(row, col, piece): Updates the piece at the given coordinates (can be null to clear). Updates piece's internal row/col if piece is provided.
-isEmpty(row, col): Checks if a square has no piece.
-getState(): Returns the entire 2D board state array.
-Imports:
-BOARD_ROWS, BOARD_COLS, TerrainType, Player from ./constants.js
-Piece from ./piece.js
-Exports:
-Board
-5. rules.js (Updated to include getAllValidMoves)
-Summary: Encapsulates the specific rules of Animal Chess, including movement validation, capture logic, win conditions, and now includes a function to get all valid moves for a player (used by AI). Does not directly modify state.
+BOARD_ROWS, BOARD_COLS: Board grid size.
+TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN: Numeric codes for terrain types.
+PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL: Coordinates of the dens.
+Player: Object { NONE: -1, PLAYER0: 0, PLAYER1: 1, getOpponent: Function } for player IDs and utility.
+PIECES: Object mapping lowercase piece names to their data (rank, name, symbol, value).
+GameStatus: Object mapping game status names to string identifiers.
+aiPlayer: Constant defining the AI player (Player.PLAYER1).
+DEFAULT_AI_TARGET_DEPTH, DEFAULT_AI_TIME_LIMIT_MS, MIN_AI_TIME_LIMIT_MS: Default AI search parameters.
+ANIMATION_DURATION: Duration for piece movement animation.
 Important Function Signatures:
-isValidMove(board, piece, endRow, endCol): Checks if a piece can legally move from its current position to endRow, endCol on the given board, considering terrain, special jumps (Lion/Tiger), and basic orthogonal movement. Returns boolean.
-getValidMovesForPiece(board, piece): Calculates all valid destination squares ({r, c}) for a given piece on the board. Returns Array<{r, c}>.
-isRiverJumpPathClear(board, startRow, startCol, endRow, endCol): Helper to check if intermediate squares are empty for Lion/Tiger river jumps. Returns boolean.
-canCapture(attackerPiece, defenderPiece, targetTerrain): Determines if the attackerPiece can capture the defenderPiece based on rank, special rules (Rat/Elephant), and whether the defender is on targetTerrain (especially traps). Returns boolean.
-getGameStatus(board): Checks the board state for win conditions (piece in opponent's den, no pieces left for one player). Returns a GameStatus value (e.g., GameStatus.ONGOING, GameStatus.P1_WINS).
-getAllValidMoves(board, player): Calculates all possible valid moves for a given player on the board. Returns Array<{ piece: Piece, startRow: number, startCol: number, endRow: number, endCol: number }>.
-Imports:
-BOARD_ROWS, BOARD_COLS, TerrainType, Player, GameStatus from ./constants.js
-Exports:
-isValidMove, getValidMovesForPiece, isRiverJumpPathClear, canCapture, getGameStatus, getAllValidMoves
-6. renderer.js (Updated to handle localization, captured pieces, and last move highlighting)
-Summary: Handles all direct DOM manipulation for rendering the game's visual state (board, pieces, highlights, status messages, and now captured pieces display and last move highlighting). Uses localization for status messages.
-Important Function Signatures:
-renderBoard(boardState, clickHandler, lastMove): Clears the #board element and redraws all squares, terrain, and pieces based on the boardState (2D array). Attaches the clickHandler function to each square. Now accepts lastMove object to highlight last move.
-highlightSquare(row, col, className): Adds a CSS class (className) to the DOM element representing the square at row, col.
-clearHighlights(className): Removes a specific CSS class (className) from all relevant DOM elements (usually squares).
-updateStatus(messageKey, params): Sets the localized text content of the #status DOM element using a messageKey and optional parameters. Calls getString from localization.js.
-addBoardEventListeners(handleClickCallback): (Potentially used internally or called by game.js initially) Sets up event listeners on the board, likely using delegation.
-renderCapturedPieces(capturedP1, capturedP2): Updates the content of #captured-p1 and #captured-p2 to display captured piece counts. Uses localization for labels and "None" text.
-DOM Element IDs: Interacts with #board, #status, #captured-p1, #captured-p2. Selects child elements based on classes and data attributes.
-Imports:
-BOARD_ROWS, BOARD_COLS, TerrainType, Player from ./constants.js
-getString from ./localization.js
-Exports:
-renderBoard, highlightSquare, clearHighlights, updateStatus, addBoardEventListeners, renderCapturedPieces
-7. game.js (Significantly Updated to include Localization, AI, Game Flow, and UI Interaction)
-Summary: The main game orchestration logic. Initializes the game, manages the core game loop (player turns, including AI turns), handles user interactions (clicks), applies rules, updates the board state, coordinates rendering, manages game status UI using localization, and integrates AI move generation.
-Global State Variables:
-board: An instance of the Board class.
-currentPlayer: Player.PLAYER1 or Player.PLAYER2.
-selectedPiece: Object { piece: Piece, row: number, col: number } or null.
-gameStatus: Current GameStatus value.
-validMoves: Array of {r, c} objects representing valid moves for the selectedPiece.
-isGameOver: Boolean flag.
-isAiThinking: Boolean flag to prevent user input during AI turn.
-lastMove: Object { start: {r, c}, end: {r, c} } to track the last move for highlighting.
-capturedByP1: Array of captured piece type strings for Player 1.
-capturedByP2: Array of captured piece type strings for Player 2.
-Important Function Signatures:
-initGame(): Sets up the initial game state (creates board, sets player 1, renders), resets UI, and sets up UI listeners. Exported.
-Calls: Board.constructor(), Board.initBoard(), renderBoard(), updateGameStatusUI(), renderCapturedPieces(), setupUIListeners(), getString() (for button text).
-setupUIListeners(): Sets up event listeners for the reset button and language selector. Called once during initialization.
-Calls: getString() (for button and label text), loadLanguage() (from localization.js), initGame() (on reset button click), updateGameStatusUI(), renderCapturedPieces() (on language change).
-handleSquareClick(row, col): The primary event handler for clicks on the board. Manages piece selection, deselection, move attempts, and capture attempts by calling other functions and rule checks.
-Calls: board.getPiece(), board.getTerrain(), deselectPiece(), selectPiece(), rules.isValidMove(), rules.canCapture(), movePiece(), capturePiece(), renderUpdateStatus() (from renderer.js), updateGameStatusUI().
-selectPiece(piece, row, col): Updates selectedPiece, calculates validMoves (using rules.getValidMovesForPiece), and triggers highlighting (via renderer).
-Calls: clearHighlights() (from renderer.js), highlightSquare() (from renderer.js), rules.getValidMovesForPiece(), highlightValidMoves(), renderUpdateStatus() (from renderer.js).
-deselectPiece(): Clears selectedPiece, validMoves, and highlights.
-Calls: clearHighlights() (from renderer.js).
-movePiece(startRow, startCol, endRow, endCol): Updates the board state for a valid move, tracks last move, and triggers rendering and game end checks.
-Calls: board.getPiece(), board.setPiece(), deselectPiece(), renderBoard(), checkGameEndAndUpdate().
-capturePiece(startRow, startCol, targetRow, targetCol): Handles piece capture, updates state, tracks last move, and triggers UI updates and game end checks.
-Calls: board.getPiece(), board.setPiece(), deselectPiece(), renderBoard(), renderCapturedPieces() (from renderer.js), checkGameEndAndUpdate().
-switchPlayer(): Toggles currentPlayer, deselects piece, and updates status. Triggers AI turn if necessary.
-Calls: deselectPiece(), updateGameStatusUI(), triggerAiTurn().
-checkGameEndAndUpdate(): Calls rules.getGameStatus and updates gameStatus and isGameOver flag if the game has ended. Switches player if ongoing.
-Calls: rules.getGameStatus(), switchPlayer(), updateGameStatusUI().
-updateGameStatusUI(): Updates the status message display based on gameStatus and currentPlayer using localization.
-Calls: renderUpdateStatus() (from renderer.js), getString() (from localization.js).
-triggerAiTurn(): Initiates the AI's turn, calls findBestMove from ai.js, and processes the AI move.
-Calls: renderUpdateStatus() (from renderer.js), findBestMove() (from ai.js), board.getPiece(), capturePiece(), movePiece(), switchPlayer(), updateGameStatusUI().
-DOM Element IDs: Indirectly interacts with #board, #status, #captured-p1, #captured-p2 via the renderer.js module, and directly with #reset-button, #lang-select, #lang-select-label, #game-title.
-Imports:
-Board from ./board.js
-renderBoard, highlightSquare, clearHighlights, updateStatus as renderUpdateStatus, renderCapturedPieces from ./renderer.js
-getString, loadLanguage from ./localization.js
-Player, GameStatus, aiPlayer, aiDifficulty from ./constants.js
-rules (all exports) from ./rules.js
-findBestMove from ./ai.js
-Exports:
-initGame
-8. main.js (Updated to handle language loading and error handling)
-Summary: The application entry point. Asynchronously loads language resources, then initializes the game by calling initGame() from game.js. Includes error handling for language loading failure.
-Important Function Signatures:
-startApp(): Asynchronous function that loads language resources and initializes the game.
-Calls: loadLanguage() (from localization.js), getString() (from localization.js), initGame() (from game.js).
-Imports:
-initGame from ./game.js
-loadLanguage, getString from ./localization.js
-Exports: None.
-9. style.css (Updated to include styles for new UI elements and last move highlighting)
-Summary: Contains all CSS rules for styling the HTML elements, including the layout, board grid, square appearance (based on terrain classes like .river, .trap_p1, .den_p2), piece appearance (using background images and player-specific borders like .player1, .rat), UI feedback (like .selected, .valid-move), and now styles for last move highlighting (.last-move-start, .last-move-end) and the captured pieces display (.captured-pieces-area, #captured-p1, #captured-p2).
-Key CSS Selectors: #game-container, #board, .square, .piece, terrain classes (.river, .trap_p1, etc.), player classes (.player1, .player2), animal classes (.rat, .cat, etc.), state classes (.selected, .valid-move), .last-move-start, .last-move-end, .captured-pieces-area, #captured-p1, #captured-p2.
-10. localization.js (New File - Handles language loading and string retrieval)
-Summary: Manages language localization for the game. Loads language-specific JSON files and provides functions to retrieve localized strings using keys and placeholder parameters.
-Global State Variables:
-currentLanguageData: Object holding the currently loaded language data.
-Important Function Signatures:
-loadLanguage(langCode): Asynchronously fetches and loads language data from a JSON file (e.g., lang/en.json). Returns Promise<boolean> indicating success.
-getString(key, params): Retrieves a localized string based on a key from currentLanguageData, replacing placeholders {paramName} with values from the params object. Returns the localized string or a fallback message if the key is missing.
+getPieceKey(pieceName): Helper function to get the lowercase piece type string from a potential display name.
+Global State Variables: None.
 Imports: None.
 Exports:
-loadLanguage, getString
-11. lang/en.json (Example Language File - Contains English strings)
-Summary: JSON file containing key-value pairs for English language strings used in the game UI and status messages. Other language files (e.g., vn.json) would have the same structure but with translations.
-Key Structure: JSON object where keys are string identifiers (e.g., "gameTitle", "playerTurn") and values are the corresponding English text strings, potentially with placeholders like {player}, {color}, etc.
-Example Keys (from provided file): "gameTitle", "playerTurn", "player1Name", "player2Name", "statusSelecting", "resetButton", "languageLabel", "capturedByP1Label", "capturedByP2Label", "capturedNone", "ai_thinking".
-12. ai.js (New File - Implements AI Logic using Minimax with Alpha-Beta Pruning)
-Summary: Implements the AI opponent logic for the Animal Chess game. Uses the Minimax algorithm with alpha-beta pruning to determine the best move. Includes functions for evaluating board states and applying moves in simulations.
-Important Function Signatures:
-findBestMove(board, aiPlayer, searchDepth): The main function to find the best move for the AI player. Calls getAllValidMoves, minimax, and applyMove. Returns the best move object or null. Exported.
-Calls: getAllValidMoves() (from rules.js), minimax(), applyMove().
-minimax(board, depth, alpha, beta, isMaximizingPlayer, aiPlayer): Recursive Minimax algorithm with alpha-beta pruning. Evaluates board states to a given depth. Calls evaluateBoard, applyMove, and recursively itself.
-Calls: evaluateBoard(), applyMove(), minimax() (recursive call), getGameStatus() (from rules.js), getAllValidMoves() (from rules.js).
-evaluateBoard(board, aiPlayer): Evaluates a given board state from the AI player's perspective. Returns a numerical score (higher is better for AI). Considers win/loss and piece material count.
-Calls: getGameStatus() (from rules.js), board.getState(), board.getPiece().
-applyMove(originalBoard, move): Applies a given move to a copy of the board state and returns a new Board object representing the state after the move. Used for simulating moves in the AI search.
-Calls: Board.constructor(), deepCopyBoardState(), Board.getPiece(), Board.setPiece().
-deepCopyBoardState(state): Creates a deep copy of the board state array, ensuring new Piece instances are created for simulations.
+BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL, Player, PIECES, GameStatus, aiPlayer, DEFAULT_AI_TARGET_DEPTH, DEFAULT_AI_TIME_LIMIT_MS, MIN_AI_TIME_LIMIT_MS, ANIMATION_DURATION, getPieceKey.
+Called By (Important Functions): All other JS modules import and use these constants and the getPieceKey function extensively.
+5. js/piece.js
+Summary: Defines the Piece class, representing a single animal piece with its type, player owner, position, and associated data (rank, name, symbol, value) from constants.
+Class Names & Key Methods:
+Piece: Represents an animal piece.
+constructor(type, player, row, col): Initializes a new Piece instance. Validates type and player. Uses PIECES and getPieceKey from constants.
+getImageSrc(): Returns the file path for the piece's image based on type and player color.
+setPosition(row, col): Updates the piece's internal row and column.
+Global State Variables: None (each instance holds its own state).
 Imports:
-Player, AnimalRanks, GameStatus from ./constants.js
-getAllValidMoves, getGameStatus from ./rules.js
-Board from ./board.js
-Piece from ./piece.js
+PIECES, Player, getPieceKey from ./constants.js.
 Exports:
-findBestMove
+Piece.
+Called By (Important Functions):
+board.js: Board._setupInitialPieces creates new Piece instances. Board.setPiece calls piece.setPosition().
+aiWorker.js: deepCopyBoardState creates new Piece instances for simulation.
+6. js/board.js
+Summary: Defines the Board class responsible for maintaining the core game state grid. It stores the terrain type and the piece (if any) for each square. Provides methods for initialization, accessing square data, setting pieces, and generating a deep copy suitable for the AI worker.
+Class Names & Key Methods:
+Board: Represents the 9x7 game board grid.
+constructor(): Initializes an empty state array.
+initBoard(): Sets up the grid structure, calls internal methods to add terrain and initial pieces.
+_setupTerrain(): Populates the board with terrain types.
+_getTerrainType(r, c): Maps coordinates to a specific terrain type constant.
+_setupInitialPieces(): Places starting pieces on the board using the Piece class and initial positions from constants.
+isValidCoordinate(row, col): Checks if coordinates are within board bounds.
+getSquareData(row, col): Returns the { piece, terrain } object for a square.
+getPiece(row, col): Returns the Piece object or null at coordinates.
+getTerrain(row, col): Returns the terrain type constant at coordinates.
+isEmpty(row, col): Checks if a square is empty.
+setPiece(row, col, piece): Updates the piece at coordinates, and updates the piece's internal position.
+getState(): Returns the internal 2D state array (a reference).
+getClonedStateForWorker(): Creates and returns a deep copy of the board state, suitable for sending to the AI worker.
+Global State Variables: None (state is part of the Board instance).
+Imports:
+BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL, PIECES, Player from ./constants.js.
+Piece from ./piece.js.
+Exports:
+Board.
+Called By (Important Functions):
+game.js: initGame creates new Board() and calls initBoard(). handleSquareClick, updateBoardState, checkGameEndAndUpdate, triggerAiTurn interact with the board instance's methods (getPiece, setPiece, getState, getClonedStateForWorker).
+rules.js: Functions like getValidMovesForPiece, canCapture, getGameStatus, getAllValidMoves accept boardState derived from board.getState() or board.getClonedStateForWorker().
+aiWorker.js: Functions like alphaBeta, evaluateBoard, simulateMoveAndGetHash operate on the cloned board state received from the worker message.
+7. js/rules.js
+Summary: Contains pure functions implementing the rules of Animal Chess. Includes checks for river squares, effective piece rank (considering traps), capture validity (including special cases like Rat/Elephant), valid moves for a single piece, all valid moves for a player, and the overall game status (win/loss/ongoing).
+Important Function Signatures:
+isRiver(r, c): Checks if coordinates are a river square.
+getEffectiveRank(piece, r, c, boardState): Gets a piece's rank, reduced to 0 if in an opponent's trap.
+canCapture(attackerPiece, defenderPiece, attR, attC, defR, defC, boardState): Determines if an attacker can capture a defender, considering rank, traps, and Rat/Elephant rules.
+getValidMovesForPiece(piece, r, c, boardState): Returns an array of valid {row, col} destinations for a given piece on the board state. Includes orthogonal and jump moves.
+getAllValidMoves(player, boardState): Returns an array of detailed move objects ({ pieceData, fromRow, fromCol, toRow, toCol }) for all pieces belonging to a player on the board state.
+getGameStatus(boardState): Returns the current GameStatus (ONGOING, PLAYER0_WINS, PLAYER1_WINS, DRAW) based on the board state.
+isValidMove(boardState, piece, endRow, endCol): A simplified validity check (used by AI primarily for move comparison).
+movesAreEqual(move1, move2): Compares two move objects (used by AI).
+Global State Variables: None.
+Imports:
+BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL, Player, GameStatus, PIECES, getPieceKey from ./constants.js.
+Exports:
+isRiver, getEffectiveRank, canCapture, getValidMovesForPiece, getAllValidMoves, getGameStatus, isValidMove, movesAreEqual.
+Called By (Important Functions):
+game.js: handleSquareClick calls getValidMovesForPiece and canCapture. selectPiece calls getValidMovesForPiece. postMoveChecks calls getGameStatus. triggerAiTurn calls getAllValidMoves.
+aiWorker.js: findBestMove calls getAllValidMoves. alphaBeta calls getGameStatus, getAllValidMoves, evaluateBoard. evaluateBoard calls getGameStatus, getEffectiveRank, isRiver, canCapture. simulateMoveAndGetHash uses isRiver (in checkJumpThreat helper which is called by evaluateBoard). isValidMove and movesAreEqual are used internally for move ordering/TT.
+8. js/renderer.js
+Summary: Manages all direct DOM manipulation for rendering the game's visual state. Handles drawing the board grid, placing piece images, applying highlight classes, updating status messages, displaying captured pieces, showing move history, and coordinate labels. Uses localization strings via localization.js. Includes functions for playing sounds.
+Important Function Signatures:
+renderBoard(boardState, clickHandler, lastMove): Clears and redraws the entire board, squares, pieces, applies terrain classes, attaches clickHandler, and highlights the lastMove.
+renderCoordinatesIfNeeded(): Draws board coordinate labels if they aren't already present.
+highlightSquare(row, col, className): Adds a CSS class to a specific square element.
+clearHighlights(className): Removes a CSS class from all square elements on the board.
+updateStatus(messageKey, params, isError): Sets the localized text content of the status element.
+updateTurnDisplay(currentPlayer, gameMode): Sets the localized text content of the turn indicator.
+renderCapturedPieces(capturedByPlayer0, capturedByPlayer1): Updates the display of captured pieces using localized labels and piece images/symbols.
+addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPieceData): Adds a formatted entry to the move history list.
+clearMoveHistory(): Clears the move history list.
+playSound(soundName): Attempts to play a sound effect.
+updateAiDepthDisplay(depth): Updates the display showing the AI's achieved search depth.
+Global State Variables: coordinatesRendered (internal flag).
+DOM Element IDs: board, status, turn, #captured-by-player0 .pieces-container, #captured-by-player1 .pieces-container, move-list, col-labels-top, col-labels-bottom, row-labels-left, row-labels-right.
+Imports:
+BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, Player, getPieceKey, PIECES from ./constants.js.
+getString from ./localization.js.
+Piece from ./piece.js.
+Exports:
+renderBoard, highlightSquare, clearHighlights, updateStatus, updateTurnDisplay, renderCapturedPieces, addMoveToHistory, clearMoveHistory, playSound, updateAiDepthDisplay.
+Called By (Important Functions):
+game.js: initGame calls renderBoard, renderCapturedPieces, updateGameStatusUI, updateTurnDisplay, clearMoveHistory. handleSquareClick calls clearHighlights, renderBoard, updateGameStatusUI. selectPiece calls clearHighlights, highlightSquare, updateGameStatusUI. deselectPiece calls clearHighlights. animateAndMakeMove calls renderBoard, renderCapturedPieces, addMoveToHistory, playSound, postMoveChecks (which calls renderer functions). postMoveChecks calls renderBoard, renderCapturedPieces, updateGameStatusUI. switchPlayer calls deselectPiece, updateGameStatusUI, updateTurnDisplay. setGameOver calls deselectPiece, updateGameStatusUI, playSound, renderBoard. updateGameStatusUI calls updateStatus, updateTurnDisplay, getString. triggerAiTurn calls updateGameStatusUI, updateAiDepthDisplay. handleAiWorkerMessage calls updateAiDepthDisplay, updateStatus, setGameOver (which calls renderer), playSound, renderBoard, animateAndMakeMove. handleAiWorkerError calls updateStatus, setGameOver (which calls renderer), playSound, renderBoard.
+9. js/localization.js
+Summary: Manages the loading and retrieval of localized string data from JSON files (lang/*.json). Provides a function to get a string by key, with support for placeholder replacement. Also includes a function to automatically apply loaded localization to static elements on the page using data-translate attributes.
+Global State Variables: currentLanguageData (stores the loaded JSON), currentLangCode.
+Important Function Signatures:
+loadLanguage(langCode): Asynchronously fetches lang/${langCode}.json, parses it, and updates currentLanguageData. Handles errors and potential fallback to English. Returns a Promise resolving to boolean success.
+getString(key, params): Looks up key in currentLanguageData, replaces {placeholder} with params, and returns the resulting string. Logs a warning and returns the key if not found.
+applyLocalizationToPage(): Finds all elements with data-translate attribute and updates their text content, placeholder, or title using getString.
+getCurrentLanguage(): Returns the current language code.
+Imports: None.
+Exports:
+loadLanguage, getString, applyLocalizationToPage, getCurrentLanguage.
+Called By (Important Functions):
+main.js: startApp calls loadLanguage and applyLocalizationToPage.
+game.js: setupUIListeners calls loadLanguage, applyLocalizationToPage, getString, renderCapturedPieces, updateGameStatusUI. updateStatus calls getString. updateTurnDisplay calls getString. renderCapturedPieces calls getString. updateGameStatusUI calls getString.
+10. js/aiWorker.js
+Summary: Runs in a separate Web Worker thread. Contains the implementation of the AI player using Iterative Deepening Alpha-Beta search with Zobrist Hashing and a Transposition Table. Evaluates board states based on heuristics (material, position, threats, etc.). Receives board state and search parameters via onmessage, calculates the best move within limits, and sends the result back via postMessage.
+Global State Variables (Worker-scoped): aiRunCounter, killerMoves (for move ordering), zobristTable, zobristBlackToMove, pieceNameToIndex, pieceIndexCounter, transpositionTable (stores results for previously evaluated positions).
+Important Function Signatures:
+self.onmessage(e): The entry point when a message is received from the main thread. Parses input, calls findBestMove, and sends the result back using self.postMessage. Handles basic error wrapping.
+findBestMove(currentBoard, maxDepth, timeLimit): The main AI search function. Implements iterative deepening, manages the search time/depth, and calls the alphaBeta function for each depth. Handles initial move ordering and returns the best move found.
+alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPlayer, startTime, timeLimit, ply): The recursive Alpha-Beta search function. Uses the Transposition Table, handles base cases (depth 0, game over), generates and orders moves (using killers), and recursively calls itself. Manages alpha and beta pruning. Records killer moves.
+evaluateBoard(currentBoard): Calculates a heuristic score for a given board state from the AI's perspective. Includes material, advancement, den proximity, attack/jump threat, and trap penalties. Calls rule helper functions.
+simulateMoveAndGetHash(currentBoardState, move, currentHash): Applies a move to a clone of the board state and calculates the new Zobrist hash incrementally. Returns the new state and hash.
+computeZobristKey(currentBoard, playerToMove): Calculates the Zobrist hash for a given board state from scratch.
+initializeZobrist(): Generates random keys for the Zobrist table upon worker initialization.
+randomBigInt(): Generates a random BigInt (used by Zobrist).
+cloneBoard(board): Creates a deep copy of the board state array.
+recordKillerMove(ply, move): Stores a move that caused a beta cutoff.
+checkJumpThreat(...): Helper function used by evaluateBoard to assess jump threats.
+TimeLimitExceededError: Custom error class for indicating timeout.
+Imports:
+BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN, PLAYER0_DEN_ROW, PLAYER0_DEN_COL, PLAYER1_DEN_ROW, PLAYER1_DEN_COL, Player, PIECES, GameStatus from ./constants.js.
+canCapture, getValidMovesForPiece, getAllValidMoves, getGameStatus, isValidMove, movesAreEqual, getEffectiveRank, isRiver from ./rules.js.
+Exports: None (communicates via self.onmessage and self.postMessage).
+Called By (Important Functions):
+game.js: initializeAiWorker creates the worker. handleAiWorkerMessage receives results. handleAiWorkerError handles errors. triggerAiTurn calls aiWorker.postMessage.
+11. js/game.js
+Summary: The main game controller. Handles game initialization, managing player turns (human and AI), processing user clicks, validating moves and captures (using rules.js), updating the board state (using board.js), coordinating rendering and UI updates (using renderer.js and localization.js), managing game status, integrating the AI worker, handling animation, and tracking move history and captured pieces.
+Global State Variables: board, currentPlayer, selectedPieceInfo, gameStatus, validMovesCache, isGameOver, isAiThinking, aiWorker, lastMove, capturedByPlayer0, capturedByPlayer1, moveHistory. Also caches UI elements (difficultySelect, etc.).
+Important Function Signatures:
+initGame(): Initializes or resets all game state variables, creates the board, sets initial player, renders the UI, and sets up UI listeners. Exports to main.js.
+Calls: new Board(), board.initBoard(), renderBoard(), renderCapturedPieces(), updateGameStatusUI(), setupUIListeners(), initializeAiWorker(), updateAiDepthDisplay().
+setupUIListeners(): Sets up event listeners for reset button, language selector, game mode, AI difficulty, and AI time limit. Called once.
+Calls: loadLanguage(), applyLocalizationToPage(), renderCapturedPieces(), updateGameStatusUI(), initGame(). Uses constants MIN_AI_TIME_LIMIT_MS.
+handleSquareClick(row, col): Processes a click on a board square. Determines if a piece is being selected, deselected, moved, or captured. Calls other functions based on logic.
+Calls: board.getPiece(), selectPiece(), deselectPiece(), validMovesCache.some(), animateAndMakeMove(). Uses constant aiPlayer.
+selectPiece(piece, row, col): Updates selectedPieceInfo, calculates validMovesCache using rules.js, and calls renderer.js functions for highlighting and status updates.
+Calls: deselectPiece(), rules.getValidMovesForPiece(), highlightSquare(), clearHighlights(), board.getPiece(), updateGameStatusUI().
+deselectPiece(): Clears selectedPieceInfo and validMovesCache, calls renderer.js to clear highlights.
+Calls: clearHighlights().
+updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPiece): Updates the board state and captured piece lists based on a completed move/capture. Updates lastMove.
+Calls: board.setPiece(). Uses constants Player.
+animateAndMakeMove(piece, toRow, toCol, fromRow, fromCol, targetPiece): Handles the visual animation of a piece moving/capturing, then calls updateBoardState and postMoveChecks.
+Calls: updateBoardState(), addMoveToHistory(), playSound(), postMoveChecks(), board.getPiece(). Uses constant ANIMATION_DURATION.
+postMoveChecks(): Called after a move/capture animation finishes. Re-renders UI, checks for game over, and switches player if the game is ongoing.
+Calls: renderBoard(), renderCapturedPieces(), rules.getGameStatus(), setGameOver(), playSound(), switchPlayer(), updateGameStatusUI(). Uses constants GameStatus, Player.
+switchPlayer(): Toggles currentPlayer, deselects, updates status, and triggers AI turn if applicable.
+Calls: Player.getOpponent(), deselectPiece(), updateGameStatusUI(), triggerAiTurn(). Uses constants aiPlayer.
+setGameOver(winner, status): Sets the isGameOver flag, updates gameStatus, deselects, updates UI, and plays sound.
+Calls: deselectPiece(), updateGameStatusUI(), playSound(), renderBoard(). Uses constants Player, GameStatus.
+updateGameStatusUI(): Updates the status message and turn display based on the current game state using localization.js and renderer.js.
+Calls: getString(), updateStatus(), updateTurnDisplay(). Uses constants GameStatus, Player, aiPlayer.
+triggerAiTurn(): Checks conditions, sets isAiThinking, updates UI, prepares board state, and sends a message to the aiWorker.
+Calls: updateGameStatusUI(), updateAiDepthDisplay(), board.getClonedStateForWorker(), aiWorker.postMessage(), updateStatus(), setGameOver(), playSound(). Uses constants aiPlayer, DEFAULT_AI_TARGET_DEPTH, DEFAULT_AI_TIME_LIMIT_MS, GameStatus, Player.
+initializeAiWorker(): Creates and configures the Web Worker for the AI, setting up message and error handlers.
+Calls: new Worker(), handleAiWorkerMessage(), handleAiWorkerError(), updateStatus(), setGameOver(), playSound().
+handleAiWorkerMessage(e): Processes results received from the AI worker. Makes the AI's move if valid, updates displays, handles errors reported by the worker.
+Calls: updateAiDepthDisplay(), updateStatus(), setGameOver(), playSound(), board.getPiece(), animateAndMakeMove(), rules.getAllValidMoves(), renderBoard(). Uses constants aiPlayer, GameStatus, Player.
+handleAiWorkerError(event): Handles errors occurring within the AI worker. Logs error, updates status, and sets the game to over.
+Calls: updateStatus(), setGameOver(), playSound(), renderBoard(). Uses constants GameStatus, Player.
+Imports:
+Board from ./board.js.
+Piece from ./piece.js.
+renderBoard, highlightSquare, clearHighlights, updateStatus, renderCapturedPieces, addMoveToHistory, clearMoveHistory, playSound, updateTurnDisplay, updateAiDepthDisplay from ./renderer.js.
+loadLanguage, getString, applyLocalizationToPage from ./localization.js.
+Player, GameStatus, aiPlayer, DEFAULT_AI_TARGET_DEPTH, DEFAULT_AI_TIME_LIMIT_MS, MIN_AI_TIME_LIMIT_MS, PIECES, ANIMATION_DURATION, getPieceKey from ./constants.js.
+* as rules from ./rules.js.
+Exports:
+initGame.
+12. js/main.js
+Summary: The entry point for the application. Waits for the DOM to load, determines the initial language (basic browser check), loads the language file using localization.js, applies localization to the page, and then calls the main game initialization function initGame from game.js. Includes basic error handling for language loading and game initialization.
+Important Function Signatures:
+startApp(): Async function that orchestrates the initial setup process.
+Calls: loadLanguage(), applyLocalizationToPage(), getString(), initGame(). Uses navigator.language.
+Global State Variables: None.
+Imports:
+initGame from ./game.js.
+loadLanguage, applyLocalizationToPage, getString from ./localization.js.
+Exports: None.
+Called By: The browser, via the DOMContentLoaded event listener.
