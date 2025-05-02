@@ -18,7 +18,7 @@ import {
 import * as rules from './rules.js';
 import { evaluateBoard } from './aiEvaluate.js'; // <-- Import evaluateBoard
 
-// Module State, UI Cache, etc. (Unchanged)
+// Module State, UI Cache, etc.
 let board = new Board();
 let currentPlayer = Player.PLAYER0;
 let selectedPieceInfo = null;
@@ -31,7 +31,7 @@ let lastMove = null;
 let capturedByPlayer0 = [];
 let capturedByPlayer1 = [];
 let moveHistory = [];
-let lastEvalScore = null; // This will now be updated in PvP too
+let lastEvalScore = null;
 let difficultySelect;
 let timeLimitInput;
 let resetButton;
@@ -41,14 +41,21 @@ let aiControlsContainer;
 let aiTargetDepth = DEFAULT_AI_TARGET_DEPTH;
 let aiTimeLimitMs = DEFAULT_AI_TIME_LIMIT_MS;
 
-// AI Worker Initialization and Handlers (Unchanged)
+// AI Worker Initialization and Handlers
 function initializeAiWorker() {
     if (aiWorker) { console.log("[Main] Terminating previous AI Worker."); aiWorker.terminate(); aiWorker = null; }
     try { aiWorker = new Worker('js/aiWorker.js', { type: 'module' }); console.log("[Main] AI Worker created successfully (as module)."); aiWorker.onmessage = handleAiWorkerMessage; aiWorker.onerror = handleAiWorkerError; }
     catch (e) { console.error("Failed to create AI Worker:", e); updateStatus('errorWorkerInit', {}, true); setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); updateWinChanceBar(null); }
 }
 function handleAiWorkerMessage(e) {
-    console.log('[Main] Message received from AI Worker:', e.data); isAiThinking = false;
+    console.log('[Main] Message received from AI Worker:', e.data);
+    isAiThinking = false;
+    // --- INTEGRATED: Re-enable controls ---
+    if (gameModeSelect) gameModeSelect.disabled = false;
+    if (difficultySelect) difficultySelect.disabled = false;
+    if (timeLimitInput) timeLimitInput.disabled = false;
+    // --- END INTEGRATED ---
+
     const { move: bestMoveData, depthAchieved, nodes, eval: score, error } = e.data;
     updateAiDepthDisplay(depthAchieved ?? '?');
     if (score !== null && score !== undefined && isFinite(score)) { lastEvalScore = score; console.log(`[Main AI Eval] Received Eval: ${lastEvalScore}`); } else if (!error) { lastEvalScore = null; }
@@ -65,20 +72,37 @@ function handleAiWorkerMessage(e) {
     }
 }
 function handleAiWorkerError(event) {
-    console.error(`[Main] Error from AI Worker: Msg:${event.message}, File:${event.filename}, Line:${event.lineno}`, event); updateStatus('errorAIWorker', {}, true); isAiThinking = false; lastEvalScore = null; updateWinChanceBar(lastEvalScore);
+    console.error(`[Main] Error from AI Worker: Msg:${event.message}, File:${event.filename}, Line:${event.lineno}`, event);
+    updateStatus('errorAIWorker', {}, true);
+    isAiThinking = false;
+    // --- INTEGRATED: Re-enable controls ---
+    if (gameModeSelect) gameModeSelect.disabled = false;
+    if (difficultySelect) difficultySelect.disabled = false;
+    if (timeLimitInput) timeLimitInput.disabled = false;
+    // --- END INTEGRATED ---
+    lastEvalScore = null;
+    updateWinChanceBar(lastEvalScore);
     if (!isGameOver) { setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); playSound('victory'); renderBoard(board.getState(), handleSquareClick, lastMove); }
 }
 
-// initGame, setupUIListeners, selectPiece, deselectPiece, handleSquareClick (Unchanged)
+// initGame (Modified for control enabling)
 export function initGame() {
     console.log("Initializing game..."); difficultySelect = document.getElementById('difficulty'); timeLimitInput = document.getElementById('time-limit'); resetButton = document.getElementById('reset-button'); langSelect = document.getElementById('lang-select'); gameModeSelect = document.getElementById('game-mode'); aiControlsContainer = document.getElementById('ai-controls');
     board = new Board(); board.initBoard();
-    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false; lastMove = null; capturedByPlayer0 = []; capturedByPlayer1 = []; moveHistory = []; lastEvalScore = null;
+    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false;
+    // --- INTEGRATED: Ensure controls are enabled on init/reset ---
+    if (gameModeSelect) gameModeSelect.disabled = false;
+    if (difficultySelect) difficultySelect.disabled = false;
+    if (timeLimitInput) timeLimitInput.disabled = false;
+    // --- END INTEGRATED ---
+    lastMove = null; capturedByPlayer0 = []; capturedByPlayer1 = []; moveHistory = []; lastEvalScore = null;
     updateAiDepthDisplay('0'); if (difficultySelect) difficultySelect.value = aiTargetDepth.toString(); if (timeLimitInput) timeLimitInput.value = aiTimeLimitMs;
     clearMoveHistory(); renderBoard(board.getState(), handleSquareClick, lastMove); renderCapturedPieces(capturedByPlayer0, capturedByPlayer1); updateGameStatusUI(); updateWinChanceBar(null); // Start at 50/50
     setupUIListeners(); if (!aiWorker) { initializeAiWorker(); } else if (isAiThinking) { console.log("[Main] Resetting during AI calculation, terminating worker."); aiWorker.terminate(); initializeAiWorker(); }
     console.log("Game Initialized. Player:", currentPlayer);
 }
+
+// setupUIListeners, selectPiece, deselectPiece, handleSquareClick (Unchanged)
 function setupUIListeners() {
     if (setupUIListeners.alreadyRun) return; setupUIListeners.alreadyRun = true;
     resetButton?.addEventListener('click', () => { initGame(); });
@@ -99,7 +123,7 @@ function updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPiece) 
 // performMoveWithAnimation (Unchanged)
 function performMoveWithAnimation(piece, toRow, toCol, fromRow, fromCol, targetPiece) { if (isGameOver) return; const isCapture = targetPiece !== null && targetPiece.player !== piece.player; const capturedPieceData = isCapture ? { ...targetPiece } : null; const boardElement = document.getElementById('board'); const startSquare = boardElement?.querySelector(`.square[data-row="${fromRow}"][data-col="${fromCol}"]`); const endSquare = boardElement?.querySelector(`.square[data-row="${toRow}"][data-col="${toCol}"]`); const pieceElement = startSquare?.querySelector('.piece'); if (!pieceElement || !startSquare || !endSquare) { console.warn("DOM elements for animation not found, moving directly."); updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData); addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData); playSound(isCapture ? `capture_${getPieceKey(capturedPieceData?.name)}` : 'move'); postMoveChecks(); return; } updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData); addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData); animatePieceMove(pieceElement, startSquare, endSquare, isCapture, isCapture ? getPieceKey(capturedPieceData.name) : null, () => { console.log("Animation complete, running post-move checks."); postMoveChecks(); }); }
 
-// --- MODIFIED: postMoveChecks ---
+// postMoveChecks (Unchanged - keeps win chance bar update logic)
 function postMoveChecks() {
     renderBoard(board.getState(), handleSquareClick, lastMove);
     renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
@@ -134,12 +158,8 @@ function postMoveChecks() {
         updateGameStatusUI(); // Update UI after setting game over
     } else {
         switchPlayer();
-        // Note: updateGameStatusUI() is called within switchPlayer or after AI returns
-        // If we want the status "Player X thinking..." to show immediately *after* eval in PvP, call it here too.
-        // But usually, it's better after the player switch.
     }
 }
-// --- END MODIFIED: postMoveChecks ---
 
 // switchPlayer, setGameOver, updateGameStatusUI (Unchanged)
 function switchPlayer() {
@@ -151,15 +171,21 @@ function switchPlayer() {
 
     if (!isGameOver && gameModeSelect.value === 'PVA' && currentPlayer === aiPlayer && !isAiThinking) {
         // Delay slightly before triggering AI to allow UI updates to render
-        setTimeout(triggerAiTurn, 150); // Reduced delay slightly
+        setTimeout(triggerAiTurn, 150);
     }
 }
 function setGameOver(winner, status) {
-    if (isGameOver) return; // Prevent multiple calls
+    if (isGameOver) return;
     console.log(`Game Over! Winner: ${winner}, Status: ${status}`);
     isGameOver = true;
     gameStatus = status;
-    deselectPiece(); // Clear any active selections/highlights
+    deselectPiece();
+    // --- INTEGRATED: Ensure controls are enabled on game over ---
+    // (In case AI fails and game ends abruptly)
+    if (gameModeSelect) gameModeSelect.disabled = false;
+    if (difficultySelect) difficultySelect.disabled = false;
+    if (timeLimitInput) timeLimitInput.disabled = false;
+    // --- END INTEGRATED ---
 }
 function updateGameStatusUI() {
     let statusKey = 'statusLoading';
@@ -170,7 +196,7 @@ function updateGameStatusUI() {
         let winnerLabel = '';
         if (gameStatus === GameStatus.PLAYER0_WINS) winnerLabel = getString('player1Name');
         else if (gameStatus === GameStatus.PLAYER1_WINS) winnerLabel = getString('player2Name');
-        else winnerLabel = getString('statusDraw'); // Handle draw case
+        else winnerLabel = getString('statusDraw');
         statusKey = 'statusWin';
         statusParams = { winner: winnerLabel };
     } else if (isAiThinking) {
@@ -178,7 +204,6 @@ function updateGameStatusUI() {
         statusParams = { aiName: getString('aiName') };
     } else if (selectedPieceInfo) {
         statusKey = 'statusPlayerSelected';
-        // Use localized piece name if available
         const pieceLocaleKey = `animal_${selectedPieceInfo.piece.type}`;
         const pieceName = getString(pieceLocaleKey);
         statusParams = { player: playerLabel, pieceName: pieceName !== pieceLocaleKey ? pieceName : selectedPieceInfo.piece.name };
@@ -190,13 +215,19 @@ function updateGameStatusUI() {
     updateTurnDisplay(currentPlayer, gameModeSelect.value, isGameOver);
 }
 
-// triggerAiTurn (Unchanged)
+// triggerAiTurn (Modified for control disabling)
 function triggerAiTurn() {
     if (isGameOver || isAiThinking || currentPlayer !== aiPlayer || !aiWorker) {
         return;
     }
     console.log("Triggering AI move...");
     isAiThinking = true;
+    // --- INTEGRATED: Disable controls ---
+    if (gameModeSelect) gameModeSelect.disabled = true;
+    if (difficultySelect) difficultySelect.disabled = true;
+    if (timeLimitInput) timeLimitInput.disabled = true;
+    // --- END INTEGRATED ---
+
     updateGameStatusUI(); // Show "AI is thinking..."
     updateAiDepthDisplay('-');
 
@@ -207,8 +238,13 @@ function triggerAiTurn() {
         console.error("Error cloning board state for AI:", e);
         updateStatus('errorBoardClone', {}, true);
         isAiThinking = false;
+        // --- INTEGRATED: Re-enable controls on error ---
+        if (gameModeSelect) gameModeSelect.disabled = false;
+        if (difficultySelect) difficultySelect.disabled = false;
+        if (timeLimitInput) timeLimitInput.disabled = false;
+        // --- END INTEGRATED ---
         lastEvalScore = null;
-        updateWinChanceBar(lastEvalScore); // Reset bar on error
+        updateWinChanceBar(lastEvalScore);
         setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS);
         playSound('victory');
         return;
