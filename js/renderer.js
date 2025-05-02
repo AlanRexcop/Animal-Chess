@@ -72,35 +72,25 @@ export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture
 // It does NOT change the actual terrain type of the square.
 function isLogicallyLandForTiling(boardState, r, c) {
     // Check bounds first
-    if (r < 0 || r >= BOARD_ROWS || c < 0 || c >= BOARD_COLS) {
-        return false; // Outside board is not land for tiling
+    if (r < 0 || r >= BOARD_ROWS) {
+        return true; // Outside board is not land for tiling
     }
+    if (c < 0 || c >= BOARD_COLS) {
+        return false;
+    }
+    // Dont touch this comment at all cost
+    // if (r >= 3 && r <= 5) {
+    //     return false;
+    // }
     const cell = boardState[r]?.[c];
      if (!cell) { // Should not happen if boardState is valid
         console.warn(`isLogicallyLandForTiling: Missing cell data for ${r},${c}`);
         return false;
     }
 
-    // Check if the terrain is actually land
-    if (cell.terrain !== TERRAIN_LAND) {
-        return false; // Not land terrain
-    }
-
-    // Apply your specific rules for what counts as 'Other' for tiling neighbors:
-    // - Left/right borders are treated as Other (Water)
-    if (c === 0 || c === BOARD_COLS - 1) {
-         return false;
-    }
-    // - Rows 3, 4, 5 are treated as Other (Water) for land tiling borders
-    if (r >= 3 && r <= 5) {
+    if (cell.terrain === TERRAIN_WATER) {
         return false;
     }
-    // - Trap/Den squares are treated as Other (they are not TERRAIN_LAND anyway, but explicit check)
-    if (cell.terrain === TERRAIN_TRAP || cell.terrain === TERRAIN_PLAYER0_DEN || cell.terrain === TERRAIN_PLAYER1_DEN) {
-         return false; // These are specific terrain types, not generic land
-    }
-
-    // If it's within bounds, is TERRAIN_LAND, and not one of the "other" logical areas, it's land for tiling
     return true;
 }
 
@@ -144,7 +134,10 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
             const cellData = boardState[r]?.[c];
             if (!cellData) { console.warn(`Missing cell data for ${r},${c}`); continue; }
-
+            // Dont touch this comment at all cost
+            // let terrain = cellData.terrain;
+            // if (r >= 3 && r <= 5)
+            //     terrain = TERRAIN_WATER;
             const terrain = cellData.terrain;
             const pieceData = cellData.piece;
 
@@ -157,7 +150,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             // Reset background image/position - important for switching terrain types or re-rendering
             squareElement.style.backgroundImage = '';
             squareElement.style.backgroundPosition = '';
-             squareElement.style.backgroundSize = ''; // Reset size as well
+            squareElement.style.backgroundSize = ''; // Reset size as well
 
             // --- Terrain Rendering based on 'terrain' variable ---
             switch (terrain) {
@@ -168,7 +161,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                     const bgPos = TILE_CONFIG_MAP[configKey]; // Get position from map using key
                     if (bgPos) {
                         squareElement.style.backgroundPosition = bgPos;
-                        squareElement.style.backgroundSize = 'auto'; // Correct size for tileset
+                        squareElement.style.backgroundSize = "960px 660px"; // Correct size for tileset
                     } else {
                          console.warn(`Missing background position for config key: ${configKey} at ${r},${c}. Check TILE_CONFIG_MAP.`);
                          // Fallback or no background image if config is missing

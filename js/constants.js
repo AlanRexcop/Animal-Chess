@@ -70,8 +70,8 @@ export const ANIMATION_DURATION = 300; // ms
 export const BASE_ASSETS_PATH = 'assets/'; // Make sure this is correct!
 
 // Board Square Size (must match CSS and Tileset)
-export const TILE_SIZE_PX = 32; // Make sure this is correct!
-
+export const TILE_SIZE_PX = 60; // Make sure this is correct!
+// export const SCALE_TILE_SIZE_PX = 
 // Tileset Image Path for Land
 export const TILESET_IMAGE = BASE_ASSETS_PATH + 'tiles/tileset_version1.1.png';
 
@@ -97,22 +97,23 @@ export const DEN_PLAYER1_TEXTURE = BASE_ASSETS_PATH + 'images/elements/den_p2.pn
 // Value format: CSS background-position string "Xpx Ypx" relative to the tileset image origin (0,0)
 // Example assumes a 4x4 grid of tiles in your land_tileset.png
 export const TILE_CONFIG_MAP = {
-    // !!! REPLACE THESE PIXEL VALUES WITH THE ACTUAL POSITIONS IN YOUR TILESET !!!
-    "LLLL": `-${0 * TILE_SIZE_PX}px -${0 * TILE_SIZE_PX}px`,
-    "OLLL": `-${1 * TILE_SIZE_PX}px -${0 * TILE_SIZE_PX}px`,
-    "LOOL": `-${2 * TILE_SIZE_PX}px -${0 * TILE_SIZE_PX}px`,
-    "LLLO": `-${3 * TILE_SIZE_PX}px -${0 * TILE_SIZE_PX}px`,
-    "LLOL": `-${0 * TILE_SIZE_PX}px -${1 * TILE_SIZE_PX}px`,
-    "OOLL": `-${1 * TILE_SIZE_PX}px -${1 * TILE_SIZE_PX}px`,
-    "OLLO": `-${2 * TILE_SIZE_PX}px -${1 * TILE_SIZE_PX}px`,
-    "LOOO": `-${3 * TILE_SIZE_PX}px -${1 * TILE_SIZE_PX}px`,
-    "LOLO": `-${1 * TILE_SIZE_PX}px -${2 * TILE_SIZE_PX}px`,
-    "OLOL": `-${2 * TILE_SIZE_PX}px -${2 * TILE_SIZE_PX}px`,
-    "OOOL": `-${3 * TILE_SIZE_PX}px -${2 * TILE_SIZE_PX}px`,
-    "OOLO": `-${0 * TILE_SIZE_PX}px -${3 * TILE_SIZE_PX}px`,
-    "OLOO": `-${1 * TILE_SIZE_PX}px -${3 * TILE_SIZE_PX}px`,
-    "LOOO": `-${2 * TILE_SIZE_PX}px -${3 * TILE_SIZE_PX}px`,
-    "OOOO": `-${3 * TILE_SIZE_PX}px -${3 * TILE_SIZE_PX}px`,
+    "OOLL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (9,4)
+    "LOLL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (10,4)
+    "LOOO": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (11,4)
+    "OOLO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (8,5)
+    "LOLL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`, // Example: Tile at (9,5)
+    "LLLL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`, // Example: Tile at (10,5)
+    "LLLO": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`, // Example: Tile at (11,5)
+    "LOLO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`, // Example: Tile at (9,6)
+    "LOOL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`, // Example: Tile at (10,6)
+    "LLOL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`, // Example: Tile at (11,6)
+    "LLOO": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`, // Example: Tile at (8,7)
+    "LOOO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`, // Example: Tile at (9,7)
+    "OLOO": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`, // Example: Tile at (8,7)
+    "OOOL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`, // Example: Tile at (10,7)
+    "OLOL": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`, // Example: Tile at (11,7)
+    "OOOO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`, // Example: Tile at (9,7)
+    // Add any other specific keys/positions if needed for your tileset
     // Re-added one key with a typo fix from previous ("OULO" -> "OOLO")
     // Ensure you have ALL 16 keys from OOOO to LLLL
      "OOLO": `-${0 * TILE_SIZE_PX}px -${3 * TILE_SIZE_PX}px`, // Added/Corrected this one based on common tile patterns. Double check if needed.
