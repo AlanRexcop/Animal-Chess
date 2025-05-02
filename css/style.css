@@ -127,9 +127,9 @@ h1 {
 /* --- Board and Coordinates --- */
 #board-container {
   position: relative; /* Needed for absolute positioning of piece animation */
-  width: calc(420px + 2 * 20px);
-  height: calc(540px + 2 * 20px);
-  padding: 3px;
+  width: calc(420px + 2 * 20px); /* 7 cols * 60px + 2* label padding */
+  height: calc(540px + 2 * 20px); /* 9 rows * 60px + 2* label padding */
+  padding: 3px; /* Visual padding around the grid itself */
   box-sizing: content-box;
 }
 
@@ -141,7 +141,7 @@ h1 {
   font-size: 0.75em;
   color: #555;
   font-weight: bold;
-  pointer-events: none;
+  pointer-events: none; /* Don't block clicks on squares */
   background-color: rgba(255, 255, 255, 0.4);
   border-radius: 3px;
 }
@@ -152,31 +152,31 @@ h1 {
 }
 
 .col-labels {
-  left: 20px;
-  right: 20px;
+  left: 20px; /* Match row label width */
+  right: 20px; /* Match row label width */
   height: 20px;
 }
 #col-labels-top { top: 0; }
 #col-labels-bottom { bottom: 0; }
 .col-labels span {
-   width: 60px;
+   width: 60px; /* Match square width */
    flex-grow: 0;
    line-height: 20px;
 }
 
 .row-labels {
-  top: 20px;
-  bottom: 20px;
+  top: 20px; /* Match col label height */
+  bottom: 20px; /* Match col label height */
   width: 20px;
   flex-direction: column;
 }
 #row-labels-left { left: 0; }
 #row-labels-right { right: 0; }
 .row-labels span {
-   height: 60px;
+   height: 60px; /* Match square height */
    flex-grow: 0;
    line-height: 60px;
-   text-orientation: mixed;
+   text-orientation: mixed; /* Might need vendor prefixes */
 }
 
 
@@ -185,61 +185,76 @@ h1 {
   grid-template-columns: repeat(7, 60px);
   grid-template-rows: repeat(9, 60px);
   border: 3px solid #555;
-  width: 420px;
-  height: 540px;
+  width: 420px; /* 7 * 60px */
+  height: 540px; /* 9 * 60px */
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 20px; /* Offset by row label height */
+  left: 20px; /* Offset by col label width */
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
   margin-bottom: 0;
 }
 
 /* --- Square Base and Terrain --- */
 .square {
-  width: 60px; height: 60px;
+  width: 60px; height: 60px; /* Base size, must match TILE_SIZE_PX */
   border: 1px solid #bbb;
   box-sizing: border-box;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  position: relative; /* Important for absolute children */
+  position: relative; /* Important for absolute children like pieces, highlights, decorations */
   overflow: hidden; /* Clip textures/overlays */
-  background-color: #f0f0f0; /* Basic fallback background */
+
+  /* Background styles set by JS inline per terrain type */
 }
 
-.land-tile-container {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-  z-index: 1; /* Layer 1: Base Terrain */
-  pointer-events: none;
+/* Base terrain backgrounds (can be colors or repeating textures) */
+.terrain-land {
+    /* background-image and background-position set by JS */
+    background-color: transparent; /* Ensure no fallback color shows through tileset */
+    z-index: 1; /* Base Layer */
 }
-.land-tile-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.land-fallback-bg { background-color: rgba(144, 238, 144, 0.85); z-index: 1; }
-.water-bg {
-  background-image: url('../assets/images/water/ezgif.com-animated-gif-maker.gif');
-  background-size: cover; background-position: center; background-repeat: no-repeat; z-index: 1;
+
+.terrain-water {
+  /* background-image, background-size, background-position, background-repeat set by JS */
+  z-index: 1;
 }
-.trap-bg { background-color: rgba(255, 182, 193, 0.85); z-index: 1; }
-.trap-texture-container {
+.terrain-trap {
+    background-color: rgba(255, 182, 193, 0.85); /* Trap background color */
+    z-index: 1;
+}
+.terrain-player0-den {
+    background-color: rgba(210, 180, 255, 0.85); /* Player 0 (Blue) Den background */
+    border: 2px dashed #0000FF !important;
+    z-index: 1;
+}
+.terrain-player1-den {
+    background-color: rgba(255, 218, 185, 0.85); /* Player 1 (Red) Den background */
+    border: 2px dashed #FF0000 !important;
+    z-index: 1;
+}
+
+
+/* --- Texture Overlays (for traps and dens) --- */
+/* These are placed on top of the terrain background */
+.trap-texture-container, .den-texture-container {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; justify-content: center; align-items: center;
-  z-index: 2; pointer-events: none; opacity: 0.7;
+  z-index: 2; /* Layer 2: Terrain Textures/Overlays */
+  pointer-events: none;
+  opacity: 0.7; /* Optional: make textures slightly transparent */
 }
-.player0-den-bg, .player1-den-bg { background-color: rgba(210, 180, 255, 0.85); z-index: 1; }
-.player1-den-bg { background-color: rgba(255, 218, 185, 0.85); }
-.player0-den-bg { border: 2px dashed #0000FF !important; }
-.player1-den-bg { border: 2px dashed #FF0000 !important; }
-.den-texture-container {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  display: flex; justify-content: center; align-items: center; z-index: 2; pointer-events: none;
+.terrain-texture-img {
+  width: 85%; height: 85%; object-fit: contain; display: block;
 }
-.terrain-texture-img { width: 85%; height: 85%; object-fit: contain; display: block; }
+
 
 /* --- Highlight Overlay --- */
 .highlight-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-color: transparent; z-index: 5; pointer-events: none;
+  background-color: transparent; z-index: 5; /* Z-index 5, below pieces (10), decorations (8), outlines (6) */
+  pointer-events: none;
   transition: background-color 0.1s ease-in-out;
 }
 .highlight-overlay.possible-move { background-color: rgba(255, 255, 0, 0.45) !important; }
@@ -250,14 +265,29 @@ h1 {
 .highlight-overlay.last-move-end-p1 { background-color: rgba(255, 80, 80, 0.5) !important; }
 
 
+/* --- Decoration Styling (for random grass decorations) --- */
+.decoration {
+  position: absolute;
+  top: 50%; /* Center vertically */
+  left: 50%; /* Center horizontally */
+  transform: translate(-50%, -50%); /* Adjust for element's own size */
+  width: 40px; /* Adjust size as needed, should fit within 60px square */
+  height: 40px; /* Adjust size as needed */
+  object-fit: contain;
+  pointer-events: none; /* Decorations shouldn't block clicks */
+  z-index: 8; /* Layer 8, below pieces (10), above highlights (5) and terrain (1, 2) */
+  opacity: 0.9; /* Slightly transparent */
+}
+
+
 /* --- Piece Styling --- */
 .piece {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: 50px; height: 50px; border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 10;
+  /*box-shadow: 0 1px 3px rgba(0,0,0,0.4)*/; z-index: 10; /* Layer 10, highest for interaction */
   cursor: pointer; user-select: none;
   box-sizing: border-box; display: flex; justify-content: center; align-items: center;
-  padding: 2px; border: 2px solid transparent;
+  padding: 2px; /*border: 2px solid transparent;*/
 }
 .player0 { border-color: blue; }
 .player1 { border-color: red; }
@@ -266,7 +296,7 @@ h1 {
 
 
 /* --- Outline Highlights --- */
-.square.selected { outline: 3px solid gold !important; outline-offset: -3px; z-index: 6; }
+.square.selected { outline: 3px solid gold !important; outline-offset: -3px; z-index: 6; } /* Layer 6, above highlights (5), below decorations (8) */
 
 
 /* --- Side Panels --- */

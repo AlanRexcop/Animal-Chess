@@ -1,3 +1,4 @@
+// js/board.js
 import {
     BOARD_ROWS, BOARD_COLS,
     TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
@@ -42,10 +43,10 @@ export class Board {
         // Player 0 (Blue) Traps are near row 8
         if ((r === 8 && (c === 2 || c === 4)) || (r === 7 && c === 3)) return TERRAIN_TRAP;
 
-        // Water
+        // Water - These are the standard river squares
         if (r >= 3 && r <= 5 && (c === 1 || c === 2 || c === 4 || c === 5)) return TERRAIN_WATER;
 
-        // Land
+        // Land - Anything not a Den, Trap, or Water
         return TERRAIN_LAND;
     }
 
@@ -85,7 +86,7 @@ export class Board {
         });
     }
 
-    // --- State Access ---
+    // --- State Access (unchanged) ---
 
     isValidCoordinate(row, col) {
         return row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS;
@@ -121,7 +122,7 @@ export class Board {
         return this.state[row][col]?.piece === null;
     }
 
-    // --- State Modification ---
+    // --- State Modification (unchanged) ---
 
     setPiece(row, col, piece) { // piece can be a Piece object or null
         if (!this.isValidCoordinate(row, col)) {
@@ -137,7 +138,7 @@ export class Board {
         }
     }
 
-    // --- Getters ---
+    // --- Getters (unchanged) ---
 
     // Returns a deep copy suitable for the AI worker or history
     // Note: The original worker expected a specific format. Let's mimic the original cloneBoard.

@@ -7,7 +7,7 @@ import {
     updateTurnDisplay,
     updateAiDepthDisplay,
     updateWinChanceBar, // <-- Correct function name
-    initializeLandTilePatterns,
+    // REMOVED: initializeLandTilePatterns is no longer needed
     animatePieceMove
 } from './renderer.js';
 import { loadLanguage, getString, applyLocalizationToPage, renderGameRules } from './localization.js';
@@ -59,7 +59,7 @@ function handleAiWorkerMessage(e) {
         else { console.error("AI Error: Piece mismatch or missing!", { bestMoveData, pieceOnBoard: pieceToMove }); updateStatus('errorAISync', {}, true); setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); playSound('victory'); renderBoard(board.getState(), handleSquareClick, lastMove); }
     } else {
         console.error("AI Worker returned no valid move."); const allAiMoves = rules.getAllValidMoves(aiPlayer, board.getClonedStateForWorker());
-        if (allAiMoves.length === 0) { updateStatus('errorAINoMoves', {}, true); setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); playSound('victory'); } else { updateStatus('errorAIMove', {}, true); setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); playSound('victory'); }
+        if (allAiMoves.length === 0) { updateStatus('errorAINoMoves', {}, true); setGameOver(Player.PLAYER0, Player.PLAYER0_WINS); playSound('victory'); } else { updateStatus('errorAIMove', {}, true); setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); playSound('victory'); }
         renderBoard(board.getState(), handleSquareClick, lastMove);
     }
 }
@@ -70,7 +70,8 @@ function handleAiWorkerError(event) {
 
 export function initGame() {
     console.log("Initializing game..."); difficultySelect = document.getElementById('difficulty'); timeLimitInput = document.getElementById('time-limit'); resetButton = document.getElementById('reset-button'); langSelect = document.getElementById('lang-select'); gameModeSelect = document.getElementById('game-mode'); aiControlsContainer = document.getElementById('ai-controls');
-    board = new Board(); board.initBoard(); initializeLandTilePatterns(board.getState());
+    board = new Board(); board.initBoard();
+    // REMOVED: initializeLandTilePatterns is no longer called here
     currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false; lastMove = null; capturedByPlayer0 = []; capturedByPlayer1 = []; moveHistory = []; lastEvalScore = null;
     updateAiDepthDisplay('0'); if (difficultySelect) difficultySelect.value = aiTargetDepth.toString(); if (timeLimitInput) timeLimitInput.value = aiTimeLimitMs;
     clearMoveHistory(); renderBoard(board.getState(), handleSquareClick, lastMove); renderCapturedPieces(capturedByPlayer0, capturedByPlayer1); updateGameStatusUI(); updateWinChanceBar(null); // Start at 50/50

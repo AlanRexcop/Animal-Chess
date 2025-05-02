@@ -1,13 +1,13 @@
-// js/renderer.js
 import {
     BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
     Player, getPieceKey, PIECES, ANIMATION_DURATION,
     TILESET_IMAGE, TILE_SIZE_PX, DECORATION_IMAGES, DECORATION_CHANCE, TILE_CONFIG_MAP, // Import new constants
-    TRAP_TEXTURE, DEN_PLAYER0_TEXTURE, DEN_PLAYER1_TEXTURE // Import specific texture constants
+    TRAP_TEXTURE, DEN_PLAYER0_TEXTURE, DEN_PLAYER1_TEXTURE, // Import specific texture constants
+    WATER_BACKGROUND // <-- Import the new constant
 } from './constants.js';
 import { getString } from './localization.js';
 
-// DOM Elements Cache
+// DOM Elements Cache (unchanged)
 const boardElement = document.getElementById('board');
 const boardContainerElement = document.getElementById('board-container');
 const statusElement = document.getElementById('status');
@@ -19,7 +19,7 @@ const colLabelsTop = document.getElementById('col-labels-top');
 const colLabelsBottom = document.getElementById('col-labels-bottom');
 const rowLabelsLeft = document.getElementById('row-labels-left');
 const rowLabelsRight = document.getElementById('row-labels-right');
-// ** Caches for Win Chance Bar **
+// ** Caches for Win Chance Bar ** (unchanged)
 const winChanceBarContainer = document.getElementById('win-chance-bar-container');
 const winChanceBarElement = document.getElementById('win-chance-bar');
 const winChanceBarBlue = document.getElementById('win-chance-bar-blue');
@@ -29,12 +29,6 @@ const winChanceBarRed = document.getElementById('win-chance-bar-red');
 const WIN_SCORE_THRESHOLD = 19000;
 const LOSE_SCORE_THRESHOLD = -19000;
 const SIGMOID_SCALE_FACTOR = 0.0003;
-
-// REMOVE Land Tile Patterns initialization and the function
-// let landTilePatterns = null;
-// const landTileFiles = ['1.png', '2.png', '3.png', '4.png'];
-// export function initializeLandTilePatterns(boardState) { ... }
-
 
 // Highlight Targets Map (unchanged)
 const highlightClassTargets = {
@@ -74,13 +68,15 @@ export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture
     }, ANIMATION_DURATION);
 }
 // Helper function to determine if a coordinate is valid AND logically considered "Land" for tiling purposes
+// This logic is ONLY used to determine the TILE PATTERN for TERRAIN_LAND squares.
+// It does NOT change the actual terrain type of the square.
 function isLogicallyLandForTiling(boardState, r, c) {
     // Check bounds first
     if (r < 0 || r >= BOARD_ROWS || c < 0 || c >= BOARD_COLS) {
-        return false; // Outside board is not land
+        return false; // Outside board is not land for tiling
     }
     const cell = boardState[r]?.[c];
-    if (!cell) {
+     if (!cell) { // Should not happen if boardState is valid
         console.warn(`isLogicallyLandForTiling: Missing cell data for ${r},${c}`);
         return false;
     }
@@ -95,9 +91,9 @@ function isLogicallyLandForTiling(boardState, r, c) {
     if (c === 0 || c === BOARD_COLS - 1) {
          return false;
     }
-    // - Rows 3, 4, 5 are treated as Other (Water)
+    // - Rows 3, 4, 5 are treated as Other (Water) for land tiling borders
     if (r >= 3 && r <= 5) {
-        return false; // Although _getTerrainType already makes these water, double check logic consistency
+        return false;
     }
     // - Trap/Den squares are treated as Other (they are not TERRAIN_LAND anyway, but explicit check)
     if (cell.terrain === TERRAIN_TRAP || cell.terrain === TERRAIN_PLAYER0_DEN || cell.terrain === TERRAIN_PLAYER1_DEN) {
@@ -108,7 +104,7 @@ function isLogicallyLandForTiling(boardState, r, c) {
     return true;
 }
 
-// Determine the tile configuration key based on neighbors
+// Determine the tile configuration key based on neighbors (using the logical land check)
 function getTileConfigurationKey(boardState, r, c) {
     // Check 4 neighbors using the logical land check
     const isTopLand = isLogicallyLandForTiling(boardState, r - 1, c);
@@ -122,9 +118,8 @@ function getTileConfigurationKey(boardState, r, c) {
     configKey += isBottomLand ? 'L' : 'O';
     configKey += isRightLand ? 'L' : 'O';
 
-    // Return the generated key. If the key doesn't exist in your map (shouldn't happen if all 16 are there),
-    // you might want a fallback key like 'LLLL' or 'OOOO' depending on your map's default.
-    // Using LLLL as a safe default assumption if a key is missing (though all 16 should be mapped)
+    // Return the generated key. Use LLLL as a safe default assumption if a key is missing.
+    // This shouldn't happen if TILE_CONFIG_MAP has all 16 combinations.
     return TILE_CONFIG_MAP[configKey] ? configKey : "LLLL";
 }
 
@@ -135,9 +130,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
     // Clear previous highlights (including old last move highlights)
     boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
-         // Only remove last-move classes from overlays
         overlay.classList.remove(...ALL_LAST_MOVE_CLASSES);
-         // Keep possible/capture highlights for immediate moves if re-rendering mid-selection (less common)
          // overlay.classList.remove('possible-move', 'capture-move'); // Uncomment if needed
     });
     clearHighlights('selected'); // Clear selection highlights from square element
@@ -145,7 +138,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
     for (let r = 0; r < BOARD_ROWS; r++) {
         for (let c = 0; c < BOARD_COLS; c++) {
             const squareElement = document.createElement('div');
-            squareElement.className = 'square';
+            squareElement.className = 'square'; // Base class
             squareElement.dataset.row = r;
             squareElement.dataset.col = c;
 
@@ -155,32 +148,32 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             const terrain = cellData.terrain;
             const pieceData = cellData.piece;
 
-            // Ensure old terrain classes are removed if re-rendering, add new ones
-            squareElement.classList.remove('terrain-land', 'terrain-water', 'terrain-trap', 'terrain-player0-den', 'terrain-player1-den');
+            // Add terrain-specific class for CSS background-color/border/etc.
             squareElement.classList.add(`terrain-${terrain}`);
 
             // Remove any old texture containers or decorations before adding new ones
             squareElement.querySelectorAll('.trap-texture-container, .den-texture-container, .decoration').forEach(el => el.remove());
-            squareElement.style.backgroundImage = ''; // Clear old background image/position
-            squareElement.style.backgroundPosition = '';
 
-            // --- Terrain Rendering ---
+            // Reset background image/position - important for switching terrain types or re-rendering
+            squareElement.style.backgroundImage = '';
+            squareElement.style.backgroundPosition = '';
+             squareElement.style.backgroundSize = ''; // Reset size as well
+
+            // --- Terrain Rendering based on 'terrain' variable ---
             switch (terrain) {
                 case TERRAIN_LAND:
-                    // --- Land Tile Rendering ---
+                    // --- Land Tile Rendering (using tileset) ---
                     squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`;
-                    const configKey = getTileConfigurationKey(boardState, r, c);
+                    const configKey = getTileConfigurationKey(boardState, r, c); // Get tiling pattern key
                     const bgPos = TILE_CONFIG_MAP[configKey]; // Get position from map using key
                     if (bgPos) {
                         squareElement.style.backgroundPosition = bgPos;
-                        squareElement.style.backgroundSize = 'auto'; // Ensure correct size for tileset rendering
+                        squareElement.style.backgroundSize = 'auto'; // Correct size for tileset
                     } else {
-                         console.warn(`Missing background position for config key: ${configKey} at ${r},${c}. Using default or no background.`);
-                         // Optionally set a fallback background color or image here
-                         // squareElement.style.backgroundColor = rgba(144, 238, 144, 0.85); // Fallback color
-                         squareElement.style.backgroundImage = ''; // Ensure no tileset is shown if config is missing
+                         console.warn(`Missing background position for config key: ${configKey} at ${r},${c}. Check TILE_CONFIG_MAP.`);
+                         // Fallback or no background image if config is missing
+                         squareElement.style.backgroundImage = '';
                     }
-
 
                     // --- Add Random Decorations (only on TERRAIN_LAND) ---
                     if (DECORATION_IMAGES.length > 0 && Math.random() < DECORATION_CHANCE) {
@@ -188,53 +181,59 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                          const decoImg = document.createElement('img');
                          decoImg.src = randomDecoration;
                          decoImg.alt = 'Decoration';
-                         decoImg.className = 'decoration'; // Use the new decoration class
+                         decoImg.className = 'decoration'; // Use the decoration class (CSS handles size/position)
                          decoImg.loading = 'lazy';
                          squareElement.appendChild(decoImg);
                     }
                     // --- End Decorations ---
 
-                    break; // Handled land terrain, move to next step
+                    break; // Handled land terrain
 
                 case TERRAIN_WATER:
-                    // terrain-water class already handles the animated background image
-                    break; // Handled water terrain, move to next step
+                    // --- Water Rendering (using specific background image) ---
+                    squareElement.style.backgroundImage = `url('${WATER_BACKGROUND}')`; // Use constant path
+                    squareElement.style.backgroundSize = 'cover'; // Style for the animated water GIF
+                    squareElement.style.backgroundPosition = 'center'; // Style for the animated water GIF
+                    squareElement.style.backgroundRepeat = 'no-repeat'; // Style for the animated water GIF
+                    // The 'terrain-water' class can still be used for background-color if the image has transparency
+
+                    break; // Handled water terrain
 
                 case TERRAIN_TRAP:
-                    // terrain-trap class handles the background color
-                    // Add the specific trap texture overlay
+                    // terrain-trap class handles the background color/border in CSS
+                    // Add the specific trap texture overlay image element
                     const trapTextureContainer = document.createElement('div');
-                    trapTextureContainer.className = 'trap-texture-container';
+                    trapTextureContainer.className = 'trap-texture-container'; // CSS handles positioning/opacity
                     const trapImg = document.createElement('img');
                     trapImg.src = TRAP_TEXTURE; // Use constant path
                     trapImg.alt = 'Trap';
-                    trapImg.className = 'terrain-texture-img';
+                    trapImg.className = 'terrain-texture-img'; // CSS handles size/object-fit
                     trapTextureContainer.appendChild(trapImg);
                     squareElement.appendChild(trapTextureContainer);
                     break;
 
                 case TERRAIN_PLAYER0_DEN:
-                     // terrain-player0-den class handles background color/border
-                     // Add the specific den texture overlay
+                     // terrain-player0-den class handles background color/border in CSS
+                     // Add the specific den texture overlay image element
                      const den0TextureContainer = document.createElement('div');
-                     den0TextureContainer.className = 'den-texture-container';
+                     den0TextureContainer.className = 'den-texture-container'; // CSS handles positioning
                      const den0Img = document.createElement('img');
                      den0Img.src = DEN_PLAYER0_TEXTURE; // Use constant path
                      den0Img.alt = 'Player 0 Den';
-                     den0Img.className = 'terrain-texture-img';
+                     den0Img.className = 'terrain-texture-img'; // CSS handles size/object-fit
                      den0TextureContainer.appendChild(den0Img);
                      squareElement.appendChild(den0TextureContainer);
                     break;
 
                 case TERRAIN_PLAYER1_DEN:
-                     // terrain-player1-den class handles background color/border
-                     // Add the specific den texture overlay
+                     // terrain-player1-den class handles background color/border in CSS
+                     // Add the specific den texture overlay image element
                      const den1TextureContainer = document.createElement('div');
-                     den1TextureContainer.className = 'den-texture-container';
+                     den1TextureContainer.className = 'den-texture-container'; // CSS handles positioning
                      const den1Img = document.createElement('img');
                      den1Img.src = DEN_PLAYER1_TEXTURE; // Use constant path
                      den1Img.alt = 'Player 1 Den';
-                     den1Img.className = 'terrain-texture-img';
+                     den1Img.className = 'terrain-texture-img'; // CSS handles size/object-fit
                      den1TextureContainer.appendChild(den1Img);
                      squareElement.appendChild(den1TextureContainer);
                     break;
@@ -250,7 +249,8 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 const pieceElement = document.createElement('div');
                 pieceElement.className = `piece player${pieceData.player}`;
                 const imgElement = document.createElement('img');
-                imgElement.src = `assets/images/head_no_background/${pieceData.type}.png`; // This path is still hardcoded, maybe add BASE_ASSETS_PATH here too?
+                // This path is still hardcoded to /head_no_background/. Consider centralizing if needed.
+                imgElement.src = `assets/images/head_no_background/${pieceData.type}.png`;
                 imgElement.alt = pieceData.name || pieceData.type;
                 pieceElement.appendChild(imgElement);
                 pieceElement.dataset.pieceType = pieceData.type;
