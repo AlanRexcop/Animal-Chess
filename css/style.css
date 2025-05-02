@@ -256,7 +256,7 @@ h1 {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background-color: transparent;
   pointer-events: none;
-  transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out, border-radius 0.1s ease-in-out; /* Added border-radius */
+  transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out, border-radius 0.1s ease-in-out;
   border: none; /* Base: no border */
   border-radius: 0; /* Base: square */
   box-sizing: border-box;
@@ -266,29 +266,26 @@ h1 {
 .highlight-overlay {
   z-index: 5; /* Z-index 5, below selected outline (6), action overlay (7) */
 }
-.highlight-overlay.last-move-start-p0 { background-color: rgba(0, 80, 200, 0.6) !important; }
-.highlight-overlay.last-move-start-p1 { background-color: rgba(200, 0, 0, 0.6) !important; }
-.highlight-overlay.last-move-end-p0 { background-color: rgba(60, 140, 255, 0.5) !important; }
-.highlight-overlay.last-move-end-p1 { background-color: rgba(255, 80, 80, 0.5) !important; }
+/* MODIFIED: Lighter background colors for last move */
+.highlight-overlay.last-move-start-p0 { background-color: rgba(0, 80, 200, 0.4) !important; } /* Was 0.6 */
+.highlight-overlay.last-move-start-p1 { background-color: rgba(200, 0, 0, 0.4) !important; }   /* Was 0.6 */
+.highlight-overlay.last-move-end-p0 { background-color: rgba(60, 140, 255, 0.35) !important; } /* Was 0.5 */
+.highlight-overlay.last-move-end-p1 { background-color: rgba(255, 80, 80, 0.35) !important; } /* Was 0.5 */
 
 /* Overlay for POSSIBLE/CAPTURE MOVES (higher layer) */
 .action-highlight-overlay {
   z-index: 7; /* Z-index 7, below decorations (8), above selected outline (6) */
 }
 .action-highlight-overlay.possible-move {
-    background-color: rgba(255, 255, 0, 0.30) !important; /* Slightly transparent yellow background */
-    border: 2px solid rgba(255, 255, 0, 0.6) !important; /* Yellow border */
-    border-radius: 50% !important; /* Make possible moves circular */
+    background-color: rgba(255, 255, 0, 0.30) !important;
+    border: 2px solid rgba(255, 255, 0, 0.6) !important;
+    border-radius: 50% !important;
 }
-
-/* MODIFIED: Capture Move Specifics - Yellow Square */
 .action-highlight-overlay.capture-move {
-    background-color: rgba(255, 215, 0, 0.5) !important; /* Slightly more opaque gold/yellow background */
-    border: 2px solid rgba(255, 165, 0, 0.8) !important; /* Orange-yellow border */
-    border-radius: 0 !important; /* Ensure it's square */
+    background-color: rgba(255, 215, 0, 0.5) !important;
+    border: 2px solid rgba(255, 165, 0, 0.8) !important;
+    border-radius: 0 !important;
 }
-
-/* REMOVED crosshair pseudo-elements */
 
 
 /* --- Decoration Styling (for random grass decorations) --- */
@@ -352,11 +349,21 @@ h1 {
 }
 #move-list li { padding: 3px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.4; color: #333; display: flex; align-items: center; }
 #move-list li:last-child { border-bottom: none; }
+
+/* MODIFIED: Piece History Styling */
 .piece-hist {
   display: inline-flex; justify-content: center; align-items: center; vertical-align: middle;
   width: 1.3em; height: 1.3em; margin-right: 4px; position: relative; top: -1px;
+  border: 1px solid transparent; /* Base border for move history pieces */
+  box-sizing: border-box; /* Include border in size */
+  border-radius: 2px; /* Optional: Slightly rounded corners */
+  background-color: rgba(255, 255, 255, 0.5); /* Optional: faint background */
+  padding: 1px; /* Small padding inside border */
 }
+.piece-hist.player0 { border-color: blue !important; } /* Blue border for P0 */
+.piece-hist.player1 { border-color: red !important; }  /* Red border for P1 */
 .piece-hist img { display: block; width: 100%; height: 100%; object-fit: contain; }
+/* END MODIFIED */
 
 
 /* --- Game Rules Panel --- */
@@ -444,6 +451,8 @@ h1 {
    /* Adjusted highlight borders for smaller screens */
    .action-highlight-overlay.possible-move { border-width: 1px !important; }
    .action-highlight-overlay.capture-move { border-width: 1px !important; }
+    /* Adjusted piece history border */
+   .piece-hist { border-width: 1px; padding: 0px; }
 
    #game-controls { gap: 8px; padding: 8px; } #ai-controls { gap: 5px 10px; }
    #game-layout { padding: 10px; width: 100%; }
