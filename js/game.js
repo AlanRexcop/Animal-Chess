@@ -47,7 +47,7 @@ function initializeAiWorker() {
     catch (e) { console.error("Failed to create AI Worker:", e); updateStatus('errorWorkerInit', {}, true); setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); updateWinChanceBar(null); }
 }
 function handleAiWorkerMessage(e) {
-    console.log('[Main] Message received from AI Worker:', e.data); isAiThinking = false;
+    console.log('[Main] Message received from AI Worker:', e.data); isAiThinking = false; gameModeSelect.disabled = false; difficultySelect.disabled = false; timeLimitInput.disabled = false;
     const { move: bestMoveData, depthAchieved, nodes, eval: score, error } = e.data;
     updateAiDepthDisplay(depthAchieved ?? '?');
     if (score !== null && score !== undefined && isFinite(score)) { lastEvalScore = score; console.log(`[Main] Received Eval: ${lastEvalScore}`); } else if (!error) { lastEvalScore = null; }
@@ -64,7 +64,7 @@ function handleAiWorkerMessage(e) {
     }
 }
 function handleAiWorkerError(event) {
-    console.error(`[Main] Error from AI Worker: Msg:${event.message}, File:${event.filename}, Line:${event.lineno}`, event); updateStatus('errorAIWorker', {}, true); isAiThinking = false; lastEvalScore = null; updateWinChanceBar(lastEvalScore);
+    console.error(`[Main] Error from AI Worker: Msg:${event.message}, File:${event.filename}, Line:${event.lineno}`, event); updateStatus('errorAIWorker', {}, true); isAiThinking = false; gameModeSelect.disabled = false; difficultySelect.disabled = false; timeLimitInput.disabled = false;lastEvalScore = null; updateWinChanceBar(lastEvalScore);
     if (!isGameOver) { setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); playSound('victory'); renderBoard(board.getState(), handleSquareClick, lastMove); }
 }
 
@@ -72,7 +72,7 @@ export function initGame() {
     console.log("Initializing game..."); difficultySelect = document.getElementById('difficulty'); timeLimitInput = document.getElementById('time-limit'); resetButton = document.getElementById('reset-button'); langSelect = document.getElementById('lang-select'); gameModeSelect = document.getElementById('game-mode'); aiControlsContainer = document.getElementById('ai-controls');
     board = new Board(); board.initBoard();
     // REMOVED: initializeLandTilePatterns is no longer called here
-    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false; lastMove = null; capturedByPlayer0 = []; capturedByPlayer1 = []; moveHistory = []; lastEvalScore = null;
+    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false; gameModeSelect.disabled = false; difficultySelect.disabled = false; timeLimitInput.disabled = false;; lastMove = null; capturedByPlayer0 = []; capturedByPlayer1 = []; moveHistory = []; lastEvalScore = null;
     updateAiDepthDisplay('0'); if (difficultySelect) difficultySelect.value = aiTargetDepth.toString(); if (timeLimitInput) timeLimitInput.value = aiTimeLimitMs;
     clearMoveHistory(); renderBoard(board.getState(), handleSquareClick, lastMove); renderCapturedPieces(capturedByPlayer0, capturedByPlayer1); updateGameStatusUI(); updateWinChanceBar(null); // Start at 50/50
     setupUIListeners(); if (!aiWorker) { initializeAiWorker(); } else if (isAiThinking) { console.log("[Main] Resetting during AI calculation, terminating worker."); aiWorker.terminate(); initializeAiWorker(); }
@@ -105,6 +105,7 @@ function triggerAiTurn() {
     }
     console.log("Triggering AI move...");
     isAiThinking = true;
+    gameModeSelect.disabled = true; difficultySelect.disabled = true; timeLimitInput.disabled = true;
     updateGameStatusUI(); // Show "AI is thinking..."
     updateAiDepthDisplay('-');
     // ** REMOVED updateWinChanceBar(null) from here **
@@ -115,7 +116,7 @@ function triggerAiTurn() {
     } catch (e) {
         console.error("Error cloning board state for AI:", e);
         updateStatus('errorBoardClone', {}, true);
-        isAiThinking = false;
+        isAiThinking = false; gameModeSelect.disabled = false; difficultySelect.disabled = false; timeLimitInput.disabled = false;
         lastEvalScore = null;
         updateWinChanceBar(lastEvalScore); // Reset bar on error
         setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS);
