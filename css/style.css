@@ -256,17 +256,15 @@ h1 {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background-color: transparent;
   pointer-events: none;
-  transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out; /* Added border-color */
-  border: 2px solid transparent; /* Base border, allow transition */
-  border-radius: 50%; /* Make overlays circular */
-  box-sizing: border-box; /* Include border in size */
+  transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out, border-radius 0.1s ease-in-out; /* Added border-radius */
+  border: none; /* Base: no border */
+  border-radius: 0; /* Base: square */
+  box-sizing: border-box;
 }
 
 /* Overlay for LAST MOVES (lower layer) */
 .highlight-overlay {
   z-index: 5; /* Z-index 5, below selected outline (6), action overlay (7) */
-  border-radius: 0; /* Last move highlight is square fill, not circle border */
-  border: none; /* No border for last move */
 }
 .highlight-overlay.last-move-start-p0 { background-color: rgba(0, 80, 200, 0.6) !important; }
 .highlight-overlay.last-move-start-p1 { background-color: rgba(200, 0, 0, 0.6) !important; }
@@ -279,43 +277,18 @@ h1 {
 }
 .action-highlight-overlay.possible-move {
     background-color: rgba(255, 255, 0, 0.30) !important; /* Slightly transparent yellow background */
-    border-color: rgba(255, 255, 0, 0.6) !important; /* Yellow border */
+    border: 2px solid rgba(255, 255, 0, 0.6) !important; /* Yellow border */
+    border-radius: 50% !important; /* Make possible moves circular */
 }
 
-/* Capture Move Specifics - Crosshair Effect */
+/* MODIFIED: Capture Move Specifics - Yellow Square */
 .action-highlight-overlay.capture-move {
-    background-color: rgba(255, 0, 0, 0.2) !important; /* Fainter red background */
-    border-color: #FF0000 !important; /* Bright solid red border */
-    /* No need for border-radius: 50% here, inherited */
+    background-color: rgba(255, 215, 0, 0.5) !important; /* Slightly more opaque gold/yellow background */
+    border: 2px solid rgba(255, 165, 0, 0.8) !important; /* Orange-yellow border */
+    border-radius: 0 !important; /* Ensure it's square */
 }
 
-/* Add pseudo-elements for the crosshair lines */
-.action-highlight-overlay.capture-move::before,
-.action-highlight-overlay.capture-move::after {
-    content: '';
-    position: absolute;
-    background-color: #FF0000; /* Bright solid red */
-    box-shadow: 0 0 3px rgba(0, 0, 0, 0.6); /* Optional shadow for definition */
-    z-index: 8; /* Ensure lines are above the overlay's background/border */
-}
-
-/* Horizontal line */
-.action-highlight-overlay.capture-move::before {
-    top: 50%;
-    left: 10%; /* Start/end inset from the edge */
-    right: 10%;
-    height: 2px; /* Line thickness */
-    transform: translateY(-50%); /* Center vertically */
-}
-
-/* Vertical line */
-.action-highlight-overlay.capture-move::after {
-    left: 50%;
-    top: 10%; /* Start/end inset from the edge */
-    bottom: 10%;
-    width: 2px; /* Line thickness */
-    transform: translateX(-50%); /* Center horizontally */
-}
+/* REMOVED crosshair pseudo-elements */
 
 
 /* --- Decoration Styling (for random grass decorations) --- */
@@ -328,7 +301,7 @@ h1 {
   height: 40px; /* Adjust size as needed */
   object-fit: contain;
   pointer-events: none; /* Decorations shouldn't block clicks */
-  z-index: 9; /* MODIFIED: Increased z-index to be above crosshair lines (8) */
+  z-index: 8; /* Layer 8, below pieces (10), above action overlay (7) */
   opacity: 0.9; /* Slightly transparent */
 }
 
@@ -468,10 +441,9 @@ h1 {
    .row-labels span { height: 50px; line-height: 50px; }
    .square { width: 50px; height: 50px; }
    .piece { width: 40px; height: 40px; border-width: 1px; } /* Reduced border width */
-   /* Crosshair adjustments for smaller screens */
-   .action-highlight-overlay.capture-move::before { height: 1px; }
-   .action-highlight-overlay.capture-move::after { width: 1px; }
-   .action-highlight-overlay { border-width: 1px; }
+   /* Adjusted highlight borders for smaller screens */
+   .action-highlight-overlay.possible-move { border-width: 1px !important; }
+   .action-highlight-overlay.capture-move { border-width: 1px !important; }
 
    #game-controls { gap: 8px; padding: 8px; } #ai-controls { gap: 5px 10px; }
    #game-layout { padding: 10px; width: 100%; }
