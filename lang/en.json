@@ -46,11 +46,11 @@
   "ruleMovement": "Pieces move 1 square orthogonally.",
   "ruleRank": "Rank Order (strongest to weakest): {rankHierarchy}",
   "ruleCapture": "Higher rank captures lower. Equal ranks capture each other.",
-  "ruleRatElephant": "Exception: Rat captures Elephant (if Rat is on land).",
-  "ruleElephantRat": "Exception: Elephant cannot capture Rat.",
+  "ruleRatElephant": "Exception: <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Rat\" class=\"rule-piece-icon\"></span> captures <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/elephant.png\" alt=\"Elephant\" class=\"rule-piece-icon\"></span> (if Rat is on land).",
+  "ruleElephantRat": "Exception: <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/elephant.png\" alt=\"Elephant\" class=\"rule-piece-icon\"></span> cannot capture <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Rat\" class=\"rule-piece-icon\"></span>.",
   "ruleTraps": "<b>Traps (Pink):</b> Any piece entering an <i>opponent's</i> trap has its rank reduced to 0 (can be captured by any piece). Own trap has no effect.",
-  "ruleWater": "<b>Water (Blue):</b> Only Rat can enter. Cannot capture from water onto land.",
-  "ruleJump": "<b>River Jump:</b> Lion and Tiger can jump horizontally or vertically over river squares if no Rat blocks the path. Jump captures piece of equal/lower rank on landing square.",
+  "ruleWater": "<b>Water (Blue):</b> Only <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Rat\" class=\"rule-piece-icon\"></span> can enter. Cannot capture from water onto land.",
+  "ruleJump": "<b>River Jump:</b> <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/lion.png\" alt=\"Lion\" class=\"rule-piece-icon\"></span> and <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/tiger.png\" alt=\"Tiger\" class=\"rule-piece-icon\"></span> can jump horizontally or vertically over river squares if no <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Rat\" class=\"rule-piece-icon\"></span> blocks the path. Jump captures piece of equal/lower rank on landing square.",
   "ruleDens": "<b>Dens (Marked):</b> Win by entering opponent's Den. Cannot enter own Den.",
   "ruleWinCondition": "Win by: entering opponent's Den, OR capturing all opponent's pieces."
 }
