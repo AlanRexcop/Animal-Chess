@@ -70,7 +70,14 @@ export const ANIMATION_DURATION = 300; // ms
 export const BASE_ASSETS_PATH = 'assets/'; // Make sure this is correct!
 
 // Board Square Size (must match CSS and Tileset)
-export const TILE_SIZE_PX = 60; // Make sure this is correct!
+// ---- SIZING CONSTANTS ----
+// Size of the squares on the game board (CSS size)
+export const TILE_DISPLAY_SIZE_PX = 60;
+// Size of a single tile WITHIN your tileset image file
+export const TILESET_TILE_SIZE_PX = 32; // 
+// Dimensions of your tileset image in number of tiles
+export const TILESET_COLS = 11; 
+export const TILESET_ROWS = 7;  
 
 // Tileset Image Path for Land
 export const TILESET_IMAGE = BASE_ASSETS_PATH + 'tiles/tileset_version1.1.png';

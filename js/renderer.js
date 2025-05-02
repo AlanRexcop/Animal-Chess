@@ -1,9 +1,13 @@
 import {
     BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
     Player, getPieceKey, PIECES, ANIMATION_DURATION,
-    TILESET_IMAGE, TILE_SIZE_PX, DECORATION_IMAGES, DECORATION_CHANCE, TILE_CONFIG_MAP,
+    TILESET_IMAGE, TILESET_TILE_SIZE_PX,
+    TILE_DISPLAY_SIZE_PX,
+    TILESET_COLS, TILESET_ROWS, // Ensure these are correctly set in constants.js!
+    DECORATION_IMAGES, DECORATION_CHANCE, TILE_CONFIG_MAP,
     TRAP_TEXTURE, DEN_PLAYER0_TEXTURE, DEN_PLAYER1_TEXTURE,
-    WATER_BACKGROUND
+    WATER_BACKGROUND,
+    BASE_ASSETS_PATH // Assuming you added this for piece paths too
 } from './constants.js';
 import { getString } from './localization.js';
 
@@ -84,22 +88,39 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
     const fragment = document.createDocumentFragment();
 
-    boardElement.querySelectorAll('.action-highlight-overlay').forEach(overlay => {
-        overlay.className = 'action-highlight-overlay';
-    });
-    boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
-        overlay.className = 'highlight-overlay';
-    });
+    // --- Clear previous dynamic state ---
+    // Clear selection highlights
     boardElement.querySelectorAll('.square.selected').forEach(sq => sq.classList.remove('selected'));
+    // Clear previous last move highlights from overlays
+    const lastMoveClasses = ['last-move-start-p0', 'last-move-start-p1', 'last-move-end-p0', 'last-move-end-p1'];
+    boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
+        overlay.classList.remove(...lastMoveClasses);
+    });
+     // Clear previous action highlights (if different from standard highlights)
+     boardElement.querySelectorAll('.action-highlight-overlay').forEach(overlay => {
+         // Assuming action highlights have specific classes to remove, e.g., 'possible-move', 'capture-move'
+         overlay.classList.remove('possible-move', 'capture-move'); // Adjust classes as needed
+     });
+     // Remove all previously added decorations or texture overlays
+     boardElement.querySelectorAll('.decoration, .trap-texture-container, .den-texture-container').forEach(el => el.remove());
 
+
+    // --- Pre-calculate values used in the loop ---
     const lastMoveStartKey = lastMove ? `${lastMove.start.r}-${lastMove.start.c}` : null;
     const lastMoveEndKey = lastMove ? `${lastMove.end.r}-${lastMove.end.c}` : null;
     const lastMovePlayerSuffix = lastMove ? `p${lastMove.player}` : null;
 
+    // Calculate the target background size for the SCALED tileset ONCE
+    const totalScaledWidth = TILESET_COLS * TILE_DISPLAY_SIZE_PX;
+    const totalScaledHeight = TILESET_ROWS * TILE_DISPLAY_SIZE_PX;
+    const landBackgroundSize = `${totalScaledWidth}px ${totalScaledHeight}px`;
+
+
+    // --- Loop through board squares ---
     for (let r = 0; r < BOARD_ROWS; r++) {
         for (let c = 0; c < BOARD_COLS; c++) {
             const squareElement = document.createElement('div');
-            squareElement.className = 'square';
+            squareElement.className = 'square'; // Base class
             squareElement.dataset.row = r;
             squareElement.dataset.col = c;
             const currentSquareKey = `${r}-${c}`;
@@ -110,36 +131,33 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             const terrain = cellData.terrain;
             const pieceData = cellData.piece;
 
+            // Add base terrain class (used for CSS background-color, borders)
             squareElement.classList.add(`terrain-${terrain}`);
 
-            // Reset background and apply pixelated rendering *before* setting image
+            // Reset background styles & apply pixelated rendering for crisp scaling
             squareElement.style.backgroundImage = '';
-            squareElement.style.imageRendering = 'pixelated'; // MODIFIED: Integrated change
             squareElement.style.backgroundPosition = '';
             squareElement.style.backgroundSize = '';
+            squareElement.style.backgroundRepeat = '';
+            squareElement.style.imageRendering = 'pixelated'; // Keep pixelated rendering
 
-            // Terrain Specific Rendering
+
+            // --- STEP 1: Render Base Tile Background ---
+            // This switch focuses *only* on setting the background of the square itself
             switch (terrain) {
                 case TERRAIN_LAND:
                     squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`;
                     const configKey = getTileConfigurationKey(boardState, r, c);
                     const bgPos = TILE_CONFIG_MAP[configKey];
                     if (bgPos) {
-                        squareElement.style.backgroundPosition = bgPos;
-                        squareElement.style.backgroundSize = "960px 660px";
+                        squareElement.style.backgroundPosition = bgPos;       // Offset based on 32px tiles
+                        squareElement.style.backgroundSize = landBackgroundSize; // Apply calculated scaled size
+                        squareElement.style.backgroundRepeat = 'no-repeat';
                     } else {
-                         console.warn(`Missing background position for config key: ${configKey} at ${r},${c}.`);
-                         squareElement.style.backgroundImage = '';
+                         console.warn(`Missing background position for config key: ${configKey} at ${r},${c}. Check TILE_CONFIG_MAP.`);
+                         squareElement.style.backgroundImage = ''; // Fallback: no background image
                     }
-                    if (DECORATION_IMAGES.length > 0 && Math.random() < DECORATION_CHANCE) {
-                         const randomDecoration = DECORATION_IMAGES[Math.floor(Math.random() * DECORATION_IMAGES.length)];
-                         const decoImg = document.createElement('img');
-                         decoImg.src = randomDecoration;
-                         decoImg.alt = 'Decoration';
-                         decoImg.className = 'decoration';
-                         decoImg.loading = 'lazy';
-                         squareElement.appendChild(decoImg);
-                    }
+                    // --- Decoration logic moved to STEP 2 ---
                     break;
                 case TERRAIN_WATER:
                     squareElement.style.backgroundImage = `url('${WATER_BACKGROUND}')`;
@@ -148,40 +166,107 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                     squareElement.style.backgroundRepeat = 'no-repeat';
                     break;
                 case TERRAIN_TRAP:
+                case TERRAIN_PLAYER0_DEN:
+                case TERRAIN_PLAYER1_DEN:
+                    // Base background color/borders are handled by the CSS class (`.terrain-trap`, etc.)
+                    // Texture overlay images are handled in STEP 2.
+                    break;
+            }
+
+            // --- STEP 1.5: Custom Tile Background Overrides (Optional) ---
+            // Add specific coordinate checks HERE if you want to FORCE a different
+            // background image or position for a specific square, overriding Step 1.
+            /*
+            if (r === 2 && c === 3) { // Example: Force a specific tile at (2,3)
+                 squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`;
+                 squareElement.style.backgroundPosition = `-${5 * TILESET_TILE_SIZE_PX}px -${2 * TILESET_TILE_SIZE_PX}px`; // Example: Tile at (5,2) in tileset
+                 squareElement.style.backgroundSize = landBackgroundSize;
+                 squareElement.style.backgroundRepeat = 'no-repeat';
+            }
+            */
+
+            // --- STEP 2: Render Decorations and Texture Overlays (as child elements) ---
+            // This switch/section focuses on adding child <img> or <div> overlays
+            switch (terrain) {
+                case TERRAIN_LAND:
+                    // Add random decorations on top of land tiles
+                    if (DECORATION_IMAGES.length > 0 && Math.random() < DECORATION_CHANCE) {
+                         const randomDecoration = DECORATION_IMAGES[Math.floor(Math.random() * DECORATION_IMAGES.length)];
+                         const decoImg = document.createElement('img');
+                         decoImg.src = randomDecoration;
+                         decoImg.alt = 'Decoration';
+                         decoImg.className = 'decoration'; // CSS handles size/position
+                         decoImg.loading = 'lazy';
+                         squareElement.appendChild(decoImg);
+                    }
+                    break;
+                case TERRAIN_WATER:
+                     // Add bridge decorations or other water features here if needed
+                     /*
+                     if ((r === 3 || r === 5) && (c === 1 || c === 2 || c === 4 || c === 5)) { // Example: bridge ends
+                        const bridgeImg = document.createElement('img');
+                        bridgeImg.src = `${BASE_ASSETS_PATH}decorations/bridge_end.png`;
+                        bridgeImg.alt = 'Bridge';
+                        bridgeImg.className = 'decoration bridge-decoration'; // Use specific class if needed
+                        squareElement.appendChild(bridgeImg);
+                     } else if (r === 4 && (c === 1 || c === 2 || c === 4 || c === 5)) { // Example: bridge middle
+                        // ... add middle bridge piece ...
+                     }
+                     */
+                    break;
+                case TERRAIN_TRAP:
                     const trapTextureContainer = document.createElement('div');
-                    trapTextureContainer.className = 'trap-texture-container';
+                    trapTextureContainer.className = 'trap-texture-container'; // CSS handles positioning
                     const trapImg = document.createElement('img');
                     trapImg.src = TRAP_TEXTURE;
                     trapImg.alt = 'Trap';
-                    trapImg.className = 'terrain-texture-img';
+                    trapImg.className = 'terrain-texture-img'; // CSS handles size
                     trapTextureContainer.appendChild(trapImg);
                     squareElement.appendChild(trapTextureContainer);
                     break;
                 case TERRAIN_PLAYER0_DEN:
                      const den0TextureContainer = document.createElement('div');
-                     den0TextureContainer.className = 'den-texture-container';
+                     den0TextureContainer.className = 'den-texture-container'; // CSS handles positioning
                      const den0Img = document.createElement('img');
                      den0Img.src = DEN_PLAYER0_TEXTURE;
                      den0Img.alt = 'Player 0 Den';
-                     den0Img.className = 'terrain-texture-img';
+                     den0Img.className = 'terrain-texture-img'; // CSS handles size
                      den0TextureContainer.appendChild(den0Img);
                      squareElement.appendChild(den0TextureContainer);
                     break;
                 case TERRAIN_PLAYER1_DEN:
                      const den1TextureContainer = document.createElement('div');
-                     den1TextureContainer.className = 'den-texture-container';
+                     den1TextureContainer.className = 'den-texture-container'; // CSS handles positioning
                      const den1Img = document.createElement('img');
                      den1Img.src = DEN_PLAYER1_TEXTURE;
                      den1Img.alt = 'Player 1 Den';
-                     den1Img.className = 'terrain-texture-img';
+                     den1Img.className = 'terrain-texture-img'; // CSS handles size
                      den1TextureContainer.appendChild(den1Img);
                      squareElement.appendChild(den1TextureContainer);
                     break;
             }
 
-            // Highlight Overlays
+             // --- STEP 2.5: Custom Decoration Overrides (Optional) ---
+             // Add specific coordinate checks HERE if you want to FORCE a specific
+             // decoration image (or remove one added above).
+             /*
+             if (r === 1 && c === 1) { // Example: Always put a flower at (1,1)
+                 // Remove random decoration if it exists
+                 const existingDeco = squareElement.querySelector('.decoration');
+                 if(existingDeco) existingDeco.remove();
+                 // Add specific flower
+                 const flowerImg = document.createElement('img');
+                 flowerImg.src = `${BASE_ASSETS_PATH}decorations/specific_flower.png`;
+                 flowerImg.alt = 'Flower';
+                 flowerImg.className = 'decoration';
+                 squareElement.appendChild(flowerImg);
+             }
+             */
+
+            // --- STEP 3: Add Highlight Overlays ---
+            // These appear above tiles and decorations, below pieces
             const highlightOverlay = document.createElement('div');
-            highlightOverlay.className = 'highlight-overlay';
+            highlightOverlay.className = 'highlight-overlay'; // Base class for general styling
             if (currentSquareKey === lastMoveStartKey) {
                 highlightOverlay.classList.add(`last-move-start-${lastMovePlayerSuffix}`);
             } else if (currentSquareKey === lastMoveEndKey) {
@@ -189,16 +274,20 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             }
             squareElement.appendChild(highlightOverlay);
 
+            // Add the separate overlay for action highlights (possible moves, captures)
             const actionHighlightOverlay = document.createElement('div');
-            actionHighlightOverlay.className = 'action-highlight-overlay';
+            actionHighlightOverlay.className = 'action-highlight-overlay'; // Specific class for actions
             squareElement.appendChild(actionHighlightOverlay);
 
-            // Piece Rendering
+
+            // --- STEP 4: Render Piece ---
+            // Pieces appear on the top layer
             if (pieceData && pieceData.type) {
                 const pieceElement = document.createElement('div');
                 pieceElement.className = `piece player${pieceData.player}`;
                 const imgElement = document.createElement('img');
-                imgElement.src = `assets/images/head_no_background/${pieceData.type}.png`;
+                // Consider using BASE_ASSETS_PATH here too for consistency
+                imgElement.src = `${BASE_ASSETS_PATH}head_no_background/${pieceData.type}.png`;
                 imgElement.alt = pieceData.name || pieceData.type;
                 pieceElement.appendChild(imgElement);
                 pieceElement.dataset.pieceType = pieceData.type;
@@ -206,15 +295,19 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 squareElement.appendChild(pieceElement);
             }
 
+            // --- STEP 5: Add Click Listener ---
             squareElement.addEventListener('click', () => clickHandler(r, c));
-            fragment.appendChild(squareElement);
-        }
-    }
 
-    boardElement.innerHTML = '';
-    boardElement.appendChild(fragment);
-    renderCoordinatesIfNeeded();
-}
+            // --- STEP 6: Append Square to Fragment ---
+            fragment.appendChild(squareElement);
+        } // End for c
+    } // End for r
+
+    // --- Final DOM Update ---
+    boardElement.innerHTML = ''; // Clear the entire board content
+    boardElement.appendChild(fragment); // Append all newly created squares at once
+    renderCoordinatesIfNeeded(); // Render coordinate labels if not already done
+} // End renderBoard
 
 let coordinatesRendered = false; function renderCoordinatesIfNeeded() { if (coordinatesRendered) return; colLabelsTop.innerHTML = ''; colLabelsBottom.innerHTML = ''; rowLabelsLeft.innerHTML = ''; rowLabelsRight.innerHTML = ''; for (let c = 0; c < BOARD_COLS; c++) { const l=String.fromCharCode(65+c); const sT=document.createElement('span'); sT.textContent=l; colLabelsTop.appendChild(sT); const sB=document.createElement('span'); sB.textContent=l; colLabelsBottom.appendChild(sB); } for (let r = 0; r < BOARD_ROWS; r++) { const l=(BOARD_ROWS-r).toString(); const sL=document.createElement('span'); sL.textContent=l; rowLabelsLeft.appendChild(sL); const sR=document.createElement('span'); sR.textContent=l; rowLabelsRight.appendChild(sR); } coordinatesRendered = true; }
 
