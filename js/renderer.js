@@ -73,7 +73,7 @@ export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture
 function isLogicallyLandForTiling(boardState, r, c) {
     // Check bounds first
     if (r < 0 || r >= BOARD_ROWS) {
-        return true; // Outside board is not land for tiling
+        return false;
     }
     if (c < 0 || c >= BOARD_COLS) {
         return false;

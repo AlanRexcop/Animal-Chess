@@ -98,7 +98,7 @@ export const DEN_PLAYER1_TEXTURE = BASE_ASSETS_PATH + 'images/elements/den_p2.pn
 // Example assumes a 4x4 grid of tiles in your land_tileset.png
 export const TILE_CONFIG_MAP = {
     "OOLL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (9,4)
-    "LOLL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (10,4)
+    "OLLL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (10,4)
     "LOOO": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (11,4)
     "OOLO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // Example: Tile at (8,5)
     "LOLL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`, // Example: Tile at (9,5)
