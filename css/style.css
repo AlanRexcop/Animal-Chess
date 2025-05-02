@@ -284,10 +284,10 @@ h1 {
 .piece {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: 50px; height: 50px; border-radius: 50%;
-  /*box-shadow: 0 1px 3px rgba(0,0,0,0.4)*/; z-index: 10; /* Layer 10, highest for interaction */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 10; /* Layer 10, highest for interaction */
   cursor: pointer; user-select: none;
   box-sizing: border-box; display: flex; justify-content: center; align-items: center;
-  padding: 2px; /*border: 2px solid transparent;*/
+  padding: 2px; border: 2px solid transparent;
 }
 .player0 { border-color: blue; }
 .player1 { border-color: red; }
