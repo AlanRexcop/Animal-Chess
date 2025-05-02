@@ -149,6 +149,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
             // Reset background image/position - important for switching terrain types or re-rendering
             squareElement.style.backgroundImage = '';
+            squareElement.style.imageRendering = 'pixelated';
             squareElement.style.backgroundPosition = '';
             squareElement.style.backgroundSize = ''; // Reset size as well
 
