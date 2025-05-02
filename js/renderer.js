@@ -1,9 +1,9 @@
 import {
     BOARD_ROWS, BOARD_COLS, TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
     Player, getPieceKey, PIECES, ANIMATION_DURATION,
-    TILESET_IMAGE, TILE_SIZE_PX, DECORATION_IMAGES, DECORATION_CHANCE, TILE_CONFIG_MAP, // Import new constants
-    TRAP_TEXTURE, DEN_PLAYER0_TEXTURE, DEN_PLAYER1_TEXTURE, // Import specific texture constants
-    WATER_BACKGROUND // <-- Import the new constant
+    TILESET_IMAGE, TILE_SIZE_PX, DECORATION_IMAGES, DECORATION_CHANCE, TILE_CONFIG_MAP,
+    TRAP_TEXTURE, DEN_PLAYER0_TEXTURE, DEN_PLAYER1_TEXTURE,
+    WATER_BACKGROUND
 } from './constants.js';
 import { getString } from './localization.js';
 
@@ -29,23 +29,21 @@ const WIN_SCORE_THRESHOLD = 19000;
 const LOSE_SCORE_THRESHOLD = -19000;
 const SIGMOID_SCALE_FACTOR = 0.0003;
 
-// --- MODIFIED: Highlight Targets Map ---
-// Maps highlight class names to the CSS selector of the element that should receive the class.
+// Highlight Targets Map
 const highlightClassTargets = {
-    'possible-move': '.action-highlight-overlay', // Target the new action overlay
-    'capture-move': '.action-highlight-overlay',  // Target the new action overlay
-    'selected': '.square',                       // Target the square itself
-    'last-move-start-p0': '.highlight-overlay',   // Target the original overlay
-    'last-move-start-p1': '.highlight-overlay',   // Target the original overlay
-    'last-move-end-p0': '.highlight-overlay',     // Target the original overlay
-    'last-move-end-p1': '.highlight-overlay'      // Target the original overlay
+    'possible-move': '.action-highlight-overlay',
+    'capture-move': '.action-highlight-overlay',
+    'selected': '.square',
+    'last-move-start-p0': '.highlight-overlay',
+    'last-move-start-p1': '.highlight-overlay',
+    'last-move-end-p0': '.highlight-overlay',
+    'last-move-end-p1': '.highlight-overlay'
 };
 
 const ALL_LAST_MOVE_CLASSES = [
     'last-move-start-p0', 'last-move-start-p1',
     'last-move-end-p0', 'last-move-end-p1'
 ];
-// --- END MODIFIED ---
 
 export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture, capturedPieceType, onComplete) {
     if (!pieceElement || !startSquare || !endSquare || !boardContainerElement) { console.warn("Animation elements not found, completing move directly."); onComplete(); return; }
@@ -57,9 +55,8 @@ export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture
     requestAnimationFrame(() => { requestAnimationFrame(() => { pieceElement.style.transition = `left ${ANIMATION_DURATION / 1000}s ease-out, top ${ANIMATION_DURATION / 1000}s ease-out`; pieceElement.style.left = `${targetLeft}px`; pieceElement.style.top = `${targetTop}px`; }); });
     setTimeout(() => {
         pieceElement.style.transition = 'none'; pieceElement.classList.remove('piece-global-animating');
-        // Ensure the piece ends up inside the square div, not the overlay
         const squareContent = endSquare.querySelector(':not(.highlight-overlay):not(.action-highlight-overlay)') || endSquare;
-        squareContent.appendChild(pieceElement); // Append to square or non-overlay child
+        squareContent.appendChild(pieceElement);
         pieceElement.style.position = ''; pieceElement.style.top = ''; pieceElement.style.left = ''; pieceElement.style.transform = '';
         const soundName = isCapture ? `capture_${capturedPieceType}` : 'move'; if (soundName && (!isCapture || capturedPieceType)) { playSound(soundName); }
         onComplete();
@@ -70,7 +67,7 @@ function isLogicallyLandForTiling(boardState, r, c) {
     if (r < 0 || r >= BOARD_ROWS || c < 0 || c >= BOARD_COLS) return false;
     const cell = boardState[r]?.[c];
     if (!cell) { console.warn(`isLogicallyLandForTiling: Missing cell data for ${r},${c}`); return false; }
-    return cell.terrain !== TERRAIN_WATER; // Treat anything not water as 'land' for tiling context
+    return cell.terrain !== TERRAIN_WATER;
 }
 
 function getTileConfigurationKey(boardState, r, c) {
@@ -79,7 +76,7 @@ function getTileConfigurationKey(boardState, r, c) {
     const isBottomLand = isLogicallyLandForTiling(boardState, r + 1, c);
     const isRightLand = isLogicallyLandForTiling(boardState, r, c + 1);
     let configKey = (isTopLand ? 'L' : 'O') + (isLeftLand ? 'L' : 'O') + (isBottomLand ? 'L' : 'O') + (isRightLand ? 'L' : 'O');
-    return TILE_CONFIG_MAP[configKey] ? configKey : "LLLL"; // Fallback if needed
+    return TILE_CONFIG_MAP[configKey] ? configKey : "LLLL";
 }
 
 export function renderBoard(boardState, clickHandler, lastMove = null) {
@@ -87,19 +84,14 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
     const fragment = document.createDocumentFragment();
 
-    // Clear previous action highlights (possible/capture) before re-rendering
-    // This is crucial because we re-create these elements below.
     boardElement.querySelectorAll('.action-highlight-overlay').forEach(overlay => {
-        overlay.className = 'action-highlight-overlay'; // Reset classes
+        overlay.className = 'action-highlight-overlay';
     });
-    // Clear last move highlights from the *other* overlay
     boardElement.querySelectorAll('.highlight-overlay').forEach(overlay => {
-        overlay.className = 'highlight-overlay'; // Reset classes
+        overlay.className = 'highlight-overlay';
     });
-    // Clear selection highlight from squares
     boardElement.querySelectorAll('.square.selected').forEach(sq => sq.classList.remove('selected'));
 
-    // Pre-calculate last move squares for efficient checking later
     const lastMoveStartKey = lastMove ? `${lastMove.start.r}-${lastMove.start.c}` : null;
     const lastMoveEndKey = lastMove ? `${lastMove.end.r}-${lastMove.end.c}` : null;
     const lastMovePlayerSuffix = lastMove ? `p${lastMove.player}` : null;
@@ -120,8 +112,13 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
             squareElement.classList.add(`terrain-${terrain}`);
 
-            // --- Terrain Specific Rendering (Backgrounds/Textures) ---
-            // (Keep existing logic for LAND tileset, WATER gif, TRAP/DEN textures)
+            // Reset background and apply pixelated rendering *before* setting image
+            squareElement.style.backgroundImage = '';
+            squareElement.style.imageRendering = 'pixelated'; // MODIFIED: Integrated change
+            squareElement.style.backgroundPosition = '';
+            squareElement.style.backgroundSize = '';
+
+            // Terrain Specific Rendering
             switch (terrain) {
                 case TERRAIN_LAND:
                     squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`;
@@ -182,10 +179,9 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                     break;
             }
 
-            // --- Highlight Overlays (ADD TWO) ---
+            // Highlight Overlays
             const highlightOverlay = document.createElement('div');
-            highlightOverlay.className = 'highlight-overlay'; // For last moves
-            // Apply last move class if this square matches
+            highlightOverlay.className = 'highlight-overlay';
             if (currentSquareKey === lastMoveStartKey) {
                 highlightOverlay.classList.add(`last-move-start-${lastMovePlayerSuffix}`);
             } else if (currentSquareKey === lastMoveEndKey) {
@@ -194,11 +190,10 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             squareElement.appendChild(highlightOverlay);
 
             const actionHighlightOverlay = document.createElement('div');
-            actionHighlightOverlay.className = 'action-highlight-overlay'; // For possible/capture moves
+            actionHighlightOverlay.className = 'action-highlight-overlay';
             squareElement.appendChild(actionHighlightOverlay);
-            // --- END Highlight Overlays ---
 
-            // --- Piece Rendering ---
+            // Piece Rendering
             if (pieceData && pieceData.type) {
                 const pieceElement = document.createElement('div');
                 pieceElement.className = `piece player${pieceData.player}`;
@@ -223,7 +218,6 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
 let coordinatesRendered = false; function renderCoordinatesIfNeeded() { if (coordinatesRendered) return; colLabelsTop.innerHTML = ''; colLabelsBottom.innerHTML = ''; rowLabelsLeft.innerHTML = ''; rowLabelsRight.innerHTML = ''; for (let c = 0; c < BOARD_COLS; c++) { const l=String.fromCharCode(65+c); const sT=document.createElement('span'); sT.textContent=l; colLabelsTop.appendChild(sT); const sB=document.createElement('span'); sB.textContent=l; colLabelsBottom.appendChild(sB); } for (let r = 0; r < BOARD_ROWS; r++) { const l=(BOARD_ROWS-r).toString(); const sL=document.createElement('span'); sL.textContent=l; rowLabelsLeft.appendChild(sL); const sR=document.createElement('span'); sR.textContent=l; rowLabelsRight.appendChild(sR); } coordinatesRendered = true; }
 
-// --- MODIFIED: highlightSquare ---
 export function highlightSquare(row, col, className) {
     const square = boardElement?.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
     if (!square) return;
@@ -234,11 +228,9 @@ export function highlightSquare(row, col, className) {
         return;
     }
 
-    // Find the correct element within the square based on the target selector
     const targetElement = square.querySelector(targetSelector) || (targetSelector === '.square' ? square : null);
 
     if (targetElement) {
-        // Special handling for capture-move: remove possible-move first
         if (className === 'capture-move' && targetSelector === '.action-highlight-overlay') {
             targetElement.classList.remove('possible-move');
         }
@@ -248,15 +240,13 @@ export function highlightSquare(row, col, className) {
     }
 }
 
-// --- MODIFIED: clearHighlights ---
 export function clearHighlights(className) {
     const targetSelector = highlightClassTargets[className];
 
     if (!targetSelector) {
-        // Handle generic 'last-move' clearing if needed, though specific classes are better
         if (className === 'last-move') {
             ALL_LAST_MOVE_CLASSES.forEach(cls => {
-                const selector = highlightClassTargets[cls]; // Should be '.highlight-overlay'
+                const selector = highlightClassTargets[cls];
                 if (selector) {
                     boardElement?.querySelectorAll(`${selector}.${cls}`).forEach(el => el.classList.remove(cls));
                 }
@@ -267,7 +257,6 @@ export function clearHighlights(className) {
         return;
     }
 
-    // Clear the specific class from all elements matching the target selector
     boardElement?.querySelectorAll(`${targetSelector}.${className}`).forEach(el => {
         el.classList.remove(className);
     });
