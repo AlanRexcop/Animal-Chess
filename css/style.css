@@ -328,7 +328,15 @@ h1 {
 .piece-hist {
   display: inline-flex; justify-content: center; align-items: center; vertical-align: middle;
   width: 1.3em; height: 1.3em; margin-right: 4px; position: relative; top: -1px;
+  /* Add border here */
+  border: 1px solid #bbb; /* Or a base color */
+  border-radius: 3px; /* Match the piece size */
+  box-sizing: border-box; /* Important if adding border/padding */
 }
+
+/* Add player specific border colors for move history pieces */
+.piece-hist.player0 { border-color: red; }
+.piece-hist.player1 { border-color: blue; }
 .piece-hist img { display: block; width: 100%; height: 100%; object-fit: contain; }
 
 
