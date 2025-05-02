@@ -23,7 +23,6 @@ const colLabelsTop = document.getElementById('col-labels-top');
 const colLabelsBottom = document.getElementById('col-labels-bottom');
 const rowLabelsLeft = document.getElementById('row-labels-left');
 const rowLabelsRight = document.getElementById('row-labels-right');
-const winChanceBarContainer = document.getElementById('win-chance-bar-container');
 const winChanceBarElement = document.getElementById('win-chance-bar');
 const winChanceBarBlue = document.getElementById('win-chance-bar-blue');
 const winChanceBarRed = document.getElementById('win-chance-bar-red');
@@ -68,16 +67,17 @@ export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture
 }
 
 function isLogicallyLandForTiling(boardState, r, c) {
-    if (r < 0 || r >= BOARD_ROWS || c < 0 || c >= BOARD_COLS) return false;
+    if (c < 0 || c >= BOARD_COLS) return false;
+    if (r < 0 || r >= BOARD_ROWS) return true;
     const cell = boardState[r]?.[c];
     if (!cell) { console.warn(`isLogicallyLandForTiling: Missing cell data for ${r},${c}`); return false; }
     return cell.terrain !== TERRAIN_WATER;
 }
 
 function getTileConfigurationKey(boardState, r, c) {
-    const isTopLand = isLogicallyLandForTiling(boardState, r - 1, c);
+    const isTopLand = true; /*isLogicallyLandForTiling(boardState, r - 1, c);*/
     const isLeftLand = isLogicallyLandForTiling(boardState, r, c - 1);
-    const isBottomLand = isLogicallyLandForTiling(boardState, r + 1, c);
+    const isBottomLand = true; /*isLogicallyLandForTiling(boardState, r + 1, c);*/
     const isRightLand = isLogicallyLandForTiling(boardState, r, c + 1);
     let configKey = (isTopLand ? 'L' : 'O') + (isLeftLand ? 'L' : 'O') + (isBottomLand ? 'L' : 'O') + (isRightLand ? 'L' : 'O');
     return TILE_CONFIG_MAP[configKey] ? configKey : "LLLL";
@@ -287,7 +287,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 pieceElement.className = `piece player${pieceData.player}`;
                 const imgElement = document.createElement('img');
                 // Consider using BASE_ASSETS_PATH here too for consistency
-                imgElement.src = `${BASE_ASSETS_PATH}head_no_background/${pieceData.type}.png`;
+                imgElement.src = `${BASE_ASSETS_PATH}images/head_no_background/${pieceData.type}.png`;
                 imgElement.alt = pieceData.name || pieceData.type;
                 pieceElement.appendChild(imgElement);
                 pieceElement.dataset.pieceType = pieceData.type;

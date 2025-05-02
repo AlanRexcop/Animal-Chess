@@ -1,7 +1,3 @@
-// js/constants.js
-
-// ... (existing imports and constants)
-
 export const BOARD_ROWS = 9;
 export const BOARD_COLS = 7;
 
@@ -76,8 +72,8 @@ export const TILE_DISPLAY_SIZE_PX = 60;
 // Size of a single tile WITHIN your tileset image file
 export const TILESET_TILE_SIZE_PX = 32; // 
 // Dimensions of your tileset image in number of tiles
-export const TILESET_COLS = 11; 
-export const TILESET_ROWS = 7;  
+export const TILESET_COLS = 16; 
+export const TILESET_ROWS = 11;  
 
 // Tileset Image Path for Land
 export const TILESET_IMAGE = BASE_ASSETS_PATH + 'tiles/tileset_version1.1.png';
@@ -102,22 +98,22 @@ export const DEN_PLAYER1_TEXTURE = BASE_ASSETS_PATH + 'images/elements/den_p2.pn
 // Describes which tile from the tileset to use based on Land (L) or Other (O) neighbors (T, L, B, R)
 // Value format: CSS background-position string "Xpx Ypx" relative to the tileset image origin (0,0)
 export const TILE_CONFIG_MAP = {
-    "OOLL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`,
-    "OLLL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`,
-    "OLLO": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`, // MODIFIED: Integrated change
-    "OOLO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 0) * TILE_SIZE_PX}px`,
-    "LOLL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`,
-    "LLLL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`,
-    "LLLO": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`,
-    "LOLO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 1) * TILE_SIZE_PX}px`,
-    "LOOL": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`,
-    "LLOL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`,
-    "LLOO": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`,
-    "LOOO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 2) * TILE_SIZE_PX}px`,
-    "OLOO": `-${(8 + 0) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`,
-    "OOOL": `-${(8 + 1) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`,
-    "OLOL": `-${(8 + 2) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`,
-    "OOOO": `-${(8 + 3) * TILE_SIZE_PX}px -${(4 + 3) * TILE_SIZE_PX}px`,
+    "OOLL": `-${(8 + 0) * TILE_DISPLAY_SIZE_PX}px -${(4 + 0) * TILE_DISPLAY_SIZE_PX}px`,
+    "OLLL": `-${(8 + 1) * TILE_DISPLAY_SIZE_PX}px -${(4 + 0) * TILE_DISPLAY_SIZE_PX}px`,
+    "OLLO": `-${(8 + 2) * TILE_DISPLAY_SIZE_PX}px -${(4 + 0) * TILE_DISPLAY_SIZE_PX}px`, // MODIFIED: Integrated change
+    "OOLO": `-${(8 + 3) * TILE_DISPLAY_SIZE_PX}px -${(4 + 0) * TILE_DISPLAY_SIZE_PX}px`,
+    "LOLL": `-${(8 + 0) * TILE_DISPLAY_SIZE_PX}px -${(4 + 1) * TILE_DISPLAY_SIZE_PX}px`,
+    "LLLL": `-${(8 + 1) * TILE_DISPLAY_SIZE_PX}px -${(4 + 1) * TILE_DISPLAY_SIZE_PX}px`,
+    "LLLO": `-${(8 + 2) * TILE_DISPLAY_SIZE_PX}px -${(4 + 1) * TILE_DISPLAY_SIZE_PX}px`,
+    "LOLO": `-${(8 + 3) * TILE_DISPLAY_SIZE_PX}px -${(4 + 1) * TILE_DISPLAY_SIZE_PX}px`,
+    "LOOL": `-${(8 + 0) * TILE_DISPLAY_SIZE_PX}px -${(4 + 2) * TILE_DISPLAY_SIZE_PX}px`,
+    "LLOL": `-${(8 + 1) * TILE_DISPLAY_SIZE_PX}px -${(4 + 2) * TILE_DISPLAY_SIZE_PX}px`,
+    "LLOO": `-${(8 + 2) * TILE_DISPLAY_SIZE_PX}px -${(4 + 2) * TILE_DISPLAY_SIZE_PX}px`,
+    "LOOO": `-${(8 + 3) * TILE_DISPLAY_SIZE_PX}px -${(4 + 2) * TILE_DISPLAY_SIZE_PX}px`,
+    "OLOO": `-${(8 + 0) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
+    "OOOL": `-${(8 + 1) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
+    "OLOL": `-${(8 + 2) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
+    "OOOO": `-${(8 + 3) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
 };
 
 // Add any other constants needed globally (unchanged)
