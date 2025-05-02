@@ -5,9 +5,12 @@ import {
     TILE_DISPLAY_SIZE_PX,
     TILESET_COLS, TILESET_ROWS, // Ensure these are correctly set in constants.js!
     DECORATION_IMAGES, DECORATION_CHANCE, TILE_CONFIG_MAP,
-    TRAP_TEXTURE, DEN_PLAYER0_TEXTURE, DEN_PLAYER1_TEXTURE,
-    WATER_BACKGROUND,
-    BASE_ASSETS_PATH // Assuming you added this for piece paths too
+    DEN_PLAYER0_TEXTURE, DEN_PLAYER1_TEXTURE,
+    WATER_BACKGROUND, UP_WATER_BACKGROUND, DOWN_WATER_BACKGROUND,
+    BASE_ASSETS_PATH, // Assuming you added this for piece paths too
+    TRAP_BACKGROUND,
+    BRIGDE_DECORATION,
+    DEN_DECORATION
 } from './constants.js';
 import { getString } from './localization.js';
 
@@ -65,7 +68,20 @@ export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture
         onComplete();
     }, ANIMATION_DURATION);
 }
-
+let landTilePatterns = null;
+export function initializeLandTilePatterns(boardState) {
+	console.log("Initializing land tile patterns...");
+	landTilePatterns = Array(BOARD_ROWS).fill(null).map(() => Array(BOARD_COLS).fill(null));
+	for (let r = 0; r < BOARD_ROWS; r++) {
+		for (let c = 0; c < BOARD_COLS; c++) {
+            if (DECORATION_IMAGES.length > 0 && Math.random() < DECORATION_CHANCE){
+			// if (boardState[r]?.[c]?.terrain === TERRAIN_LAND) {
+				landTilePatterns[r][c] = Math.floor(Math.random() * DECORATION_IMAGES.length);
+			}
+		}
+	}
+	console.log("Land tile patterns initialized.");
+}
 function isLogicallyLandForTiling(boardState, r, c) {
     if (c < 0 || c >= BOARD_COLS) return false;
     if (r < 0 || r >= BOARD_ROWS) return true;
@@ -144,33 +160,43 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
             // --- STEP 1: Render Base Tile Background ---
             // This switch focuses *only* on setting the background of the square itself
-            switch (terrain) {
-                case TERRAIN_LAND:
-                    squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`;
-                    const configKey = getTileConfigurationKey(boardState, r, c);
-                    const bgPos = TILE_CONFIG_MAP[configKey];
-                    if (bgPos) {
-                        squareElement.style.backgroundPosition = bgPos;       // Offset based on 32px tiles
-                        squareElement.style.backgroundSize = landBackgroundSize; // Apply calculated scaled size
-                        squareElement.style.backgroundRepeat = 'no-repeat';
-                    } else {
-                         console.warn(`Missing background position for config key: ${configKey} at ${r},${c}. Check TILE_CONFIG_MAP.`);
-                         squareElement.style.backgroundImage = ''; // Fallback: no background image
-                    }
-                    // --- Decoration logic moved to STEP 2 ---
-                    break;
-                case TERRAIN_WATER:
-                    squareElement.style.backgroundImage = `url('${WATER_BACKGROUND}')`;
-                    squareElement.style.backgroundSize = 'cover';
-                    squareElement.style.backgroundPosition = 'center';
+            if (r >= 3 && r <= 5) {
+                if (r === 3)squareElement.style.backgroundImage = `url('${UP_WATER_BACKGROUND}')`;
+                if (r === 4)squareElement.style.backgroundImage = `url('${WATER_BACKGROUND}')`;
+                if (r === 5)squareElement.style.backgroundImage = `url('${DOWN_WATER_BACKGROUND}')`;
+                squareElement.style.backgroundSize = 'cover';
+                squareElement.style.backgroundPosition = 'center';
+                squareElement.style.backgroundRepeat = 'no-repeat';
+            } else if (terrain === TERRAIN_LAND) {
+                squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`;
+                const configKey = getTileConfigurationKey(boardState, r, c);
+                const bgPos = TILE_CONFIG_MAP[configKey]; // Offset based on TILESET_TILE_SIZE_PX
+                if (bgPos) {
+                    // landBackgroundSize is calculated outside the loop using TILESET_COLS, TILESET_ROWS, TILE_DISPLAY_SIZE_PX
+                    // e.g., const totalScaledWidth = TILESET_COLS * TILE_DISPLAY_SIZE_PX; ...
+                    // const landBackgroundSize = `${totalScaledWidth}px ${totalScaledHeight}px`;
+                    squareElement.style.backgroundPosition = bgPos;
+                    squareElement.style.backgroundSize = landBackgroundSize;
                     squareElement.style.backgroundRepeat = 'no-repeat';
-                    break;
-                case TERRAIN_TRAP:
-                case TERRAIN_PLAYER0_DEN:
-                case TERRAIN_PLAYER1_DEN:
-                    // Base background color/borders are handled by the CSS class (`.terrain-trap`, etc.)
-                    // Texture overlay images are handled in STEP 2.
-                    break;
+                } else {
+                     console.warn(`Missing background position for config key: ${configKey} at ${r},${c}. Check TILE_CONFIG_MAP.`);
+                     squareElement.style.backgroundImage = ''; // Fallback: no background image
+                }
+                 // Decoration logic remains in STEP 2
+            } else if (terrain === TERRAIN_TRAP) {
+                 // NOTE: Based on the *provided switch case*, Traps also get the WATER_BACKGROUND here.
+                 // If you intended them to have a solid color from CSS only, you would remove this else if block.
+                squareElement.style.backgroundImage = `url('${TRAP_BACKGROUND}')`; // Applying Water background as per original switch
+                squareElement.style.backgroundSize = 'cover';
+                squareElement.style.backgroundPosition = 'center';
+                squareElement.style.backgroundRepeat = 'no-repeat';
+            } else if (terrain === TERRAIN_PLAYER0_DEN || terrain === TERRAIN_PLAYER1_DEN) {
+                // NOTE: Based on the *provided switch case*, Traps also get the WATER_BACKGROUND here.
+                // If you intended them to have a solid color from CSS only, you would remove this else if block.
+                squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`; // Applying Water background as per original switch
+                squareElement.style.backgroundPosition = TILE_CONFIG_MAP['Den'];
+                squareElement.style.backgroundSize = landBackgroundSize; // Apply calculated scaled size
+                squareElement.style.backgroundRepeat = 'no-repeat';
             }
 
             // --- STEP 1.5: Custom Tile Background Overrides (Optional) ---
@@ -187,63 +213,39 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
 
             // --- STEP 2: Render Decorations and Texture Overlays (as child elements) ---
             // This switch/section focuses on adding child <img> or <div> overlays
-            switch (terrain) {
-                case TERRAIN_LAND:
-                    // Add random decorations on top of land tiles
-                    if (DECORATION_IMAGES.length > 0 && Math.random() < DECORATION_CHANCE) {
-                         const randomDecoration = DECORATION_IMAGES[Math.floor(Math.random() * DECORATION_IMAGES.length)];
-                         const decoImg = document.createElement('img');
-                         decoImg.src = randomDecoration;
-                         decoImg.alt = 'Decoration';
-                         decoImg.className = 'decoration'; // CSS handles size/position
-                         decoImg.loading = 'lazy';
-                         squareElement.appendChild(decoImg);
-                    }
-                    break;
-                case TERRAIN_WATER:
-                     // Add bridge decorations or other water features here if needed
-                     /*
-                     if ((r === 3 || r === 5) && (c === 1 || c === 2 || c === 4 || c === 5)) { // Example: bridge ends
-                        const bridgeImg = document.createElement('img');
-                        bridgeImg.src = `${BASE_ASSETS_PATH}decorations/bridge_end.png`;
-                        bridgeImg.alt = 'Bridge';
-                        bridgeImg.className = 'decoration bridge-decoration'; // Use specific class if needed
-                        squareElement.appendChild(bridgeImg);
-                     } else if (r === 4 && (c === 1 || c === 2 || c === 4 || c === 5)) { // Example: bridge middle
-                        // ... add middle bridge piece ...
-                     }
-                     */
-                    break;
-                case TERRAIN_TRAP:
-                    const trapTextureContainer = document.createElement('div');
-                    trapTextureContainer.className = 'trap-texture-container'; // CSS handles positioning
-                    const trapImg = document.createElement('img');
-                    trapImg.src = TRAP_TEXTURE;
-                    trapImg.alt = 'Trap';
-                    trapImg.className = 'terrain-texture-img'; // CSS handles size
-                    trapTextureContainer.appendChild(trapImg);
-                    squareElement.appendChild(trapTextureContainer);
-                    break;
-                case TERRAIN_PLAYER0_DEN:
-                     const den0TextureContainer = document.createElement('div');
-                     den0TextureContainer.className = 'den-texture-container'; // CSS handles positioning
-                     const den0Img = document.createElement('img');
-                     den0Img.src = DEN_PLAYER0_TEXTURE;
-                     den0Img.alt = 'Player 0 Den';
-                     den0Img.className = 'terrain-texture-img'; // CSS handles size
-                     den0TextureContainer.appendChild(den0Img);
-                     squareElement.appendChild(den0TextureContainer);
-                    break;
-                case TERRAIN_PLAYER1_DEN:
-                     const den1TextureContainer = document.createElement('div');
-                     den1TextureContainer.className = 'den-texture-container'; // CSS handles positioning
-                     const den1Img = document.createElement('img');
-                     den1Img.src = DEN_PLAYER1_TEXTURE;
-                     den1Img.alt = 'Player 1 Den';
-                     den1Img.className = 'terrain-texture-img'; // CSS handles size
-                     den1TextureContainer.appendChild(den1Img);
-                     squareElement.appendChild(den1TextureContainer);
-                    break;
+            if (r >= 3 && r <= 5 && terrain === TERRAIN_LAND) {
+                const decoImg = document.createElement('img');
+                decoImg.src = BRIGDE_DECORATION;
+                decoImg.alt = 'Decoration';
+                // decoImg.className = 'decoration'; // CSS handles size/position
+                decoImg.loading = 'lazy';
+                decoImg.style.height = 82 + 'px';
+                decoImg.style.width = 82 + 'px';
+                squareElement.appendChild(decoImg);
+            } else if (terrain === TERRAIN_LAND) {
+                // Add random decorations on top of land tiles
+                if(landTilePatterns[r][c] !== null){
+                    const randomDecoration = DECORATION_IMAGES[landTilePatterns[r][c]];
+                    const decoImg = document.createElement('img');
+                    decoImg.src = randomDecoration;
+                    decoImg.alt = 'Decoration';
+                    decoImg.className = 'decoration'; // CSS handles size/position
+                    decoImg.loading = 'lazy';
+                    squareElement.appendChild(decoImg);
+                }
+            } else if (terrain === TERRAIN_WATER) {
+            } else if (terrain === TERRAIN_TRAP) {
+            } else if (terrain === TERRAIN_PLAYER0_DEN || terrain === TERRAIN_PLAYER1_DEN) {
+                 // Add the specific den texture overlay image element
+                 const den0TextureContainer = document.createElement('div');
+                 den0TextureContainer.className = 'den-texture-container'; // CSS handles positioning
+                 const den0Img = document.createElement('img');
+                 den0Img.src = DEN_DECORATION; // Use constant path (requires DEN_PLAYER0_TEXTURE constant)
+                 den0Img.sizes = 64;
+                 den0Img.alt = terrain === TERRAIN_PLAYER0_DEN ? 'Player 0 Den' : 'Player 1 Den';
+                //  den0Img.className = 'terrain-texture-img'; // CSS handles size
+                 den0TextureContainer.appendChild(den0Img);
+                 squareElement.appendChild(den0TextureContainer);
             }
 
              // --- STEP 2.5: Custom Decoration Overrides (Optional) ---

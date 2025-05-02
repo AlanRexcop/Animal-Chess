@@ -79,18 +79,26 @@ export const TILESET_ROWS = 11;
 export const TILESET_IMAGE = BASE_ASSETS_PATH + 'tiles/tileset_version1.1.png';
 
 // Background Image Path for Water
-export const WATER_BACKGROUND = BASE_ASSETS_PATH + 'images/water/ezgif.com-animated-gif-maker.gif'; // <-- New constant for water
+export const WATER_BACKGROUND = BASE_ASSETS_PATH + 'tiles/water.gif';
+export const UP_WATER_BACKGROUND = BASE_ASSETS_PATH + 'tiles/up_water.gif';
+export const DOWN_WATER_BACKGROUND = BASE_ASSETS_PATH + 'tiles/down_water.gif';
+export const TRAP_BACKGROUND = BASE_ASSETS_PATH + 'tiles/trap.gif';
+// export const DEN_BACKGROUND = BASE_ASSETS_PATH + 'images/tiles/den.gif';
 
 // Decoration Image Paths (for random land decorations)
 export const DECORATION_IMAGES = [
-    // BASE_ASSETS_PATH + 'decorations/grass_patch_1.png',
-    // BASE_ASSETS_PATH + 'decorations/flower_1.png',
-    // Add paths to your other decoration images here
+    BASE_ASSETS_PATH + 'decorations/decorations_1.png',
+    BASE_ASSETS_PATH + 'decorations/decorations_1.png',
+    BASE_ASSETS_PATH + 'decorations/decorations_2.png',
+    BASE_ASSETS_PATH + 'decorations/decorations_3.png',
+    BASE_ASSETS_PATH + 'decorations/decorations_4.png',
 ];
-export const DECORATION_CHANCE = 0.4; // 40% chance to place a decoration on a land tile
+export const DEN_DECORATION = BASE_ASSETS_PATH + 'decorations/chest.png';
+export const BRIGDE_DECORATION = BASE_ASSETS_PATH + 'decorations/ladder.png';
+
+export const DECORATION_CHANCE = 0.5; // 40% chance to place a decoration on a land tile
 
 // Specific Texture Overlay Paths (for special squares like traps and dens)
-export const TRAP_TEXTURE = BASE_ASSETS_PATH + 'images/elements/trap.png';
 export const DEN_PLAYER0_TEXTURE = BASE_ASSETS_PATH + 'images/elements/den_p1.png'; // Image for Player 0 (Blue) Den
 export const DEN_PLAYER1_TEXTURE = BASE_ASSETS_PATH + 'images/elements/den_p2.png'; // Image for Player 1 (Red) Den
 
@@ -114,6 +122,7 @@ export const TILE_CONFIG_MAP = {
     "OOOL": `-${(8 + 1) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
     "OLOL": `-${(8 + 2) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
     "OOOO": `-${(8 + 3) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
+    "Den":  `-${(3) * TILE_DISPLAY_SIZE_PX}px -${(3) * TILE_DISPLAY_SIZE_PX}px`,
 };
 
 // Add any other constants needed globally (unchanged)

@@ -294,8 +294,8 @@ h1 {
   top: 50%; /* Center vertically */
   left: 50%; /* Center horizontally */
   transform: translate(-50%, -50%); /* Adjust for element's own size */
-  width: 40px; /* Adjust size as needed, should fit within 60px square */
-  height: 40px; /* Adjust size as needed */
+  width: 20px; /* Adjust size as needed, should fit within 60px square */
+  height: 20px; /* Adjust size as needed */
   object-fit: contain;
   pointer-events: none; /* Decorations shouldn't block clicks */
   z-index: 8; /* Layer 8, below pieces (10), above action overlay (7) */

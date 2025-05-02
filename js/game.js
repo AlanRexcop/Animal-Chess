@@ -7,7 +7,8 @@ import {
     updateTurnDisplay,
     updateAiDepthDisplay,
     updateWinChanceBar, // Correct function name
-    animatePieceMove
+    animatePieceMove,
+    initializeLandTilePatterns,
 } from './renderer.js';
 import { loadLanguage, getString, applyLocalizationToPage, renderGameRules } from './localization.js';
 import {
@@ -88,7 +89,7 @@ function handleAiWorkerError(event) {
 // initGame (Modified for control enabling)
 export function initGame() {
     console.log("Initializing game..."); difficultySelect = document.getElementById('difficulty'); timeLimitInput = document.getElementById('time-limit'); resetButton = document.getElementById('reset-button'); langSelect = document.getElementById('lang-select'); gameModeSelect = document.getElementById('game-mode'); aiControlsContainer = document.getElementById('ai-controls');
-    board = new Board(); board.initBoard();
+    board = new Board(); board.initBoard(); initializeLandTilePatterns(board.getState());
     currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false;
     // --- INTEGRATED: Ensure controls are enabled on init/reset ---
     if (gameModeSelect) gameModeSelect.disabled = false;
