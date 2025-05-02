@@ -43,6 +43,14 @@
   "animal_tiger": "Hổ",
   "animal_lion": "Sư tử",
   "animal_elephant": "Voi",
-  "winChanceCalculating": "Cơ hội thắng: Đang tính...",
-  "winChanceValue": "Cơ hội thắng: {value}%"
+  "ruleMovement": "Các quân cờ di chuyển 1 ô theo chiều dọc hoặc ngang.",
+  "ruleRank": "Thứ hạng sức mạnh (mạnh nhất đến yếu nhất): {rankHierarchy}",
+  "ruleCapture": "Quân mạnh hơn bắt quân yếu hơn. Quân bằng hạng bắt được nhau.",
+  "ruleRatElephant": "Ngoại lệ: Chuột bắt được Voi (nếu Chuột ở trên cạn).",
+  "ruleElephantRat": "Ngoại lệ: Voi không bắt được Chuột.",
+  "ruleTraps": "<b>Bẫy (Hồng):</b> Bất kỳ quân nào vào bẫy của <i>đối phương</i> sẽ bị giảm sức mạnh về 0 (bị mọi quân bắt được). Bẫy của phe mình không có tác dụng.",
+  "ruleWater": "<b>Nước (Xanh dương):</b> Chỉ Chuột được vào ô nước. Không thể từ ô nước bắt quân trên cạn.",
+  "ruleJump": "<b>Nhảy qua sông:</b> Sư tử và Hổ có thể nhảy dọc hoặc ngang qua các ô sông nếu không có Chuột cản đường. Nhảy qua sông có thể bắt quân đối phương bằng hoặc yếu hơn ở ô đáp.",
+  "ruleDens": "<b>Hang (Đánh dấu):</b> Thắng bằng cách vào Hang của đối phương. Không được vào Hang của mình.",
+  "ruleWinCondition": "Thắng bằng cách: vào Hang đối phương, HOẶC bắt hết quân của đối phương."
 }

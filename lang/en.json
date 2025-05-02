@@ -43,6 +43,14 @@
   "animal_tiger": "Tiger",
   "animal_lion": "Lion",
   "animal_elephant": "Elephant",
-  "winChanceCalculating": "Win Chance: Calculating...",
-  "winChanceValue": "Win Chance: {value}%"
+  "ruleMovement": "Pieces move 1 square orthogonally.",
+  "ruleRank": "Rank Order (strongest to weakest): {rankHierarchy}",
+  "ruleCapture": "Higher rank captures lower. Equal ranks capture each other.",
+  "ruleRatElephant": "Exception: Rat captures Elephant (if Rat is on land).",
+  "ruleElephantRat": "Exception: Elephant cannot capture Rat.",
+  "ruleTraps": "<b>Traps (Pink):</b> Any piece entering an <i>opponent's</i> trap has its rank reduced to 0 (can be captured by any piece). Own trap has no effect.",
+  "ruleWater": "<b>Water (Blue):</b> Only Rat can enter. Cannot capture from water onto land.",
+  "ruleJump": "<b>River Jump:</b> Lion and Tiger can jump horizontally or vertically over river squares if no Rat blocks the path. Jump captures piece of equal/lower rank on landing square.",
+  "ruleDens": "<b>Dens (Marked):</b> Win by entering opponent's Den. Cannot enter own Den.",
+  "ruleWinCondition": "Win by: entering opponent's Den, OR capturing all opponent's pieces."
 }
