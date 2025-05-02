@@ -2,14 +2,14 @@
 import { Board } from './board.js';
 import { Piece } from './piece.js';
 import {
-    renderBoard, highlightSquare, clearHighlights, updateStatus,
+    highlightSquare, clearHighlights, updateStatus,
     renderCapturedPieces, addMoveToHistory, clearMoveHistory, playSound,
     updateTurnDisplay,
     updateAiDepthDisplay,
     updateWinChanceBar, // Correct function name
     animatePieceMove,
-    initializeLandTilePatterns,
 } from './renderer.js';
+import { initializeLandTilePatterns, renderBoard } from './renderBoard.js';
 import { loadLanguage, getString, applyLocalizationToPage, renderGameRules } from './localization.js';
 import {
     Player, GameStatus, aiPlayer, DEFAULT_AI_TARGET_DEPTH,
