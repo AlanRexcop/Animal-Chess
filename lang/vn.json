@@ -1,5 +1,5 @@
 {
-  "gameTitle": "Cờ Thú (Jungle Chess)",
+  "gameTitle": "Cờ Thú",
   "gameModeLabel": "Chế độ:",
   "modePVA": "Người vs Máy",
   "modePVP": "Người vs Người",
@@ -18,7 +18,7 @@
   "statusWaitingPlayer": "{player}, chọn một quân cờ.",
   "statusPlayerSelected": "{player}, đã chọn {pieceName}. Chọn điểm đến.",
   "statusAIMoving": "Đang di chuyển...",
-  "statusAIThinking": "Máy ({aiName}) đang suy nghĩ...",
+  "statusAIThinking": "{aiName} đang suy nghĩ...",
   "statusGameOver": "Kết thúc!",
   "statusWin": "{winner} Thắng!",
   "statusDraw": "Hòa!",

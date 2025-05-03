@@ -1,5 +1,5 @@
 {
-  "gameTitle": "Jungle Chess (Animal Chess)",
+  "gameTitle": "Jungle Chess",
   "gameModeLabel": "Mode:",
   "modePVA": "Player vs AI",
   "modePVP": "Player vs Player",
@@ -18,7 +18,7 @@
   "statusWaitingPlayer": "{player}, select a piece.",
   "statusPlayerSelected": "{player}, selected {pieceName}. Choose destination.",
   "statusAIMoving": "Moving...",
-  "statusAIThinking": "AI ({aiName}) is thinking...",
+  "statusAIThinking": "{aiName} is thinking...",
   "statusGameOver": "Game Over!",
   "statusWin": "{winner} Wins!",
   "statusDraw": "It's a Draw!",
