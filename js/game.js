@@ -55,11 +55,6 @@ function initializeAiWorker() {
 function handleAiWorkerMessage(e) {
     console.log('[Main] Message received from AI Worker:', e.data);
     isAiThinking = false;
-    // --- INTEGRATED: Re-enable controls ---
-    if (gameModeSelect) gameModeSelect.disabled = false;
-    if (difficultySelect) difficultySelect.disabled = false;
-    if (timeLimitInput) timeLimitInput.disabled = false;
-    // --- END INTEGRATED ---
 
     const { move: bestMoveData, depthAchieved, nodes, eval: score, error } = e.data;
     updateAiDepthDisplay(depthAchieved ?? '?');
@@ -80,11 +75,6 @@ function handleAiWorkerError(event) {
     console.error(`[Main] Error from AI Worker: Msg:${event.message}, File:${event.filename}, Line:${event.lineno}`, event);
     updateStatus('errorAIWorker', {}, true);
     isAiThinking = false;
-    // --- INTEGRATED: Re-enable controls ---
-    if (gameModeSelect) gameModeSelect.disabled = false;
-    if (difficultySelect) difficultySelect.disabled = false;
-    if (timeLimitInput) timeLimitInput.disabled = false;
-    // --- END INTEGRATED ---
     lastEvalScore = null;
     updateWinChanceBar(lastEvalScore);
     if (!isGameOver) { setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS); playSound('victory'); renderBoard(board.getState(), handleSquareClick, lastMove); }
@@ -94,21 +84,14 @@ function handleAiWorkerError(event) {
 export function initGame() {
     console.log("Initializing game..."); difficultySelect = document.getElementById('difficulty'); timeLimitInput = document.getElementById('time-limit'); resetButton = document.getElementById('reset-button'); langSelect = document.getElementById('lang-select'); gameModeSelect = document.getElementById('game-mode'); aiControlsContainer = document.getElementById('ai-controls'); undoButton = document.getElementById('undo-button');
     board = new Board(); board.initBoard(); initializeLandTilePatterns(board.getState());
-    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false;
-    // --- INTEGRATED: Ensure controls are enabled on init/reset ---
-    if (gameModeSelect) gameModeSelect.disabled = false;
-    if (difficultySelect) difficultySelect.disabled = false;
-    if (timeLimitInput) timeLimitInput.disabled = false;
-    // --- END INTEGRATED ---
+    if (!aiWorker) { initializeAiWorker(); } else if (isAiThinking) { console.log("[Main] Resetting during AI calculation, terminating worker."); aiWorker.terminate(); initializeAiWorker(); }
+    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false;
     lastMove = null; capturedByPlayer0 = []; capturedByPlayer1 = []; moveHistory = []; lastEvalScore = null;
-
     gameStateHistory = [];
     updateUndoButtonState(false); // Disable undo on new game
-
     updateAiDepthDisplay('0'); if (difficultySelect) difficultySelect.value = aiTargetDepth.toString(); if (timeLimitInput) timeLimitInput.value = aiTimeLimitMs;
     clearMoveHistory(); renderBoard(board.getState(), handleSquareClick, lastMove); renderCapturedPieces(capturedByPlayer0, capturedByPlayer1); updateGameStatusUI(); updateWinChanceBar(null); // Start at 50/50
-    setupUIListeners(); if (!aiWorker) { initializeAiWorker(); } else if (isAiThinking) { console.log("[Main] Resetting during AI calculation, terminating worker."); aiWorker.terminate(); initializeAiWorker(); }
-    isAiThinking = false;
+    setupUIListeners();
     console.log("Game Initialized. Player:", currentPlayer);
 }
 
@@ -216,12 +199,6 @@ function setGameOver(winner, status) {
     isGameOver = true;
     gameStatus = status;
     deselectPiece();
-    // --- INTEGRATED: Ensure controls are enabled on game over ---
-    // (In case AI fails and game ends abruptly)
-    if (gameModeSelect) gameModeSelect.disabled = false;
-    if (difficultySelect) difficultySelect.disabled = false;
-    if (timeLimitInput) timeLimitInput.disabled = false;
-    // --- END INTEGRATED ---
 }
 function updateGameStatusUI() {
     let statusKey = 'statusLoading';
@@ -259,11 +236,6 @@ function triggerAiTurn() {
     }
     console.log("Triggering AI move...");
     isAiThinking = true;
-    // --- INTEGRATED: Disable controls ---
-    if (gameModeSelect) gameModeSelect.disabled = true;
-    if (difficultySelect) difficultySelect.disabled = true;
-    if (timeLimitInput) timeLimitInput.disabled = true;
-    // --- END INTEGRATED ---
 
     updateGameStatusUI(); // Show "AI is thinking..."
     updateAiDepthDisplay('-');
@@ -275,11 +247,6 @@ function triggerAiTurn() {
         console.error("Error cloning board state for AI:", e);
         updateStatus('errorBoardClone', {}, true);
         isAiThinking = false;
-        // --- INTEGRATED: Re-enable controls on error ---
-        if (gameModeSelect) gameModeSelect.disabled = false;
-        if (difficultySelect) difficultySelect.disabled = false;
-        if (timeLimitInput) timeLimitInput.disabled = false;
-        // --- END INTEGRATED ---
         lastEvalScore = null;
         updateWinChanceBar(lastEvalScore);
         setGameOver(Player.PLAYER0, GameStatus.PLAYER0_WINS);
@@ -308,10 +275,6 @@ function undoMove() {
         isAiThinking = false;
         // Re-initialize worker immediately or wait? Let's re-init.
         initializeAiWorker();
-        // Make sure controls are re-enabled if AI was terminated
-        if (gameModeSelect) gameModeSelect.disabled = false;
-        if (difficultySelect) difficultySelect.disabled = false;
-        if (timeLimitInput) timeLimitInput.disabled = false;
     }
 
     let undoCount = 0;
@@ -389,11 +352,6 @@ function undoMove() {
     updateGameStatusUI();
     updateWinChanceBar(lastEvalScore);
     updateUndoButtonState(gameStateHistory.length > 0); // Enable/disable based on remaining history
-
-    // Ensure controls are enabled after undo (especially if AI was thinking)
-    if (gameModeSelect) gameModeSelect.disabled = false;
-    if (difficultySelect) difficultySelect.disabled = false;
-    if (timeLimitInput) timeLimitInput.disabled = false;
 
     console.log("Undo complete.");
 }
