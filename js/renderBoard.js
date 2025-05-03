@@ -192,7 +192,8 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                  den0TextureContainer.className = 'den-texture-container'; // CSS handles positioning
                  const den0Img = document.createElement('img');
                  den0Img.src = DEN_DECORATION; // Use constant path (requires DEN_PLAYER0_TEXTURE constant)
-                 den0Img.sizes = 64;
+                 den0Img.style.width = '100%';
+                 den0Img.style.height = '100%';
                  den0Img.alt = terrain === TERRAIN_PLAYER0_DEN ? 'Player 0 Den' : 'Player 1 Den';
                 //  den0Img.className = 'terrain-texture-img'; // CSS handles size
                  den0TextureContainer.appendChild(den0Img);

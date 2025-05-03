@@ -14,6 +14,7 @@
   "moveHistoryLabel": "Lịch sử nước đi",
   "turnLabel": "Lượt:",
   "rulesTitle": "Tóm tắt luật chơi",
+  "creditTitle": "Tác giả trò chơi",
   "statusLoading": "Đang tải...",
   "statusWaitingPlayer": "{player}, chọn một quân cờ.",
   "statusPlayerSelected": "{player}, đã chọn {pieceName}. Chọn điểm đến.",

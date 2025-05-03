@@ -14,6 +14,7 @@
   "moveHistoryLabel": "Move History",
   "turnLabel": "Turn:",
   "rulesTitle": "Game Rules Summary",
+  "creditTitle": "Game Authors",
   "statusLoading": "Loading...",
   "statusWaitingPlayer": "{player}, select a piece.",
   "statusPlayerSelected": "{player}, selected {pieceName}. Choose destination.",
