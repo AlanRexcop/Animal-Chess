@@ -170,8 +170,8 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 decoImg.alt = 'Decoration';
                 // decoImg.className = 'decoration'; // CSS handles size/position
                 decoImg.loading = 'lazy';
-                decoImg.style.height = 82 + 'px';
-                decoImg.style.width = 82 + 'px';
+                decoImg.style.height = '100%';
+                decoImg.style.width = '100%';
                 squareElement.appendChild(decoImg);
             } else if (terrain === TERRAIN_LAND) {
                 // Add random decorations on top of land tiles

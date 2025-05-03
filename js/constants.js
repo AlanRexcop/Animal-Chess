@@ -93,7 +93,7 @@ export const DECORATION_IMAGES = [
     BASE_ASSETS_PATH + 'decorations/decorations_3.png',
     BASE_ASSETS_PATH + 'decorations/decorations_4.png',
 ];
-export const DEN_DECORATION = BASE_ASSETS_PATH + 'decorations/den.png';
+export const DEN_DECORATION = BASE_ASSETS_PATH + 'decorations/chest.png';
 export const BRIGDE_DECORATION = BASE_ASSETS_PATH + 'decorations/ladder.png';
 
 export const DECORATION_CHANCE = 0.5; // 40% chance to place a decoration on a land tile
