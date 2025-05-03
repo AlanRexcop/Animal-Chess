@@ -437,7 +437,7 @@ h1 {
    .rank-piece-icon, .rule-piece-icon { height: 1.1em; } /* Adjust rule icon size */
 }
 @media (max-width: 520px) {
-   #board-container { width: calc(350px + 2 * 15px); height: calc(450px + 2 * 15px); padding: 15px; margin-bottom: 8px; }
+   #board-container { width: calc(350px + 2 * 15px); height: calc(450px + 2 * 15px); padding: 3px; margin-bottom: 8px; }
    #board { grid-template-columns: repeat(7, 50px); grid-template-rows: repeat(9, 50px); width: 350px; height: 450px; top: 15px; left: 15px; }
    .coord-labels { font-size: 0.7em; }
    .col-labels { left: 15px; right: 15px; height: 15px; }
