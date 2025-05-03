@@ -106,7 +106,7 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             squareElement.style.backgroundPosition = '';
             squareElement.style.backgroundSize = '';
             squareElement.style.backgroundRepeat = '';
-            squareElement.style.imageRendering = 'pixelated'; // Keep pixelated rendering
+            squareElement.style.imageRendering = ''; // Keep pixelated rendering
 
 
             // --- STEP 1: Render Base Tile Background ---
