@@ -120,16 +120,92 @@ function saveCurrentStateToHistory() {
 
 // setupUIListeners, selectPiece, deselectPiece, handleSquareClick (Unchanged)
 function setupUIListeners() {
-    if (setupUIListeners.alreadyRun) return; setupUIListeners.alreadyRun = true;
-    resetButton?.addEventListener('click', () => { initGame(); });
-    langSelect?.addEventListener('change', async (event) => { const newLang = event.target.value; await loadLanguage(newLang); applyLocalizationToPage(); renderCapturedPieces(capturedByPlayer0, capturedByPlayer1); updateGameStatusUI(); updateWinChanceBar(lastEvalScore); renderGameRules(); });
-    difficultySelect?.addEventListener('change', (event) => { aiTargetDepth = parseInt(event.target.value, 10); console.log("AI Target Depth set to:", aiTargetDepth); });
-    timeLimitInput?.addEventListener('change', (event) => { let v = parseInt(event.target.value, 10); if (isNaN(v) || v < MIN_AI_TIME_LIMIT_MS) { v = MIN_AI_TIME_LIMIT_MS; event.target.value = v; } aiTimeLimitMs = v; console.log("AI Time Limit set to:", aiTimeLimitMs, "ms"); });
-    gameModeSelect?.addEventListener('change', () => { const mode = gameModeSelect.value; aiControlsContainer.style.display = mode === 'PVA' ? 'flex' : 'none'; initGame(); });
+    if (setupUIListeners.alreadyRun) return;
+    setupUIListeners.alreadyRun = true;
+
+    // Attach event listeners to UI elements
+    // Reset button
+    resetButton?.addEventListener('click', () => {
+        initGame(); // Reset button still resets the game
+    });
+
+    // Language select
+    langSelect?.addEventListener('change', async (event) => {
+        const newLang = event.target.value;
+        await loadLanguage(newLang);
+        applyLocalizationToPage();
+        renderCapturedPieces(capturedByPlayer0, capturedByPlayer1); // Re-render captured pieces to apply language
+        updateGameStatusUI(); // Update status message to apply language
+        updateWinChanceBar(lastEvalScore); // Ensure bar text/labels update if they are localized
+        renderGameRules(); // Re-render rules with new language
+    });
+
+    // Difficulty select (AI Depth)
+    difficultySelect?.addEventListener('change', (event) => {
+        // Ensure value is an integer, default if invalid or too low
+        aiTargetDepth = parseInt(event.target.value, 10);
+        console.log("AI Target Depth set to:", aiTargetDepth);
+    });
+
+    // Time Limit input (AI)
+    timeLimitInput?.addEventListener('change', (event) => {
+        let v = parseInt(event.target.value, 10);
+        // Validate and set minimum time limit
+        if (isNaN(v) || v < MIN_AI_TIME_LIMIT_MS) {
+            v = MIN_AI_TIME_LIMIT_MS;
+            event.target.value = v; // Correct the input field value
+        }
+        aiTimeLimitMs = v;
+        console.log("AI Time Limit set to:", aiTimeLimitMs, "ms");
+    });
+
+    // Game Mode select (PVP/PVA)
+    gameModeSelect?.addEventListener('change', () => {
+        const newMode = gameModeSelect.value;
+
+        // Toggle visibility of AI controls based on the new mode
+        if (aiControlsContainer) {
+             aiControlsContainer.style.display = newMode === 'PVA' ? 'flex' : 'none';
+        }
+
+        // If AI was currently thinking when the mode changed (e.g., from PVA to something else,
+        // or just interrupting a PVA calculation), terminate the worker.
+        if (isAiThinking) {
+            console.log("[Main] Mode changed during AI calculation, terminating worker.");
+            if (aiWorker) aiWorker.terminate();
+            aiWorker = null; // Set to null to indicate termination
+            isAiThinking = false; // Reset flag
+            // Immediately re-initialize the worker so it's ready if the mode becomes PVA again.
+            // The initializeAiWorker function handles creating a new one if null.
+            initializeAiWorker();
+        }
+
+        // Update the UI status and turn display to reflect the potentially new game mode context
+        updateGameStatusUI();
+
+        // If the game is ongoing and the new mode is PVA, and it's currently the AI's turn (Player 1),
+        // trigger the AI move sequence.
+        // Note: currentPlayer is checked *after* updateGameStatusUI().
+        if (!isGameOver && newMode === 'PVA' && currentPlayer === aiPlayer) {
+             console.log("Switched to PVA and it's AI's turn. Triggering AI.");
+             // Add a small delay to allow the UI to update before potentially heavy AI computation starts.
+             setTimeout(triggerAiTurn, 150);
+        }
+
+        // Crucially, we *do not* call initGame() here. The board state, captured pieces,
+        // move history, etc., are preserved when changing game modes.
+    });
+
+    // Undo button
     undoButton?.addEventListener('click', () => {
         undoMove();
     });
-    if (aiControlsContainer && gameModeSelect) { aiControlsContainer.style.display = gameModeSelect.value === 'PVA' ? 'flex' : 'none'; }
+
+    // Initial setup: Ensure AI controls visibility is correct when the page loads
+    // based on the default or saved game mode setting.
+    if (aiControlsContainer && gameModeSelect) {
+        aiControlsContainer.style.display = gameModeSelect.value === 'PVA' ? 'flex' : 'none';
+    }
 }
 setupUIListeners.alreadyRun = false;
 function selectPiece(piece, row, col) { if (isGameOver || isAiThinking) return; deselectPiece(); selectedPieceInfo = { piece, row, col }; validMovesCache = rules.getValidMovesForPiece(piece, row, col, board.getState()); highlightSquare(row, col, 'selected'); validMovesCache.forEach(move => { highlightSquare(move.row, move.col, 'possible-move'); const targetPiece = board.getPiece(move.row, move.col); if (targetPiece && targetPiece.player !== currentPlayer) { highlightSquare(move.row, move.col, 'capture-move'); } }); console.log(`Selected: ${piece.name} at ${row},${col}. Valid moves:`, validMovesCache); updateGameStatusUI(); }
