@@ -76,12 +76,10 @@ export const TILESET_COLS = 16;
 export const TILESET_ROWS = 11;  
 
 // Tileset Image Path for Land
-export const TILESET_IMAGE = BASE_ASSETS_PATH + 'tiles/tileset_version1.1.png';
+export const TILESET_IMAGE = BASE_ASSETS_PATH + 'tiles/tileset_1.1.png';
 
 // Background Image Path for Water
 export const WATER_BACKGROUND = BASE_ASSETS_PATH + 'tiles/water.gif';
-export const UP_WATER_BACKGROUND = BASE_ASSETS_PATH + 'tiles/up_water.gif';
-export const DOWN_WATER_BACKGROUND = BASE_ASSETS_PATH + 'tiles/down_water.gif';
 export const TRAP_BACKGROUND = BASE_ASSETS_PATH + 'tiles/trap.gif';
 // export const DEN_BACKGROUND = BASE_ASSETS_PATH + 'images/tiles/den.gif';
 
@@ -123,6 +121,8 @@ export const TILE_CONFIG_MAP = {
     "OLOL": `-${(8 + 2) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
     "OOOO": `-${(8 + 3) * TILE_DISPLAY_SIZE_PX}px -${(4 + 3) * TILE_DISPLAY_SIZE_PX}px`,
     "Den":  `-${(3) * TILE_DISPLAY_SIZE_PX}px -${(3) * TILE_DISPLAY_SIZE_PX}px`,
+    "UPW":  `-${(13) * TILE_DISPLAY_SIZE_PX}px -${(4) * TILE_DISPLAY_SIZE_PX}px`,
+    "DOW":  `-${(13) * TILE_DISPLAY_SIZE_PX}px -${(6) * TILE_DISPLAY_SIZE_PX}px`,
 };
 
 // Add any other constants needed globally (unchanged)

@@ -4,7 +4,7 @@ import {
   TILE_DISPLAY_SIZE_PX,
   TILESET_COLS, TILESET_ROWS, // Ensure these are correctly set in constants.js!
   DECORATION_IMAGES, DECORATION_CHANCE, TILE_CONFIG_MAP,
-  WATER_BACKGROUND, UP_WATER_BACKGROUND, DOWN_WATER_BACKGROUND,
+  WATER_BACKGROUND,
   BASE_ASSETS_PATH, // Assuming you added this for piece paths too
   TRAP_BACKGROUND,
   BRIGDE_DECORATION,
@@ -106,15 +106,17 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
             squareElement.style.backgroundPosition = '';
             squareElement.style.backgroundSize = '';
             squareElement.style.backgroundRepeat = '';
-            squareElement.style.imageRendering = ''; // Keep pixelated rendering
+            squareElement.style.imageRendering = ''; 
+            // squareElement.style.imageRendering = 'pĩxelated'; // Keep pixelated rendering
 
 
             // --- STEP 1: Render Base Tile Background ---
             // This switch focuses *only* on setting the background of the square itself
             if (r >= 3 && r <= 5) {
-                if (r === 3)squareElement.style.backgroundImage = `url('${UP_WATER_BACKGROUND}')`;
-                if (r === 4)squareElement.style.backgroundImage = `url('${WATER_BACKGROUND}')`;
-                if (r === 5)squareElement.style.backgroundImage = `url('${DOWN_WATER_BACKGROUND}')`;
+                // if (r === 3)squareElement.style.backgroundImage = `url('${UP_WATER_BACKGROUND}')`;
+                // if (r === 4)squareElement.style.backgroundImage = `url('${WATER_BACKGROUND}')`;
+                // if (r === 5)squareElement.style.backgroundImage = `url('${DOWN_WATER_BACKGROUND}')`;
+                squareElement.style.backgroundImage = `url('${WATER_BACKGROUND}')`;
                 squareElement.style.backgroundSize = 'cover';
                 squareElement.style.backgroundPosition = 'center';
                 squareElement.style.backgroundRepeat = 'no-repeat';
@@ -150,29 +152,32 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                 squareElement.style.backgroundRepeat = 'no-repeat';
             }
 
-            // --- STEP 1.5: Custom Tile Background Overrides (Optional) ---
-            // Add specific coordinate checks HERE if you want to FORCE a different
-            // background image or position for a specific square, overriding Step 1.
-            /*
-            if (r === 2 && c === 3) { // Example: Force a specific tile at (2,3)
-                 squareElement.style.backgroundImage = `url('${TILESET_IMAGE}')`;
-                 squareElement.style.backgroundPosition = `-${5 * TILESET_TILE_SIZE_PX}px -${2 * TILESET_TILE_SIZE_PX}px`; // Example: Tile at (5,2) in tileset
-                 squareElement.style.backgroundSize = landBackgroundSize;
-                 squareElement.style.backgroundRepeat = 'no-repeat';
-            }
-            */
-
             // --- STEP 2: Render Decorations and Texture Overlays (as child elements) ---
             // This switch/section focuses on adding child <img> or <div> overlays
-            if (r >= 3 && r <= 5 && terrain === TERRAIN_LAND) {
-                const decoImg = document.createElement('img');
-                decoImg.src = BRIGDE_DECORATION;
-                decoImg.alt = 'Decoration';
-                // decoImg.className = 'decoration'; // CSS handles size/position
-                decoImg.loading = 'lazy';
-                decoImg.style.height = '100%';
-                decoImg.style.width = '100%';
-                squareElement.appendChild(decoImg);
+            if (r >= 3 && r <= 5 ) {
+                const decoDiv = document.createElement('div');
+                decoDiv.className = 'trap-texture-container'; // CSS handles positioning
+                decoDiv.className = 'terrain-water';
+                decoDiv.style.backgroundImage = `url('${TILESET_IMAGE}')`;
+                decoDiv.style.backgroundSize = landBackgroundSize; // Apply calculated scaled size
+                decoDiv.style.backgroundRepeat = 'no-repeat';
+                if (r === 3) {
+                    decoDiv.style.backgroundPosition = TILE_CONFIG_MAP['UPW'];
+                    squareElement.appendChild(decoDiv);
+                }else if (r === 5){
+                    decoDiv.style.backgroundPosition = TILE_CONFIG_MAP['DOW'];
+                    squareElement.appendChild(decoDiv);
+                }
+                if ( terrain === TERRAIN_LAND){
+                    const decoImg = document.createElement('img');
+                    decoImg.src = BRIGDE_DECORATION;
+                    decoImg.style.zIndex = '2';
+                    decoImg.alt = 'Decoration';
+                    decoImg.loading = 'lazy';
+                    decoImg.style.height = '100%';
+                    decoImg.style.width = '100%';
+                    squareElement.appendChild(decoImg);
+                }
             } else if (terrain === TERRAIN_LAND) {
                 // Add random decorations on top of land tiles
                 if(landTilePatterns[r][c] !== null){
@@ -200,22 +205,6 @@ export function renderBoard(boardState, clickHandler, lastMove = null) {
                  squareElement.appendChild(den0TextureContainer);
             }
 
-             // --- STEP 2.5: Custom Decoration Overrides (Optional) ---
-             // Add specific coordinate checks HERE if you want to FORCE a specific
-             // decoration image (or remove one added above).
-             /*
-             if (r === 1 && c === 1) { // Example: Always put a flower at (1,1)
-                 // Remove random decoration if it exists
-                 const existingDeco = squareElement.querySelector('.decoration');
-                 if(existingDeco) existingDeco.remove();
-                 // Add specific flower
-                 const flowerImg = document.createElement('img');
-                 flowerImg.src = `${BASE_ASSETS_PATH}decorations/specific_flower.png`;
-                 flowerImg.alt = 'Flower';
-                 flowerImg.className = 'decoration';
-                 squareElement.appendChild(flowerImg);
-             }
-             */
 
             // --- STEP 3: Add Highlight Overlays ---
             // These appear above tiles and decorations, below pieces
