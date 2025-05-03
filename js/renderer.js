@@ -15,6 +15,7 @@ const moveListElement = document.getElementById('move-list');
 const winChanceBarElement = document.getElementById('win-chance-bar');
 const winChanceBarBlue = document.getElementById('win-chance-bar-blue');
 const winChanceBarRed = document.getElementById('win-chance-bar-red');
+const undoButton = document.getElementById('undo-button');
 
 // Eval Conversion Constants
 const WIN_SCORE_THRESHOLD = 19000;
@@ -36,6 +37,23 @@ const ALL_LAST_MOVE_CLASSES = [
     'last-move-start-p0', 'last-move-start-p1',
     'last-move-end-p0', 'last-move-end-p1'
 ];
+
+export function removeLastMoveFromHistory() {
+    if (moveListElement && moveListElement.lastElementChild) {
+        moveListElement.removeChild(moveListElement.lastElementChild);
+        moveListElement.scrollTop = moveListElement.scrollHeight;
+    }
+    // Disable undo button if history becomes empty
+    if (moveListElement && moveListElement.children.length === 0 && undoButton) {
+        undoButton.disabled = true;
+    }
+}
+
+export function updateUndoButtonState(canUndo) {
+    if (undoButton) {
+        undoButton.disabled = !canUndo;
+    }
+}
 
 export function animatePieceMove(pieceElement, startSquare, endSquare, isCapture, capturedPieceType, onComplete) {
     if (!pieceElement || !startSquare || !endSquare || !boardContainerElement) { console.warn("Animation elements not found, completing move directly."); onComplete(); return; }
@@ -102,8 +120,8 @@ export function clearHighlights(className) {
 export function updateStatus(messageKey, params = {}, isError = false) { if (!statusElement) return; const message = getString(messageKey, params); statusElement.textContent = message; statusElement.classList.toggle('error-message', isError); }
 export function updateTurnDisplay(currentPlayer, gameMode = 'PVA', isGameOver = false) { if (!turnElement) return; if (isGameOver) { turnElement.textContent = '---'; return; } let playerLabelKey; if (gameMode === 'PVP') { playerLabelKey = (currentPlayer === Player.PLAYER0) ? 'player1Name' : 'player2Name'; } else { playerLabelKey = (currentPlayer === Player.PLAYER0) ? 'playerName' : 'aiName'; } turnElement.textContent = getString(playerLabelKey); }
 export function renderCapturedPieces(capturedByPlayer0, capturedByPlayer1) { const renderPanel = (container, piecesList) => { if (!container) return; container.innerHTML = ''; if (piecesList.length === 0) { container.textContent = getString('capturedNone'); return; } piecesList.sort((a, b) => (PIECES[b.type]?.rank ?? 0) - (PIECES[a.type]?.rank ?? 0)); piecesList.forEach(p => { if (!p || !p.type) return; const el = document.createElement('span'); const capturingPlayer = Player.getOpponent(p.player); el.className = `captured-piece player${capturingPlayer}`; const img = document.createElement('img'); img.src = `assets/images/head_no_background/${p.type}.png`; img.alt = p.name || p.type; img.title = getString(`animal_${p.type}`) || p.name || p.type; el.appendChild(img); container.appendChild(el); }); }; renderPanel(capturedByPlayer0Container, capturedByPlayer0); renderPanel(capturedByPlayer1Container, capturedByPlayer1); }
-export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPieceData) { if (!moveListElement) return; const getAlgebraic = (r, c) => `${String.fromCharCode(65 + c)}${BOARD_ROWS - r}`; const startNotation = getAlgebraic(fromR, fromC); const endNotation = getAlgebraic(toR, toC); const pieceImgSrc = `assets/images/head_no_background/${pieceData.type}.png`; const pieceName = getString(`animal_${pieceData.type}`) || pieceData.name || pieceData.type; const pieceAlt = `${PIECES[pieceData.type]?.symbol || pieceName}`; let moveHtml = `<span class="piece-hist player${pieceData.player}"><img src="${pieceImgSrc}" alt="${pieceAlt}" title="${pieceName}"></span> ${startNotation} → ${endNotation}`; if (capturedPieceData) { const capturedImgSrc = `assets/images/head_no_background/${capturedPieceData.type}.png`; const capturedName = getString(`animal_${capturedPieceData.type}`) || capturedPieceData.name || capturedPieceData.type; const capturedAlt = `${PIECES[capturedPieceData.type]?.symbol || capturedName}`; moveHtml += ` (x <span class="piece-hist player${capturedPieceData.player}"><img src="${capturedImgSrc}" alt="${capturedAlt}" title="${capturedName}"></span>)`; } const li = document.createElement('li'); li.innerHTML = moveHtml; moveListElement.appendChild(li); moveListElement.scrollTop = moveListElement.scrollHeight; }
-export function clearMoveHistory() { if (moveListElement) moveListElement.innerHTML = ''; }
+export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPieceData) { if (!moveListElement) return; const getAlgebraic = (r, c) => `${String.fromCharCode(65 + c)}${BOARD_ROWS - r}`; const startNotation = getAlgebraic(fromR, fromC); const endNotation = getAlgebraic(toR, toC); const pieceImgSrc = `assets/images/head_no_background/${pieceData.type}.png`; const pieceName = getString(`animal_${pieceData.type}`) || pieceData.name || pieceData.type; const pieceAlt = `${PIECES[pieceData.type]?.symbol || pieceName}`; let moveHtml = `<span class="piece-hist player${pieceData.player}"><img src="${pieceImgSrc}" alt="${pieceAlt}" title="${pieceName}"></span> ${startNotation} → ${endNotation}`; if (capturedPieceData) { const capturedImgSrc = `assets/images/head_no_background/${capturedPieceData.type}.png`; const capturedName = getString(`animal_${capturedPieceData.type}`) || capturedPieceData.name || capturedPieceData.type; const capturedAlt = `${PIECES[capturedPieceData.type]?.symbol || capturedName}`; moveHtml += ` (x <span class="piece-hist player${capturedPieceData.player}"><img src="${capturedImgSrc}" alt="${capturedAlt}" title="${capturedName}"></span>)`; } const li = document.createElement('li'); li.innerHTML = moveHtml; moveListElement.appendChild(li); moveListElement.scrollTop = moveListElement.scrollHeight; if (undoButton) undoButton.disabled = false;}
+export function clearMoveHistory() { if (moveListElement) moveListElement.innerHTML = ''; if (undoButton) undoButton.disabled = true;}
 export function playSound(soundName) { try { if (!soundName || typeof soundName !== 'string') { console.warn("playSound: Invalid sound name provided:", soundName); return; } const soundPath = `assets/sounds/${soundName.toLowerCase()}.mp3`; const audio = new Audio(soundPath); audio.play().catch(e => console.warn(`Sound playback failed for ${soundPath}:`, e.message || e)); } catch (e) { console.error("Error creating or playing sound:", e); } }
 export function updateAiDepthDisplay(depth) { const el = document.getElementById('ai-depth-achieved'); if (el) { el.textContent = depth.toString(); } }
 export function updateWinChanceBar(aiEvalScore) { if (!winChanceBarElement || !winChanceBarBlue || !winChanceBarRed) { console.error("Win chance bar elements not found!"); return; } let player0Percent = 50; if (aiEvalScore !== null && aiEvalScore !== undefined && isFinite(aiEvalScore)) { const playerEvalScore = -aiEvalScore; const clampedScore = Math.max(LOSE_SCORE_THRESHOLD, Math.min(WIN_SCORE_THRESHOLD, playerEvalScore)); const probability = 1 / (1 + Math.exp(-SIGMOID_SCALE_FACTOR * clampedScore)); player0Percent = Math.round(probability * 100); } else { console.log("Updating win chance bar to default 50/50 (no valid score)"); } const player1Percent = 100 - player0Percent; winChanceBarBlue.style.width = `${player0Percent}%`; winChanceBarElement.title = `Blue: ${player0Percent}% / Red: ${player1Percent}%`; }

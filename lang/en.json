@@ -53,5 +53,6 @@
   "ruleWater": "<b>Water (Blue):</b> Only <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Rat\" class=\"rule-piece-icon\"></span> can enter. Cannot capture from water onto land.",
   "ruleJump": "<b>River Jump:</b> <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/lion.png\" alt=\"Lion\" class=\"rule-piece-icon\"></span> and <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/tiger.png\" alt=\"Tiger\" class=\"rule-piece-icon\"></span> can jump vertically over river squares if no <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Rat\" class=\"rule-piece-icon\"></span> blocks the path. <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/lion.png\" alt=\"Lion\" class=\"rule-piece-icon\"></span> can also jump horizontally. Jump captures piece of equal/lower rank on landing square.",
   "ruleDens": "<b>Dens (Marked):</b> Win by entering opponent's Den. Cannot enter own Den.",
-  "ruleWinCondition": "Win by: entering opponent's Den, OR capturing all opponent's pieces."
+  "ruleWinCondition": "Win by: entering opponent's Den, OR capturing all opponent's pieces.",
+  "undoButton": "Undo Move"
 }

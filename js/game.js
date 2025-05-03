@@ -8,6 +8,8 @@ import {
     updateAiDepthDisplay,
     updateWinChanceBar, // Correct function name
     animatePieceMove,
+    removeLastMoveFromHistory,
+    updateUndoButtonState
 } from './renderer.js';
 import { initializeLandTilePatterns, renderBoard } from './renderBoard.js';
 import { loadLanguage, getString, applyLocalizationToPage, renderGameRules } from './localization.js';
@@ -39,8 +41,10 @@ let resetButton;
 let langSelect;
 let gameModeSelect;
 let aiControlsContainer;
+let undoButton;
 let aiTargetDepth = DEFAULT_AI_TARGET_DEPTH;
 let aiTimeLimitMs = DEFAULT_AI_TIME_LIMIT_MS;
+let gameStateHistory = []; // Stores { boardState, currentPlayer, capturedP0, capturedP1, lastMove, lastEval, isGameOver }
 
 // AI Worker Initialization and Handlers
 function initializeAiWorker() {
@@ -88,19 +92,47 @@ function handleAiWorkerError(event) {
 
 // initGame (Modified for control enabling)
 export function initGame() {
-    console.log("Initializing game..."); difficultySelect = document.getElementById('difficulty'); timeLimitInput = document.getElementById('time-limit'); resetButton = document.getElementById('reset-button'); langSelect = document.getElementById('lang-select'); gameModeSelect = document.getElementById('game-mode'); aiControlsContainer = document.getElementById('ai-controls');
+    console.log("Initializing game..."); difficultySelect = document.getElementById('difficulty'); timeLimitInput = document.getElementById('time-limit'); resetButton = document.getElementById('reset-button'); langSelect = document.getElementById('lang-select'); gameModeSelect = document.getElementById('game-mode'); aiControlsContainer = document.getElementById('ai-controls'); undoButton = document.getElementById('undo-button');
     board = new Board(); board.initBoard(); initializeLandTilePatterns(board.getState());
-    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false; isAiThinking = false;
+    currentPlayer = Player.PLAYER0; selectedPieceInfo = null; gameStatus = GameStatus.ONGOING; validMovesCache = []; isGameOver = false;
     // --- INTEGRATED: Ensure controls are enabled on init/reset ---
     if (gameModeSelect) gameModeSelect.disabled = false;
     if (difficultySelect) difficultySelect.disabled = false;
     if (timeLimitInput) timeLimitInput.disabled = false;
     // --- END INTEGRATED ---
     lastMove = null; capturedByPlayer0 = []; capturedByPlayer1 = []; moveHistory = []; lastEvalScore = null;
+
+    gameStateHistory = [];
+    updateUndoButtonState(false); // Disable undo on new game
+
     updateAiDepthDisplay('0'); if (difficultySelect) difficultySelect.value = aiTargetDepth.toString(); if (timeLimitInput) timeLimitInput.value = aiTimeLimitMs;
     clearMoveHistory(); renderBoard(board.getState(), handleSquareClick, lastMove); renderCapturedPieces(capturedByPlayer0, capturedByPlayer1); updateGameStatusUI(); updateWinChanceBar(null); // Start at 50/50
     setupUIListeners(); if (!aiWorker) { initializeAiWorker(); } else if (isAiThinking) { console.log("[Main] Resetting during AI calculation, terminating worker."); aiWorker.terminate(); initializeAiWorker(); }
+    isAiThinking = false;
     console.log("Game Initialized. Player:", currentPlayer);
+}
+
+function saveCurrentStateToHistory() {
+    try {
+        const stateToSave = {
+            boardState: board.getClonedStateForWorker(), // Deep clone for history
+            currentPlayer: currentPlayer,
+            capturedP0: [...capturedByPlayer0], // Clone arrays
+            capturedP1: [...capturedByPlayer1],
+            lastMove: lastMove ? { ...lastMove } : null, // Clone last move object
+            lastEval: lastEvalScore,
+            isGameOver: isGameOver, // Save game over status *before* the move
+            gameStatus: gameStatus // Also save the specific status (e.g., PLAYER0_WINS)
+        };
+        gameStateHistory.push(stateToSave);
+
+        updateUndoButtonState(true); // Enable undo after saving state
+
+    } catch (error) {
+        console.error("Error saving game state to history:", error);
+        // Optionally disable undo if saving fails critically
+        updateUndoButtonState(false);
+    }
 }
 
 // setupUIListeners, selectPiece, deselectPiece, handleSquareClick (Unchanged)
@@ -111,6 +143,9 @@ function setupUIListeners() {
     difficultySelect?.addEventListener('change', (event) => { aiTargetDepth = parseInt(event.target.value, 10); console.log("AI Target Depth set to:", aiTargetDepth); });
     timeLimitInput?.addEventListener('change', (event) => { let v = parseInt(event.target.value, 10); if (isNaN(v) || v < MIN_AI_TIME_LIMIT_MS) { v = MIN_AI_TIME_LIMIT_MS; event.target.value = v; } aiTimeLimitMs = v; console.log("AI Time Limit set to:", aiTimeLimitMs, "ms"); });
     gameModeSelect?.addEventListener('change', () => { const mode = gameModeSelect.value; aiControlsContainer.style.display = mode === 'PVA' ? 'flex' : 'none'; initGame(); });
+    undoButton?.addEventListener('click', () => {
+        undoMove();
+    });
     if (aiControlsContainer && gameModeSelect) { aiControlsContainer.style.display = gameModeSelect.value === 'PVA' ? 'flex' : 'none'; }
 }
 setupUIListeners.alreadyRun = false;
@@ -122,7 +157,7 @@ function handleSquareClick(row, col) { console.log(`Clicked on: ${row}, ${col}`)
 function updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPiece) { board.setPiece(fromRow, fromCol, null); board.setPiece(toRow, toCol, piece); if (capturedPiece) { if (currentPlayer === Player.PLAYER0) { capturedByPlayer0.push(capturedPiece); } else { capturedByPlayer1.push(capturedPiece); } console.log(`${piece.name} captured ${capturedPiece.name}`); } lastMove = { start: { r: fromRow, c: fromCol }, end: { r: toRow, c: toCol }, player: currentPlayer }; }
 
 // performMoveWithAnimation (Unchanged)
-function performMoveWithAnimation(piece, toRow, toCol, fromRow, fromCol, targetPiece) { if (isGameOver) return; const isCapture = targetPiece !== null && targetPiece.player !== piece.player; const capturedPieceData = isCapture ? { ...targetPiece } : null; const boardElement = document.getElementById('board'); const startSquare = boardElement?.querySelector(`.square[data-row="${fromRow}"][data-col="${fromCol}"]`); const endSquare = boardElement?.querySelector(`.square[data-row="${toRow}"][data-col="${toCol}"]`); const pieceElement = startSquare?.querySelector('.piece'); if (!pieceElement || !startSquare || !endSquare) { console.warn("DOM elements for animation not found, moving directly."); updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData); addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData); playSound(isCapture ? `capture_${getPieceKey(capturedPieceData?.name)}` : 'move'); postMoveChecks(); return; } updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData); addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData); animatePieceMove(pieceElement, startSquare, endSquare, isCapture, isCapture ? getPieceKey(capturedPieceData.name) : null, () => { console.log("Animation complete, running post-move checks."); postMoveChecks(); }); }
+function performMoveWithAnimation(piece, toRow, toCol, fromRow, fromCol, targetPiece) { if (isGameOver) return; saveCurrentStateToHistory(); const isCapture = targetPiece !== null && targetPiece.player !== piece.player; const capturedPieceData = isCapture ? { ...targetPiece } : null; const boardElement = document.getElementById('board'); const startSquare = boardElement?.querySelector(`.square[data-row="${fromRow}"][data-col="${fromCol}"]`); const endSquare = boardElement?.querySelector(`.square[data-row="${toRow}"][data-col="${toCol}"]`); const pieceElement = startSquare?.querySelector('.piece'); if (!pieceElement || !startSquare || !endSquare) { console.warn("DOM elements for animation not found, moving directly."); updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData); addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData); playSound(isCapture ? `capture_${getPieceKey(capturedPieceData?.name)}` : 'move'); postMoveChecks(); return; } updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData); addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData); animatePieceMove(pieceElement, startSquare, endSquare, isCapture, isCapture ? getPieceKey(capturedPieceData.name) : null, () => { console.log("Animation complete, running post-move checks."); postMoveChecks(); }); }
 
 // postMoveChecks (Unchanged - keeps win chance bar update logic)
 function postMoveChecks() {
@@ -262,4 +297,103 @@ function triggerAiTurn() {
         targetDepth: currentTargetDepth,
         timeLimit: currentTimeLimit
     });
+}
+
+function undoMove() {
+    console.log("Attempting to undo move...");
+
+    if (isAiThinking) {
+        console.log("AI is thinking, terminating worker before undo.");
+        if (aiWorker) aiWorker.terminate();
+        isAiThinking = false;
+        // Re-initialize worker immediately or wait? Let's re-init.
+        initializeAiWorker();
+        // Make sure controls are re-enabled if AI was terminated
+        if (gameModeSelect) gameModeSelect.disabled = false;
+        if (difficultySelect) difficultySelect.disabled = false;
+        if (timeLimitInput) timeLimitInput.disabled = false;
+    }
+
+    let undoCount = 0;
+    const mode = gameModeSelect?.value || 'PVA'; // Default to PVA if select is missing
+
+    if (gameStateHistory.length > 0) {
+        undoCount = 1; // Default: undo one step
+
+        // In PvA mode, if the player just moved (meaning current player *before* undo is AI),
+        // we need to undo the AI's move AND the player's preceding move.
+        const lastStateBeforeUndo = gameStateHistory[gameStateHistory.length - 1];
+        if (mode === 'PVA' && lastStateBeforeUndo.currentPlayer === aiPlayer && gameStateHistory.length > 1) {
+             console.log("PvA mode: Undoing player move and AI response.");
+             undoCount = 2;
+        }
+    }
+
+    if (undoCount === 0) {
+        console.log("No history to undo.");
+        updateUndoButtonState(false);
+        return;
+    }
+
+    let restoredState = null;
+    for (let i = 0; i < undoCount; i++) {
+        if (gameStateHistory.length > 0) {
+            restoredState = gameStateHistory.pop();
+            removeLastMoveFromHistory(); // Remove from visual history
+             console.log(`Undo step ${i+1}/${undoCount}: Popped state for player ${restoredState?.currentPlayer}`);
+        } else {
+            console.warn("History became empty during multi-step undo.");
+            break; // Stop if history runs out unexpectedly
+        }
+    }
+
+    if (!restoredState) {
+        console.error("Failed to retrieve state from history.");
+        // Possibly re-initialize game if state is corrupt?
+        initGame();
+        return;
+    }
+
+    // Restore game state from the retrieved 'restoredState' object
+    try {
+        // IMPORTANT: Need to re-create Piece instances from the plain data in history
+        board.state = restoredState.boardState.map(row =>
+            row.map(cell => ({
+                terrain: cell.terrain,
+                piece: cell.piece ? new Piece(cell.piece.type, cell.piece.player, cell.piece.row, cell.piece.col) : null
+            }))
+        );
+        currentPlayer = restoredState.currentPlayer;
+        capturedByPlayer0 = [...restoredState.capturedP0];
+        capturedByPlayer1 = [...restoredState.capturedP1];
+        lastMove = restoredState.lastMove ? { ...restoredState.lastMove } : null;
+        lastEvalScore = restoredState.lastEval;
+        isGameOver = restoredState.isGameOver; // Restore previous game over state
+        gameStatus = restoredState.gameStatus; // Restore previous game status
+
+        console.log("Game state restored to:", { player: currentPlayer, lastMove: lastMove, gameOver: isGameOver, status: gameStatus });
+
+    } catch (error) {
+        console.error("Error restoring game state from history:", error);
+        // Attempt to recover by resetting the game
+        initGame();
+        return;
+    }
+
+    // Reset UI/Interaction State
+    deselectPiece(); // Clear any active selection/highlights
+
+    // Re-render the board and UI elements
+    renderBoard(board.getState(), handleSquareClick, lastMove);
+    renderCapturedPieces(capturedByPlayer0, capturedByPlayer1);
+    updateGameStatusUI();
+    updateWinChanceBar(lastEvalScore);
+    updateUndoButtonState(gameStateHistory.length > 0); // Enable/disable based on remaining history
+
+    // Ensure controls are enabled after undo (especially if AI was thinking)
+    if (gameModeSelect) gameModeSelect.disabled = false;
+    if (difficultySelect) difficultySelect.disabled = false;
+    if (timeLimitInput) timeLimitInput.disabled = false;
+
+    console.log("Undo complete.");
 }

@@ -53,5 +53,6 @@
   "ruleWater": "<b>Nước (Xanh dương):</b> Chỉ <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Chuột\" class=\"rule-piece-icon\"></span> được vào ô nước. Không thể từ ô nước bắt quân trên cạn.",
   "ruleJump": "<b>Nhảy qua sông:</b> <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/lion.png\" alt=\"Sư tử\" class=\"rule-piece-icon\"></span> và <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/tiger.png\" alt=\"Hổ\" class=\"rule-piece-icon\"></span> có thể nhảy dọc qua các ô sông nếu không có <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/rat.png\" alt=\"Chuột\" class=\"rule-piece-icon\"></span> cản đường. <span class=\"rule-piece\"><img src=\"assets/images/head_no_background/lion.png\" alt=\"Lion\" class=\"rule-piece-icon\"></span> còn có thể nhảy ngang. Nhảy qua sông có thể bắt quân đối phương bằng hoặc yếu hơn ở ô đáp.",
   "ruleDens": "<b>Hang (Đánh dấu):</b> Thắng bằng cách vào Hang của đối phương. Không được vào Hang của mình.",
-  "ruleWinCondition": "Thắng bằng cách: vào Hang đối phương, HOẶC bắt hết quân của đối phương."
+  "ruleWinCondition": "Thắng bằng cách: vào Hang đối phương, HOẶC bắt hết quân của đối phương.",
+  "undoButton": "Hoàn Tác"
 }
