@@ -315,7 +315,7 @@ h1 {
 }
 .player0 { border-color: blue !important; } /* Specific player colors */
 .player1 { border-color: red !important; }
-.piece img { display: block; width: 95%; height: 95%; object-fit: contain; }
+.piece img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .piece-global-animating { position: absolute !important; z-index: 100 !important; transform: none !important; }
 
 
@@ -343,7 +343,7 @@ h1 {
 .captured-piece img { display: block; width: 100%; height: 100%; object-fit: contain; }
 #move-history { min-height: 150px; max-height: 350px; display: flex; flex-direction: column; overflow: hidden; }
 #move-list {
-  list-style: decimal; margin: 0; padding: 0 0 0 25px; font-size: 0.85em;
+  list-style: decimal; margin: 0; padding: 0 0 0 0px; font-size: 1.1em;
   flex-grow: 1; overflow-y: auto; background-color: rgba(253, 253, 253, 0.9);
   border: 1px solid #eee; border-radius: 3px;
 }

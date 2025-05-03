@@ -196,6 +196,7 @@ function updateGameStatusUI() {
     if (isGameOver) {
         let winnerLabel = '';
         if (gameStatus === GameStatus.PLAYER0_WINS) winnerLabel = getString('player1Name');
+        else if (gameStatus === GameStatus.PLAYER1_WINS && gameModeSelect.value === "PVA") winnerLabel = getString('aiName');
         else if (gameStatus === GameStatus.PLAYER1_WINS) winnerLabel = getString('player2Name');
         else winnerLabel = getString('statusDraw');
         statusKey = 'statusWin';
