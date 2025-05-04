@@ -349,8 +349,8 @@ h1 {
   background-color: rgba(255, 255, 255, 0.7); border: 1px solid #bbb;
   display: flex; justify-content: center; align-items: center; padding: 1px;
 }
-.captured-piece.player0 { border-color: red; } /* Border indicates who captured it */
-.captured-piece.player1 { border-color: blue; } /* Border indicates who captured it */
+.captured-piece.player0 { border-color: red !important;} /* Border indicates who captured it */
+.captured-piece.player1 { border-color: blue !important;} /* Border indicates who captured it */
 .captured-piece img { display: block; width: 100%; height: 100%; object-fit: contain; }
 #move-history { min-height: 150px; max-height: 350px; display: flex; flex-direction: column; overflow: hidden; }
 #move-list {
