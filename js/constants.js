@@ -48,7 +48,7 @@ export const GameStatus = {
     ONGOING: 'ONGOING',
     PLAYER0_WINS: 'PLAYER0_WINS', // Blue wins
     PLAYER1_WINS: 'PLAYER1_WINS', // Red wins
-    DRAW: 'DRAW' // Potentially needed later
+    DRAW: 'DRAW'
 };
 
 // AI Configuration (Defaults) (unchanged)

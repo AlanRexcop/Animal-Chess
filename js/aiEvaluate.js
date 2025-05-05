@@ -18,7 +18,7 @@ import {
 // Exported so other modules (like search for early exit) can use them
 export const WIN_SCORE = 20000;
 export const LOSE_SCORE = -20000;
-
+export const DRAW_SCORE = 0;
 // --- Evaluation Parameters & Weights (Centralized Tuning Hub) ---
 const EVAL_PARAMS = {
   HEURISTIC_WEIGHTS: { // Core weights for different factors

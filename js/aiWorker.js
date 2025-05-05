@@ -7,15 +7,17 @@ import {
     Player, // Import the Player object
     PIECES, // Import the PIECES definition
     GameStatus // Import GameStatus for terminal checks
-} from './constants.js'; // Adjust path if needed (e.g., '../constants.js')
+} from './constants.js'; // Adjust path if needed
 
 import {
-    getAllValidMoves,     // Use this instead of getAllPossibleMovesForPlayer
-    getGameStatus,        // Use this instead of checkTerminalState
-    movesAreEqual,        // Import the shared version
-} from './rules.js';     // Adjust path if needed (e.g., '../rules.js')
+    getAllValidMoves,
+    getGameStatus,
+    movesAreEqual,
+} from './rules.js';
 
-import { evaluateBoard, WIN_SCORE, LOSE_SCORE } from './aiEvaluate.js';
+import { evaluateBoard, WIN_SCORE, LOSE_SCORE, DRAW_SCORE } from './aiEvaluate.js'; // Import DRAW_SCORE
+import { initializeZobrist, computeZobristKey, pieceNameToIndex, zobristTable, zobristBlackToMove } from './zobrist.js'; // Import from shared module
+
 
 // --- Constants ---
 
@@ -30,92 +32,9 @@ const MAX_PLY_FOR_KILLERS = 20;
 // --- Worker-Scoped State ---
 let aiRunCounter = 0; // Counter for nodes visited during a search
 let killerMoves = []; // Stores killer moves [ply][0/1]
-
-// --- Zobrist Hashing & Transposition Table ---
-const zobristTable = [];        // Stores random keys for each piece/player/square
-let zobristBlackToMove;         // Random key for whose turn it is (AI's turn)
-const pieceNameToIndex = {};    // Maps piece name ('rat') to index for zobristTable
-let pieceIndexCounter = 0;      // Counter for assigning piece indices
 let transpositionTable = new Map(); // Stores evaluated positions { hashKey: { score, depth, flag, bestMove } }
 
-/** Generates a random 64-bit BigInt for Zobrist keys. */
-function randomBigInt() {
-    const low = BigInt(Math.floor(Math.random() * (2 ** 32)));
-    const high = BigInt(Math.floor(Math.random() * (2 ** 32)));
-    return (high << 32n) | low;
-}
-
-/** Initializes the Zobrist hashing keys. */
-function initializeZobrist() {
-    pieceIndexCounter = 0;
-    for (const pieceKey in PIECES) { // Use imported PIECES
-        const nameLower = pieceKey.toLowerCase();
-        if (!pieceNameToIndex.hasOwnProperty(nameLower)) {
-            pieceNameToIndex[nameLower] = pieceIndexCounter++;
-            zobristTable[pieceNameToIndex[nameLower]] = [];
-        }
-        const index = pieceNameToIndex[nameLower];
-        // Use imported Player constants
-        zobristTable[index][Player.PLAYER0] = [];
-        zobristTable[index][Player.PLAYER1] = [];
-        for (let r = 0; r < BOARD_ROWS; r++) { // Use imported BOARD_ROWS
-            zobristTable[index][Player.PLAYER0][r] = [];
-            zobristTable[index][Player.PLAYER1][r] = [];
-            for (let c = 0; c < BOARD_COLS; c++) { // Use imported BOARD_COLS
-                zobristTable[index][Player.PLAYER0][r][c] = randomBigInt();
-                zobristTable[index][Player.PLAYER1][r][c] = randomBigInt();
-            }
-        }
-    }
-    zobristBlackToMove = randomBigInt();
-}
-initializeZobrist();
-
-/**
- * Computes the Zobrist hash key for a given board state and player to move.
- * @param {Array<Array<object>>} currentBoard - The board state.
- * @param {number} playerToMove - The player whose turn it is (PLAYER or AI).
- * @returns {bigint} The Zobrist hash key.
- */
-function computeZobristKey(currentBoard, playerToMove) {
-    let key = 0n; // Use BigInt for the key
-
-    for (let r = 0; r < BOARD_ROWS; r++) { // Use imported BOARD_ROWS
-        for (let c = 0; c < BOARD_COLS; c++) { // Use imported BOARD_COLS
-            const square = currentBoard[r]?.[c];
-            const piece = square?.piece; // Safe access
-
-            if (piece && piece.name) { // Ensure piece and its name exist
-                const pieceNameLower = piece.name.toLowerCase();
-                const pieceIndex = pieceNameToIndex[pieceNameLower];
-
-                // Validate indices and existence of the Zobrist key
-                if (pieceIndex !== undefined &&
-                    (piece.player === Player.PLAYER0 || piece.player === Player.PLAYER1) &&
-                    r >= 0 && r < BOARD_ROWS &&
-                    c >= 0 && c < BOARD_COLS &&
-                    zobristTable[pieceIndex]?.[piece.player]?.[r]?.[c])
-                {
-                    try {
-                        key ^= zobristTable[pieceIndex][piece.player][r][c]; // XOR with the piece's key
-                    } catch (e) {
-                        console.error(`[Worker] Error XORing Zobrist key: piece=${pieceNameLower}, player=${piece.player}, r=${r}, c=${c}, key=${key}`, e);
-                        // Handle error gracefully if needed
-                    }
-                } else {
-                    // Log skipped pieces if debugging Zobrist issues
-                    console.warn(`[Worker] Zobrist Compute: Skipped invalid piece data or missing Zobrist entry`, { name: piece.name, player: piece.player, r: r, c: c, pI: pieceIndex });
-                }
-            }
-        }
-    }
-
-    // XOR with the turn key if it's the AI's turn
-    if (playerToMove === Player.PLAYER1) { // Assuming AI is Player 1
-        key ^= zobristBlackToMove;
-    }
-    return key;
-}
+initializeZobrist(); // Initialize Zobrist keys on worker start using imported function
 
 // --- Custom Error Class ---
 class TimeLimitExceededError extends Error {
@@ -163,7 +82,7 @@ function simulateMoveAndGetHash(currentBoardState, move, currentHash) {
     const capturedPiece = newBoard[move.toRow]?.[move.toCol]?.piece;
     let newHash = currentHash;
 
-    // Update Zobrist hash incrementally
+    // Update Zobrist hash incrementally using imported tables/functions
     if (zobristTable.length > 0 && typeof BigInt === 'function') {
         try {
             const movingPieceIndex = pieceNameToIndex[movingPiece.name.toLowerCase()];
@@ -232,10 +151,11 @@ function recordKillerMove(ply, move) {
  * @param {number} startTime - Timestamp when the search started.
  * @param {number} timeLimit - Maximum allowed time in milliseconds.
  * @param {number} ply - Current ply depth from the root (for killer moves).
+ * @param {Map<bigint, number>} pathHashes - Map tracking hash counts along the current search path.
  * @returns {number} The evaluated score for the current node.
  * @throws {TimeLimitExceededError} If the time limit is reached.
  */
-function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPlayer, startTime, timeLimit, ply) {
+function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPlayer, startTime, timeLimit, ply, pathHashes) {
     aiRunCounter++;
 
     if (performance.now() - startTime > timeLimit) {
@@ -244,6 +164,12 @@ function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPl
 
     const originalAlpha = alpha;
     const hashKey = currentHash;
+
+    // --- Repetition Check (Draw by 3-fold repetition in search path) ---
+    if (pathHashes.get(hashKey) >= 3) {
+        // console.log(`[Worker AlphaBeta D${ply}] Repetition detected: ${hashKey}`);
+        return DRAW_SCORE; // Return draw score if this state repeated 3 times in path
+    }
 
     // 1. Transposition Table Lookup (logic remains similar)
     const ttEntry = transpositionTable.get(hashKey);
@@ -265,6 +191,8 @@ function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPl
             // Use imported GameStatus constants and check AI player
             if (status === GameStatus.PLAYER1_WINS) baseScore += depth * MATE_DEPTH_BONUS;
             if (status === GameStatus.PLAYER0_WINS) baseScore -= depth * MATE_DEPTH_BONUS;
+        } else if (status === GameStatus.DRAW) {
+            baseScore = DRAW_SCORE; // Explicitly set draw score if terminal state is DRAW
         }
         // Store leaf node evaluation in TT (logic remains similar)
         if (!ttEntry || ttEntry.depth < depth) {
@@ -337,12 +265,18 @@ function alphaBeta(currentBoard, currentHash, depth, alpha, beta, isMaximizingPl
         } catch (e) { /* ... error handling ... */ continue; }
 
         let evalScore;
+        // --- Prepare for recursive call: Update pathHashes map ---
+        const nextPathHashes = new Map(pathHashes); // Copy current path map
+        const nextCount = (nextPathHashes.get(simResult.newHash) || 0) + 1;
+        nextPathHashes.set(simResult.newHash, nextCount);
+        // --- End pathHashes update ---
         try {
             evalScore = alphaBeta(
                 simResult.newBoard, simResult.newHash,
                 depth - 1, alpha, beta,
                 !isMaximizingPlayer, // Toggle player
-                startTime, timeLimit, ply + 1
+                startTime, timeLimit, ply + 1,
+                nextPathHashes // Pass the updated map
             );
         } catch (e) {
             if (e instanceof TimeLimitExceededError) throw e;
@@ -420,7 +354,9 @@ function findBestMove(currentBoard, maxDepth, timeLimit) {
     }
 
     // Calculate initial hash for the root position (AI = Player 1)
+    // Use imported computeZobristKey
     const initialHash = computeZobristKey(currentBoard, Player.PLAYER1);
+    const initialPathHashes = new Map([[initialHash, 1]]); // Initialize path map for root
 
     // Set a default best move (the first legal one)
     const firstMove = rootMoves[0];
@@ -517,16 +453,22 @@ function findBestMove(currentBoard, maxDepth, timeLimit) {
                     continue; // Skip move if simulation fails
                 }
 
+                // --- Prepare for root alphaBeta call: Update pathHashes map ---
+                const rootNextPathHashes = new Map(initialPathHashes); // Start from root path map
+                const rootNextCount = (rootNextPathHashes.get(simResult.newHash) || 0) + 1;
+                rootNextPathHashes.set(simResult.newHash, rootNextCount);
+
                 // Call alphaBeta for the opponent's turn (minimizing player = Player 0)
                 let score; // Declare score outside try block
                 try {
                     score = alphaBeta(
                         simResult.newBoard, simResult.newHash,
-                        currentDepth - 1, // Depth for the recursive call
+                        currentDepth - 1,
                         alpha, beta,
                         false, // It's opponent's turn (minimizing)
                         startTime, timeLimit,
-                        0 // Ply starts at 0 for root moves' children
+                        0, // Ply starts at 0 for root moves' children
+                        rootNextPathHashes // Pass the updated map for the move
                     );
                 } catch (e) {
                     if (e instanceof TimeLimitExceededError) throw e; // Propagate timeout
@@ -590,6 +532,12 @@ function findBestMove(currentBoard, maxDepth, timeLimit) {
              if (bestScoreOverall > LOSE_SCORE * 0.9 && (bestScoreOverall >= WIN_SCORE * 0.9 || bestScoreOverall <= LOSE_SCORE * 0.9)) {
                  console.log(`[Worker IDS] Early exit: Score ${bestScoreOverall.toFixed(0)} indicates win/loss at Depth ${currentDepth}.`);
                  break; // Exit IDS loop
+             }
+             // Also check for definite draw score if that's useful
+             if (bestScoreOverall === DRAW_SCORE) {
+                 console.log(`[Worker IDS] Early exit: Score ${bestScoreOverall} indicates forced draw at Depth ${currentDepth}.`);
+                 // Decide whether to break here or keep searching for a potential win/loss at deeper levels
+                 // break; // Optional: break on finding a certain draw
              }
 
         } // End Iterative Deepening Loop
