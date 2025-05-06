@@ -20,7 +20,7 @@ const undoButton = document.getElementById('undo-button');
 // Eval Conversion Constants
 const WIN_SCORE_THRESHOLD = 19000;
 const LOSE_SCORE_THRESHOLD = -19000;
-const SIGMOID_SCALE_FACTOR = 0.0003;
+const SIGMOID_SCALE_FACTOR = 0.003;
 
 // Highlight Targets Map
 const highlightClassTargets = {
@@ -124,4 +124,45 @@ export function addMoveToHistory(pieceData, fromR, fromC, toR, toC, capturedPiec
 export function clearMoveHistory() { if (moveListElement) moveListElement.innerHTML = ''; if (undoButton) undoButton.disabled = true;}
 export function playSound(soundName) { try { if (!soundName || typeof soundName !== 'string') { console.warn("playSound: Invalid sound name provided:", soundName); return; } const soundPath = `assets/sounds/${soundName.toLowerCase()}.mp3`; const audio = new Audio(soundPath); audio.play().catch(e => console.warn(`Sound playback failed for ${soundPath}:`, e.message || e)); } catch (e) { console.error("Error creating or playing sound:", e); } }
 export function updateAiDepthDisplay(depth) { const el = document.getElementById('ai-depth-achieved'); if (el) { el.textContent = depth.toString(); } }
-export function updateWinChanceBar(aiEvalScore) { if (!winChanceBarElement || !winChanceBarBlue || !winChanceBarRed) { console.error("Win chance bar elements not found!"); return; } let player0Percent = 50; if (aiEvalScore !== null && aiEvalScore !== undefined && isFinite(aiEvalScore)) { const playerEvalScore = -aiEvalScore; const clampedScore = Math.max(LOSE_SCORE_THRESHOLD, Math.min(WIN_SCORE_THRESHOLD, playerEvalScore)); const probability = 1 / (1 + Math.exp(-SIGMOID_SCALE_FACTOR * clampedScore)); player0Percent = Math.round(probability * 100); } else { console.log("Updating win chance bar to default 50/50 (no valid score)"); } const player1Percent = 100 - player0Percent; winChanceBarBlue.style.width = `${player0Percent}%`; winChanceBarElement.title = `Blue: ${player0Percent}% / Red: ${player1Percent}%`; }
+export function updateWinChanceBar(aiEvalScore) {
+	if (!winChanceBarElement || !winChanceBarBlue || !winChanceBarRed) {
+		console.error("Win chance bar elements not found!");
+		return;
+	}
+
+	let player0Percent = 50; // Default for unknown/initial situations
+
+	if (aiEvalScore === Infinity) {
+		// Player 1 (AI/Red) has a winning position (or Player 0 has lost)
+		player0Percent = 0;
+		console.log("Updating win chance bar: Player 1 wins (AI Eval: Infinity). Player 0: 0%");
+	} else if (aiEvalScore === -Infinity) {
+		// Player 0 (Blue) has a winning position (or Player 1 has lost)
+		player0Percent = 100;
+		console.log("Updating win chance bar: Player 0 wins (AI Eval: -Infinity). Player 0: 100%");
+	} else if (aiEvalScore !== null && aiEvalScore !== undefined && isFinite(aiEvalScore)) {
+		// Score is a finite number (this includes 0 for a draw)
+		const playerEvalScore = -aiEvalScore; // Convert AI's (P1) score to P0's perspective
+		const clampedScore = Math.max(LOSE_SCORE_THRESHOLD, Math.min(WIN_SCORE_THRESHOLD, playerEvalScore));
+		const probability = 1 / (1 + Math.exp(-SIGMOID_SCALE_FACTOR * clampedScore));
+		player0Percent = Math.round(probability * 100);
+
+		if (aiEvalScore === 0) {
+            // Specifically log for draw scores that evaluate to 0
+            console.log(`Updating win chance bar: Draw (AI Eval: 0). Player 0: ${player0Percent}%`);
+        } else {
+            console.log(`Updating win chance bar: AI Eval: ${aiEvalScore.toFixed(2)}. Player 0: ${player0Percent}%`);
+        }
+	} else {
+		// Handles null, undefined, or NaN - default to 50%
+		// This typically occurs at game start or if an evaluation is truly indeterminate.
+		player0Percent = 50;
+		console.log(`Updating win chance bar to default 50/50 (AI Eval score is: ${aiEvalScore})`);
+	}
+
+	const player1Percent = 100 - player0Percent;
+
+	winChanceBarBlue.style.width = `${player0Percent}%`;
+	winChanceBarRed.style.width = `${player1Percent}%`; // Explicitly set red bar width
+	winChanceBarElement.title = `Blue: ${player0Percent}% / Red: ${player1Percent}%`;
+}
