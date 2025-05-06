@@ -2,13 +2,14 @@
 import { initGame } from './game.js';
 // ** Import renderGameRules from localization **
 import { loadLanguage, applyLocalizationToPage, getString, renderGameRules } from './localization.js';
+import { DEFAULT_LANGUAGE } from './constants.js'
 
 /**
  * Asynchronously sets up and starts the application.
  */
 async function startApp() {
     console.log("Starting application...");
-    const initialLang = navigator.language.startsWith('vn') ? 'vn' : 'en';
+    const initialLang = DEFAULT_LANGUAGE;
 
     const loaded = await loadLanguage(initialLang);
 

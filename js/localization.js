@@ -2,7 +2,7 @@
 import { PIECES } from './constants.js';
 
 let currentLanguageData = {};
-let currentLangCode = 'en';
+let currentLangCode = 'vn';
 
 export async function loadLanguage(langCode) {
     try {

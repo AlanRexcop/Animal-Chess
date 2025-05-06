@@ -51,10 +51,12 @@ export const GameStatus = {
     DRAW: 'DRAW'
 };
 
+export const DEFAULT_LANGUAGE = 'vn';
+
 // AI Configuration (Defaults) (unchanged)
 export const aiPlayer = Player.PLAYER1; // AI is Red
 export const DEFAULT_AI_TARGET_DEPTH = 9;
-export const DEFAULT_AI_TIME_LIMIT_MS = 5000;
+export const DEFAULT_AI_TIME_LIMIT_MS = 1000;
 export const MIN_AI_TIME_LIMIT_MS = 100;
 
 // Animation duration (unchanged)
