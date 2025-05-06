@@ -15,6 +15,14 @@
     <h1 id="game-title" data-translate="gameTitle">Jungle Chess</h1> <!-- Set by JS -->
 
     <div id="game-controls">
+        <!-- Language Selection -->
+        <div>
+            <label id="lang-select-label" for="lang-select" data-translate="languageLabel">Language:</label>
+            <select id="lang-select">
+                <option value="en">English</option>
+                <option value="vn">Tiếng Việt</option>
+            </select>
+        </div>
         <!-- Game Mode -->
         <div>
             <label for="game-mode" data-translate="gameModeLabel">Mode:</label>
@@ -45,20 +53,16 @@
                 <label for="time-limit" data-translate="aiTimeLimitLabel">AI Time Limit (ms):</label>
                 <input type="number" id="time-limit" value="5000" min="100" step="100">
             </div>
-            <span class="ai-info" data-translate="aiDepthInfo">Actual AI Depth:</span>
-            <span id="ai-depth-achieved">0</span>
+            <div class="ai-actual-depth-group"> <!-- ADDED THIS WRAPPER -->
+                <span class="ai-info" data-translate="aiDepthInfo">Actual AI Depth:</span>
+                <span id="ai-depth-achieved">0</span>
+            </div>
         </div>
-        <!-- Language Selection -->
-        <div>
-            <label id="lang-select-label" for="lang-select" data-translate="languageLabel">Language:</label>
-            <select id="lang-select">
-                <option value="en">English</option>
-                <option value="vn">Tiếng Việt</option>
-            </select>
+        <!-- Action Buttons Group -->
+        <div id="action-buttons-group">
+            <button id="reset-button" data-translate="resetButton">Reset Game</button>
+            <button id="undo-button" data-translate="undoButton" disabled>Undo Move</button>
         </div>
-        <!-- Reset Button -->
-        <button id="reset-button" data-translate="resetButton">Reset Game</button>
-        <button id="undo-button" data-translate="undoButton" disabled>Undo Move</button>
     </div>
 
     <!-- Game Layout -->

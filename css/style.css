@@ -5,7 +5,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px;
   min-height: 100vh;
   box-sizing: border-box;
   background-image: url('../assets/background.png');
@@ -31,55 +30,123 @@ h1 {
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  background-color: rgba(233, 233, 233, 0.9);
+  background-color: rgba(248, 249, 250, 0.85); /* Lighter, more modern background */
   padding: 10px 15px;
   border-radius: 8px;
   margin-bottom: 15px;
   width: 95%;
-  max-width: 850px;
+  max-width: 700px;
   box-sizing: border-box;
-  gap: 15px 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  gap: 5px 20px; /* Existing gap */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1); /* Slightly softer shadow */
+  border: 1px solid rgba(0,0,0,0.05); /* Subtle border */
 }
 
+/* Groupings for label + select/input */
+#game-controls > div:not(#ai-controls) { /* Target direct div children, exclude #ai-controls which is styled separately */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* AI Controls block - make it a distinct subgroup */
 #ai-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 15px;
+  gap: 10px 15px; /* Gap between items within AI controls */
   align-items: center;
   justify-content: center;
-  padding: 5px 0;
+  padding: 5px 15px; /* Increased padding */
+  border: 1px solid #d1d1d1; /* Clearer border */
+  border-radius: 6px;
+  background-color: rgba(235, 238, 241, 0.9); /* Slightly different background for the group */
+}
+#ai-controls > div { /* Wrappers for AI difficulty, AI time limit, and new AI actual depth group */
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-
+/* Styling for labels and the .ai-info span which acts like a label */
 #game-controls label,
+#game-controls .ai-info {
+  font-size: 14px;
+  font-weight: 500; /* Bolder */
+  color: #333; /* Darker text */
+}
+
+/* Specific reset for .ai-info from general label styling if it inherited unwanted padding/border */
+#game-controls .ai-info {
+  padding: 0; /* Ensure no padding from general label if applied */
+  border: none; /* Ensure no border */
+  margin-right: 4px; /* Space before the value, replaces margin-left */
+}
+
+/* Styling for select, input, and the #ai-depth-achieved span */
 #game-controls select,
-#game-controls button,
-#game-controls .ai-info,
-#game-controls input[type="number"]
-{
+#game-controls input[type="number"],
+#game-controls #ai-depth-achieved {
   font-size: 14px;
   color: #222;
-  padding: 4px 6px;
-  border: 1px solid #ccc;
+  padding: 6px 10px; /* More padding */
+  border: 1px solid #b8c0c8; /* Softer border color */
   border-radius: 4px;
-}
-#game-controls select,
-#game-controls input[type="number"] {
   background-color: #fff;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
+
+#game-controls select:hover,
+#game-controls input[type="number"]:hover {
+  border-color: #939fab;
+}
+
+#game-controls select:focus,
+#game-controls input[type="number"]:focus {
+  border-color: #007bff;
+  outline: 0;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.06), 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+#game-controls #ai-depth-achieved {
+  background-color: #e9ecef; /* Read-only appearance */
+  min-width: 2.5em;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Button Styling */
 #game-controls button {
-  background-color: #ddd;
+  font-size: 14px;
+  padding: 7px 15px;
+  border-radius: 4px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out, transform 0.1s ease, box-shadow 0.15s ease;
+  background-color: #f8f9fa;
+  color: #343a40;
+  border: 1px solid #ced4da;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
 }
 #game-controls button:hover {
-  background-color: #ccc;
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+  color: #212529;
 }
-#game-controls .ai-info {
-  border: none;
-  padding: 0;
-  margin-left: 5px;
+#game-controls button:active {
+  background-color: #dee2e6;
+  border-color: #adb5bd;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+#game-controls button:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  border-color: #ced4da;
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 #ai-difficulty-control,
@@ -419,7 +486,7 @@ h1 {
 /* --- Win Chance Bar --- */
 #win-chance-bar-container {
     display: flex; align-items: center; justify-content: center; gap: 8px; width: 95%;
-    max-width: calc(420px + 2 * 20px); margin: 8px auto 12px auto; box-sizing: border-box;
+    max-width: calc(420px + 2 * 20px); box-sizing: border-box;
     padding: 4px 8px; background-color: rgba(230, 230, 230, 0.7); border-radius: 4px; min-height: 1.1em;
 }
 /* REMOVED .win-chance-label */
