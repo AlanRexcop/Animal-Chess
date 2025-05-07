@@ -27,7 +27,7 @@ const EVAL_PARAMS = {
       DEN_PROXIMITY: 6.0,   // Encourages pieces near opponent's den
       ATTACK_THREAT: 1.5,   // Bonus for threatening opponent pieces directly
       JUMP_THREAT: 2.0,     // Bonus specifically for Lion/Tiger jump threats
-      KEY_SQUARE: 0.5,      // Bonus for controlling important squares
+      KEY_SQUARE: 0.2,      // Bonus for controlling important squares
       TRAPPED_PENALTY: -3.0, // Penalty for own piece in opponent's trap
       DEFENSE_PENALTY: -0.7 // Penalty for pieces being too far back (too defensive)
   },
