@@ -20,7 +20,7 @@ const undoButton = document.getElementById('undo-button');
 // Eval Conversion Constants
 const WIN_SCORE_THRESHOLD = 19000;
 const LOSE_SCORE_THRESHOLD = -19000;
-const SIGMOID_SCALE_FACTOR = 0.003;
+const SIGMOID_SCALE_FACTOR = 0.0015;
 
 // Highlight Targets Map
 const highlightClassTargets = {

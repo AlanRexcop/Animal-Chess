@@ -21,7 +21,7 @@ export const Player = {
 
 // Piece Information (Rank and Name) - Keep original structure (unchanged)
 export const PIECES = {
-    rat:     { rank: 1, name: 'Rat',     symbol: '🐀', value: 100 },
+    rat:     { rank: 1, name: 'Rat',     symbol: '🐀', value: 200 },
     cat:     { rank: 2, name: 'Cat',     symbol: '🐈', value: 200 },
     dog:     { rank: 3, name: 'Dog',     symbol: '🐕', value: 300 },
     wolf:    { rank: 4, name: 'Wolf',    symbol: '🐺', value: 400 },

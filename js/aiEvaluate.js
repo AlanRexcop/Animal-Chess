@@ -23,7 +23,7 @@ export const DRAW_SCORE = 0;
 const EVAL_PARAMS = {
   HEURISTIC_WEIGHTS: { // Core weights for different factors
       MATERIAL: 1.0,        // Basic piece values
-      ADVANCEMENT: 0.25,    // Encourages moving pieces forward
+      ADVANCEMENT: 0.2,    // Encourages moving pieces forward
       DEN_PROXIMITY: 6.0,   // Encourages pieces near opponent's den
       ATTACK_THREAT: 1.5,   // Bonus for threatening opponent pieces directly
       JUMP_THREAT: 2.0,     // Bonus specifically for Lion/Tiger jump threats
