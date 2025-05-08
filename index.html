@@ -53,16 +53,12 @@
                 <label for="time-limit" data-translate="aiTimeLimitLabel">AI Time Limit (ms):</label>
                 <input type="number" id="time-limit" value="5000" min="100" step="100">
             </div>
-            <div class="ai-actual-depth-group"> <!-- ADDED THIS WRAPPER -->
+            <div class="ai-actual-depth-group">
                 <span class="ai-info" data-translate="aiDepthInfo">Actual AI Depth:</span>
                 <span id="ai-depth-achieved">0</span>
             </div>
         </div>
-        <!-- Action Buttons Group -->
-        <div id="action-buttons-group">
-            <button id="reset-button" data-translate="resetButton">Reset Game</button>
-            <button id="undo-button" data-translate="undoButton" disabled>Undo Move</button>
-        </div>
+        <!-- ****** ACTION BUTTONS GROUP MOVED FROM HERE ****** -->
     </div>
 
     <!-- Game Layout -->
@@ -73,11 +69,16 @@
                 <h2 data-translate="capturedByRedLabel">Captured by Red:</h2>
                 <div class="pieces-container"></div>
             </div>
-            <!-- ****** MOVED: Action buttons for the left panel ****** -->
-            <div id="left-panel-actions" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%;">
+            <!-- ****** MODIFIED: Action buttons container on the left panel ****** -->
+            <div id="left-panel-actions">
+                <!-- ****** ACTION BUTTONS GROUP MOVED TO HERE & REORDERED ****** -->
+                <div id="action-buttons-group" class="panel-button-group">
+                    <button id="reset-button" data-translate="resetButton">Reset Game</button>
+                    <button id="undo-button" data-translate="undoButton" disabled>Undo Move</button>
+                </div>
                 <button id="randomize-board-button" data-translate="randomizeBoardButton">Randomize Board</button>
             </div>
-            <!-- ****** END MOVED ****** -->
+            <!-- ****** END MODIFIED ****** -->
         </div>
         <!-- Main Game Area -->
         <div id="main-game-area">
@@ -89,14 +90,12 @@
                 <div id="col-labels-bottom" class="coord-labels col-labels"></div>
             </div>
             <p id="status">Loading...</p>
-             <!-- ****** MODIFIED WIN CHANCE BAR (Removed Label) ****** -->
             <div id="win-chance-bar-container">
                 <div id="win-chance-bar" title="50% / 50%">
                     <div id="win-chance-bar-blue"></div>
                     <div id="win-chance-bar-red"></div>
                 </div>
             </div>
-            <!-- ****** END WIN CHANCE BAR ****** -->
         </div>
         <!-- Right Panel -->
         <div id="right-panel">

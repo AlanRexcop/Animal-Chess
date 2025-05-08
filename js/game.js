@@ -631,45 +631,59 @@ function updateBoardState(
   };
 }
 
-function performMoveWithAnimation(
-  piece,
-  toRow,
-  toCol,
-  fromRow,
-  fromCol,
-  targetPiece
-) {
-  if (isGameOver) return;
-  const isCapture = targetPiece !== null && targetPiece.player !== piece.player;
-  const capturedPieceData = isCapture ? { ...targetPiece } : null;
-  updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData);
-  saveCurrentStateToHistory();
-  addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData);
-  const boardElement = document.getElementById("board");
-  const startSquare = boardElement?.querySelector(
-    `.square[data-row="${fromRow}"][data-col="${fromCol}"]`
-  );
-  const endSquare = boardElement?.querySelector(
-    `.square[data-row="${toRow}"][data-col="${fromCol}"]`
-  );
-  const pieceElement = startSquare?.querySelector(".piece");
-  if (!pieceElement || !startSquare || !endSquare) {
-    playSound(
-      isCapture ? `capture_${getPieceKey(capturedPieceData?.name)}` : "move"
-    );
-    postMoveChecks();
-    return;
-  }
-  animatePieceMove(
-    pieceElement,
-    startSquare,
-    endSquare,
-    isCapture,
-    isCapture ? getPieceKey(capturedPieceData.name) : null,
-    () => {
-      postMoveChecks();
+function performMoveWithAnimation(piece, toRow, toCol, fromRow, fromCol, targetPiece) {
+    if (isGameOver) return;
+
+    const isCapture = targetPiece !== null && targetPiece.player !== piece.player;
+    const capturedPieceData = isCapture ? { ...targetPiece } : null;
+
+    // 1. Update logical board state
+    updateBoardState(piece, toRow, toCol, fromRow, fromCol, capturedPieceData);
+
+    // 2. Save state to history
+    saveCurrentStateToHistory();
+
+    // 3. Add to visual move list
+    addMoveToHistory(piece, fromRow, fromCol, toRow, toCol, capturedPieceData);
+
+    // 4. Get DOM elements for animation
+    const boardElement = document.getElementById('board'); // Ensure this is always fresh
+
+    const startSquareForAnimation = boardElement?.querySelector(`.square[data-row="${fromRow}"][data-col="${fromCol}"]`);
+    // Use a more specific selector for the pieceElement, using data attributes set in renderBoard
+    // Ensure piece.player is compared correctly if it's a number vs. string attribute.
+    const pieceElementForAnimation = startSquareForAnimation?.querySelector(`.piece[data-piece-type="${piece.type}"][data-player="${piece.player}"]`);
+    // Fallback to less specific selector if the above fails (though it shouldn't if renderBoard is correct)
+    // const pieceElementForAnimation = startSquareForAnimation?.querySelector('.piece');
+
+
+    const endSquareForAnimation = boardElement?.querySelector(`.square[data-row="${toRow}"][data-col="${toCol}"]`);
+
+    if (pieceElementForAnimation && !document.body.contains(pieceElementForAnimation)) {
+        console.error("[Game] performMoveWithAnimation: pieceElementForAnimation is DETACHED from DOM before calling animatePieceMove!");
     }
-  );
+    if (!pieceElementForAnimation) {
+         console.error("[Game] performMoveWithAnimation: FAILED to find pieceElementForAnimation on start square.");
+         console.log(`[Game] Attempted to find piece with type: ${piece.type}, player: ${piece.player} on square ${fromRow},${fromCol}`);
+         if(startSquareForAnimation) {
+            console.log("[Game] Contents of startSquareForAnimation:", startSquareForAnimation.innerHTML);
+         }
+    }
+
+    if (!pieceElementForAnimation || !startSquareForAnimation || !endSquareForAnimation) {
+        console.warn("[Game] performMoveWithAnimation: DOM elements for animation not fully found, moving directly without animation.");
+        // updateBoardState and saveCurrentStateToHistory already called
+        // addMoveToHistory already called
+        playSound(isCapture ? `capture_${getPieceKey(capturedPieceData?.name)}` : 'move');
+        postMoveChecks(); // Proceed to next turn/checks
+        return;
+    }
+
+    // Animate the visual move
+    animatePieceMove(pieceElementForAnimation, startSquareForAnimation, endSquareForAnimation, isCapture, isCapture ? getPieceKey(capturedPieceData?.name) : null, () => {
+        console.log("[Game] Animation complete callback: Running post-move checks.");
+        postMoveChecks(); // Proceed to next turn/checks AFTER animation
+    });
 }
 
 function postMoveChecks() {

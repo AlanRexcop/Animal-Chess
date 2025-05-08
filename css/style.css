@@ -42,8 +42,8 @@ h1 {
   border: 1px solid rgba(0,0,0,0.05); /* Subtle border */
 }
 
-/* Groupings for label + select/input */
-#game-controls > div:not(#ai-controls) { /* Target direct div children, exclude #ai-controls which is styled separately */
+/* Groupings for label + select/input in #game-controls */
+#game-controls > div:not(#ai-controls):not(#action-buttons-group) { /* Exclude #action-buttons-group if it's moved */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -56,10 +56,10 @@ h1 {
   gap: 10px 15px; /* Gap between items within AI controls */
   align-items: center;
   justify-content: center;
-  padding: 5px 15px; /* Increased padding */
-  border: 1px solid #d1d1d1; /* Clearer border */
+  padding: 5px 15px;
+  border: 1px solid #d1d1d1;
   border-radius: 6px;
-  background-color: rgba(235, 238, 241, 0.9); /* Slightly different background for the group */
+  background-color: rgba(235, 238, 241, 0.9);
 }
 #ai-controls > div { /* Wrappers for AI difficulty, AI time limit, and new AI actual depth group */
   display: flex;
@@ -67,29 +67,28 @@ h1 {
   gap: 8px;
 }
 
-/* Styling for labels and the .ai-info span which acts like a label */
+/* Styling for labels and the .ai-info span which acts like a label in #game-controls */
 #game-controls label,
 #game-controls .ai-info {
   font-size: 14px;
-  font-weight: 500; /* Bolder */
-  color: #333; /* Darker text */
+  font-weight: 500;
+  color: #333;
 }
 
-/* Specific reset for .ai-info from general label styling if it inherited unwanted padding/border */
 #game-controls .ai-info {
-  padding: 0; /* Ensure no padding from general label if applied */
-  border: none; /* Ensure no border */
-  margin-right: 4px; /* Space before the value, replaces margin-left */
+  padding: 0;
+  border: none;
+  margin-right: 4px;
 }
 
-/* Styling for select, input, and the #ai-depth-achieved span */
+/* Styling for select, input, and the #ai-depth-achieved span in #game-controls */
 #game-controls select,
 #game-controls input[type="number"],
 #game-controls #ai-depth-achieved {
   font-size: 14px;
   color: #222;
-  padding: 6px 10px; /* More padding */
-  border: 1px solid #b8c0c8; /* Softer border color */
+  padding: 6px 10px;
+  border: 1px solid #b8c0c8;
   border-radius: 4px;
   background-color: #fff;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
@@ -109,49 +108,15 @@ h1 {
 }
 
 #game-controls #ai-depth-achieved {
-  background-color: #e9ecef; /* Read-only appearance */
+  background-color: #e9ecef;
   min-width: 2.5em;
   text-align: center;
   font-weight: 600;
 }
 
-/* Button Styling */
-#game-controls button {
-  font-size: 14px;
-  padding: 7px 15px;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out, transform 0.1s ease, box-shadow 0.15s ease;
-  background-color: #f8f9fa;
-  color: #343a40;
-  border: 1px solid #ced4da;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
-}
-#game-controls button:hover {
-  background-color: #e9ecef;
-  border-color: #adb5bd;
-  color: #212529;
-}
-#game-controls button:active {
-  background-color: #dee2e6;
-  border-color: #adb5bd;
-  transform: translateY(1px);
-  box-shadow: none;
-}
-#game-controls button:disabled {
-  background-color: #e9ecef;
-  color: #6c757d;
-  border-color: #ced4da;
-  opacity: 0.65;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
 
-#ai-difficulty-control,
-#ai-time-limit-control
-{
+#ai-difficulty-control, /* These are direct children of #ai-controls */
+#ai-time-limit-control {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -179,7 +144,7 @@ h1 {
 #left-panel, #right-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 10px; /* Gap between Captured Pieces and Action Buttons etc. */
   min-width: 180px;
   flex-grow: 0;
   flex-shrink: 0;
@@ -193,10 +158,10 @@ h1 {
 
 /* --- Board and Coordinates --- */
 #board-container {
-  position: relative; /* Needed for absolute positioning of piece animation */
-  width: calc(420px + 2 * 20px); /* 7 cols * 60px + 2* label padding */
-  height: calc(540px + 2 * 20px); /* 9 rows * 60px + 2* label padding */
-  padding: 3px; /* Visual padding around the grid itself */
+  position: relative;
+  width: calc(420px + 2 * 20px);
+  height: calc(540px + 2 * 20px);
+  padding: 3px;
   box-sizing: content-box;
 }
 
@@ -208,7 +173,7 @@ h1 {
   font-size: 0.75em;
   color: #555;
   font-weight: bold;
-  pointer-events: none; /* Don't block clicks on squares */
+  pointer-events: none;
   background-color: rgba(255, 255, 255, 0.4);
   border-radius: 3px;
 }
@@ -219,141 +184,84 @@ h1 {
 }
 
 .col-labels {
-  left: 20px; /* Match row label width */
-  right: 20px; /* Match row label width */
-  height: 20px;
+  left: 20px; right: 20px; height: 20px;
 }
 #col-labels-top { top: 0; }
 #col-labels-bottom { bottom: 0; }
 .col-labels span {
-   width: 60px; /* Match square width */
-   flex-grow: 0;
-   line-height: 20px;
+   width: 60px; flex-grow: 0; line-height: 20px;
 }
 
 .row-labels {
-  top: 20px; /* Match col label height */
-  bottom: 20px; /* Match col label height */
-  width: 20px;
+  top: 20px; bottom: 20px; width: 20px;
   flex-direction: column;
 }
 #row-labels-left { left: 0; }
 #row-labels-right { right: 0; }
 .row-labels span {
-   height: 60px; /* Match square height */
-   flex-grow: 0;
-   line-height: 60px;
-   text-orientation: mixed; /* Might need vendor prefixes */
+   height: 60px; flex-grow: 0; line-height: 60px; text-orientation: mixed;
 }
-
 
 #board {
   display: grid;
   grid-template-columns: repeat(7, 60px);
   grid-template-rows: repeat(9, 60px);
   border: 3px solid #555;
-  width: 420px; /* 7 * 60px */
-  height: 540px; /* 9 * 60px */
-  position: absolute;
-  top: 20px; /* Offset by row label height */
-  left: 20px; /* Offset by col label width */
+  width: 420px; height: 540px;
+  position: absolute; top: 20px; left: 20px;
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
   margin-bottom: 0;
 }
 
 /* --- Square Base and Terrain --- */
 .square {
-  width: 60px; height: 60px; /* Base size, must match TILE_SIZE_PX */
+  width: 60px; height: 60px;
   border: 1px solid #bbb;
   box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  position: relative; /* Important for absolute children like pieces, highlights, decorations */
-  overflow: hidden; /* Clip textures/overlays */
-
-  /* Background styles set by JS inline per terrain type */
+  display: flex; justify-content: center; align-items: center;
+  cursor: pointer; position: relative; overflow: hidden;
 }
-
-/* Base terrain backgrounds (can be colors or repeating textures) */
-.terrain-land {
-    /* background-image and background-position set by JS */
-    background-color: transparent; /* Ensure no fallback color shows through tileset */
-    z-index: 1; /* Base Layer */
-}
-
+.terrain-land { background-color: transparent; z-index: 1; }
 .terrain-water {
-  /* width: 60px; height: 60px; */
-  /* overflow: hidden; */
-  /* z-index: 4; */
-  position: absolute;
-  top: 50%; /* Center vertically */
-  left: 50%; /* Center horizontally */
-  transform: translate(-50%, -50%); /* Adjust for element's own size */
-  width: 60px; 
-  height: 60px; /* Adjust size as needed */
-  /* object-fit: contain; */
-  pointer-events: none; /* Decorations shouldn't block clicks */
-  z-index: 1; /* Layer 8, below pieces (10), above action overlay (7) */
-  /* opacity: 0.9; Slightly transparent */
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px; height: 60px;
+  pointer-events: none; z-index: 1;
 }
-.terrain-trap {
-    background-color: rgba(255, 182, 193, 0.85); /* Trap background color */
-    z-index: 1;
-}
+.terrain-trap { background-color: rgba(255, 182, 193, 0.85); z-index: 1; }
 .terrain-player0-den {
-    background-color: rgba(210, 180, 255, 0.85); /* Player 0 (Blue) Den background */
-    border: 2px dashed #0000FF !important;
-    z-index: 1;
+    background-color: rgba(210, 180, 255, 0.85);
+    border: 2px dashed #0000FF !important; z-index: 1;
 }
 .terrain-player1-den {
-    background-color: rgba(255, 218, 185, 0.85); /* Player 1 (Red) Den background */
-    border: 2px dashed #FF0000 !important;
-    z-index: 1;
+    background-color: rgba(255, 218, 185, 0.85);
+    border: 2px dashed #FF0000 !important; z-index: 1;
 }
 
-
 /* --- Texture Overlays (for traps and dens) --- */
-/* These are placed on top of the terrain background */
 .trap-texture-container, .den-texture-container {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; justify-content: center; align-items: center;
-  z-index: 2; /* Layer 2: Terrain Textures/Overlays */
-  pointer-events: none;
-  opacity: 0.7; /* Optional: make textures slightly transparent */
+  z-index: 2; pointer-events: none; opacity: 0.7;
 }
 .terrain-texture-img {
   width: 85%; height: 85%; object-fit: contain; display: block;
 }
 
-
 /* --- Highlight Overlays --- */
-/* Base styles for ALL overlays */
 .highlight-overlay, .action-highlight-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-color: transparent;
-  pointer-events: none;
+  background-color: transparent; pointer-events: none;
   transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out, border-radius 0.1s ease-in-out;
-  border: none; /* Base: no border */
-  border-radius: 0; /* Base: square */
-  box-sizing: border-box;
+  border: none; border-radius: 0; box-sizing: border-box;
 }
+.highlight-overlay { z-index: 5; }
+.highlight-overlay.last-move-start-p0 { background-color: rgba(0, 80, 200, 0.4) !important; }
+.highlight-overlay.last-move-start-p1 { background-color: rgba(200, 0, 0, 0.4) !important; }
+.highlight-overlay.last-move-end-p0 { background-color: rgba(60, 140, 255, 0.35) !important; }
+.highlight-overlay.last-move-end-p1 { background-color: rgba(255, 80, 80, 0.35) !important; }
 
-/* Overlay for LAST MOVES (lower layer) */
-.highlight-overlay {
-  z-index: 5; /* Z-index 5, below selected outline (6), action overlay (7) */
-}
-/* MODIFIED: Lighter background colors for last move */
-.highlight-overlay.last-move-start-p0 { background-color: rgba(0, 80, 200, 0.4) !important; } /* Was 0.6 */
-.highlight-overlay.last-move-start-p1 { background-color: rgba(200, 0, 0, 0.4) !important; }   /* Was 0.6 */
-.highlight-overlay.last-move-end-p0 { background-color: rgba(60, 140, 255, 0.35) !important; } /* Was 0.5 */
-.highlight-overlay.last-move-end-p1 { background-color: rgba(255, 80, 80, 0.35) !important; } /* Was 0.5 */
-
-/* Overlay for POSSIBLE/CAPTURE MOVES (higher layer) */
-.action-highlight-overlay {
-  z-index: 7; /* Z-index 7, below decorations (8), above selected outline (6) */
-}
+.action-highlight-overlay { z-index: 7; }
 .action-highlight-overlay.possible-move {
     background-color: rgba(255, 255, 0, 0.30) !important;
     border: 2px solid rgba(255, 255, 0, 0.6) !important;
@@ -365,58 +273,38 @@ h1 {
     border-radius: 0 !important;
 }
 
-
-/* --- Decoration Styling (for random grass decorations) --- */
+/* --- Decoration Styling --- */
 .decoration {
-  position: absolute;
-  top: 50%; /* Center vertically */
-  left: 50%; /* Center horizontally */
-  transform: translate(-50%, -50%); /* Adjust for element's own size */
-  width: 20px; /* Adjust size as needed, should fit within 60px square */
-  height: 20px; /* Adjust size as needed */
-  object-fit: contain;
-  pointer-events: none; /* Decorations shouldn't block clicks */
-  z-index: 1; /* Layer 8, below pieces (10), above action overlay (7) */
-  opacity: 0.9; /* Slightly transparent */
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 20px; height: 20px; object-fit: contain;
+  pointer-events: none; z-index: 1; opacity: 0.9;
 }
-
 
 /* --- Piece Styling --- */
 .piece {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: 50px; height: 50px; border-radius: 50%;
-  z-index: 10; /* Layer 10, highest for interaction */
-  cursor: pointer; user-select: none;
+  z-index: 10; cursor: pointer; user-select: none;
   box-sizing: border-box; display: flex; justify-content: center; align-items: center;
-  padding: 2px;
-  border: 2px solid transparent; /* Base border style */
+  padding: 2px; border: 2px solid transparent;
 }
-.player0 { border-color: blue !important; } /* Specific player colors */
+.player0 { border-color: blue !important; }
 .player1 { border-color: red !important; }
 .piece img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .piece-global-animating { position: absolute !important; z-index: 100 !important; transform: none !important; }
 
-
 /* --- Outline Highlights --- */
-.square.selected { outline: 3px solid gold !important; outline-offset: -3px; z-index: 6; } /* Layer 6, below action overlay (7), above last move overlay (5) */
+.square.selected { outline: 3px solid gold !important; outline-offset: -3px; z-index: 6; }
 
-
-/* --- Side Panels --- */
-/* ****** MODIFIED: Grouping #left-panel-actions with other panel items ****** */
-.captured-panel, #move-history, #left-panel-actions {
+/* --- Side Panels General --- */
+.captured-panel, #move-history { /* #left-panel-actions is styled separately */
   background-color: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; border-radius: 5px;
   padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;
 }
-/* Remove background/border if #left-panel-actions shouldn't have it */
-#left-panel-actions {
-    background-color: transparent; /* No distinct background for the action div itself */
-    border: none;
-    box-shadow: none;
-    padding: 0; /* Adjust padding if button should align closer or if div had own bg */
-}
-/* ****** END MODIFIED ****** */
 
-.captured-panel h2, #move-history h2 { font-size: 1em; margin-top: 0; margin-bottom: 8px; text-align: center; color: #444; }
+.captured-panel h2, #move-history h2 {
+  font-size: 1em; margin-top: 0; margin-bottom: 8px; text-align: center; color: #444;
+}
 .pieces-container {
   display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start;
   max-width: 160px; min-height: 92px; margin-left: auto; margin-right: auto; box-sizing: border-box;
@@ -426,36 +314,65 @@ h1 {
   background-color: rgba(255, 255, 255, 0.7); border: 1px solid #bbb;
   display: flex; justify-content: center; align-items: center; padding: 1px;
 }
-.captured-piece.player0 { border-color: red !important;} /* Border indicates who captured it */
-.captured-piece.player1 { border-color: blue !important;} /* Border indicates who captured it */
+.captured-piece.player0 { border-color: red !important;}
+.captured-piece.player1 { border-color: blue !important;}
 .captured-piece img { display: block; width: 100%; height: 100%; object-fit: contain; }
 
-#move-history { min-height: 150px; max-height: 350px; display: flex; flex-direction: column; overflow: hidden; }
+#move-history {
+  min-height: 150px; max-height: 350px; display: flex; flex-direction: column; overflow: hidden;
+}
 #move-list {
-  list-style: decimal; margin: 0; padding: 0 0 0 0px; font-size: 1.1em;
+  list-style: decimal; margin: 0; padding: 0 0 0 0px; font-size: 1.1em; /* Changed padding */
   flex-grow: 1; overflow-y: auto; background-color: rgba(253, 253, 253, 0.9);
   border: 1px solid #eee; border-radius: 3px;
 }
-#move-list li { padding: 3px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.4; color: #333; display: flex; align-items: center; }
+#move-list li {
+  padding: 3px 5px; /* Added horizontal padding */
+  border-bottom: 1px solid #f0f0f0; line-height: 1.4; color: #333;
+  display: flex; align-items: center;
+}
 #move-list li:last-child { border-bottom: none; }
 
-/* MODIFIED: Piece History Styling */
 .piece-hist {
   display: inline-flex; justify-content: center; align-items: center; vertical-align: middle;
   width: 1.3em; height: 1.3em; margin-right: 4px; position: relative; top: -1px;
-  border: 1px solid transparent; /* Base border for move history pieces */
-  box-sizing: border-box; /* Include border in size */
-  border-radius: 2px; /* Optional: Slightly rounded corners */
-  background-color: rgba(255, 255, 255, 0.5); /* Optional: faint background */
-  padding: 1px; /* Small padding inside border */
+  border: 1px solid transparent; box-sizing: border-box; border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.5); padding: 1px;
 }
-.piece-hist.player0 { border-color: blue !important; } /* Blue border for P0 */
-.piece-hist.player1 { border-color: red !important; }  /* Red border for P1 */
+.piece-hist.player0 { border-color: blue !important; }
+.piece-hist.player1 { border-color: red !important; }
 .piece-hist img { display: block; width: 100%; height: 100%; object-fit: contain; }
-/* END MODIFIED */
 
-/* Randomize Board Button Styling */
-#randomize-board-button {
+
+/* --- Buttons in Left Panel --- */
+#left-panel-actions {
+    background-color: transparent; /* No distinct background for this specific container */
+    border: none;
+    box-shadow: none;
+    padding: 0; /* Or a small padding if needed for visual separation */
+    display: flex;
+    flex-direction: column; /* Stack children (button group and randomize button) vertically */
+    align-items: center; /* Center them horizontally within #left-panel-actions */
+    gap: 8px; /* Space between the #action-buttons-group and #randomize-board-button */
+    width: 100%; /* Make the container take full width of parent panel item */
+}
+
+/* Container for Reset and Undo buttons, now in the left panel */
+#action-buttons-group.panel-button-group {
+    display: flex;
+    flex-direction: column; /* Stack Reset and Undo buttons vertically */
+    align-items: center; /* Center these buttons within their group */
+    gap: 8px; /* Space between Reset and Undo */
+    width: 100%; /* Take full width to allow content centering */
+}
+
+/* Shared style for ALL buttons inside #left-panel-actions */
+/* This targets:
+   - #randomize-board-button (direct child of #left-panel-actions)
+   - #reset-button and #undo-button (children of .panel-button-group which is child of #left-panel-actions)
+*/
+#left-panel-actions > button,
+#left-panel-actions .panel-button-group > button {
   font-size: 14px;
   padding: 7px 15px;
   border-radius: 4px;
@@ -466,21 +383,29 @@ h1 {
   color: #333;
   border: 1px solid #ccc;
   box-shadow: 0 1px 1px rgba(0,0,0,0.05);
-  margin: 0 auto 5px auto; /* Centered within its container */
-  display: block;
-  width: fit-content;
+  width: 90%; /* Make buttons take up most of the width of their container */
+  max-width: 160px; /* But not too wide */
+  min-width: 120px;
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  text-align: center;
 }
-#randomize-board-button:hover {
+
+#left-panel-actions > button:hover,
+#left-panel-actions .panel-button-group > button:hover {
   background-color: #e0e0e0;
   border-color: #bbb;
 }
-#randomize-board-button:active {
+
+#left-panel-actions > button:active,
+#left-panel-actions .panel-button-group > button:active {
   background-color: #d5d5d5;
   border-color: #aaa;
   transform: translateY(1px);
   box-shadow: none;
 }
-#randomize-board-button:disabled {
+
+#left-panel-actions > button:disabled,
+#left-panel-actions .panel-button-group > button:disabled {
   background-color: #e9ecef;
   color: #6c757d;
   border-color: #ced4da;
@@ -503,19 +428,12 @@ h1 {
 #game-rules ul ul { padding-left: 15px; margin-top: 4px; margin-bottom: 8px; }
 #game-rules li { margin-bottom: 8px; color: #444; }
 #game-rules strong { color: #111; }
-/* Styles for Rank Hierarchy & Inline Rule Icons */
-.rank-piece, .rule-piece { /* Combine styles */
-    display: inline-block;
-    vertical-align: middle;
-    margin: 0 2px; /* Adjust spacing */
-    height: 1.2em; /* Control height */
-    line-height: 1.2em; /* Match height */
+.rank-piece, .rule-piece {
+    display: inline-block; vertical-align: middle;
+    margin: 0 2px; height: 1.2em; line-height: 1.2em;
 }
-.rank-piece-icon, .rule-piece-icon { /* Combine styles */
-    width: auto; /* Let height control */
-    height: 100%; /* Fill container height */
-    object-fit: contain;
-    vertical-align: middle; /* Fine-tune alignment */
+.rank-piece-icon, .rule-piece-icon {
+    width: auto; height: 100%; object-fit: contain; vertical-align: middle;
 }
 .rank-separator { display: inline-block; vertical-align: middle; margin: 0 3px; font-weight: bold; color: #555; line-height: 1; }
 
@@ -536,10 +454,8 @@ h1 {
     max-width: calc(420px + 2 * 20px); box-sizing: border-box;
     padding: 4px 8px; background-color: rgba(230, 230, 230, 0.7); border-radius: 4px; min-height: 1.1em;
 }
-/* REMOVED .win-chance-label */
 #win-chance-bar {
-    width: 100%; /* Take full width of container */
-    height: 18px; border: 1px solid #999; border-radius: 9px;
+    width: 100%; height: 18px; border: 1px solid #999; border-radius: 9px;
     background-color: #d0d0d0; display: flex; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
 }
 #win-chance-bar-blue, #win-chance-bar-red { height: 100%; transition: width 0.4s ease-out; }
@@ -552,35 +468,34 @@ h1 {
 @media (max-width: 880px) {
   #game-layout { flex-direction: column; align-items: center; max-width: 100%; gap: 10px; }
   #left-panel, #right-panel { 
-    flex-direction: row; 
-    flex-wrap: wrap; 
-    justify-content: center; 
-    min-width: 95%; 
-    width: 95%; 
-    max-width: calc(420px + 2 * 20px); 
-    gap: 10px; 
-    align-items: center; 
+    flex-direction: row; flex-wrap: wrap; justify-content: center; 
+    min-width: 95%; width: 95%; max-width: calc(420px + 2 * 20px); 
+    gap: 10px; align-items: flex-start; 
   }
-  /* ****** MODIFIED: Applying consistent flex properties to panel items including the new action div ****** */
+  /* #left-panel children: .captured-panel and #left-panel-actions */
+  /* #right-panel children: .captured-panel and #move-history */
   .captured-panel, #move-history, #left-panel-actions { 
-    flex-basis: calc(50% - 10px); /* Each takes up roughly half the panel width if two items fit */
-    flex-grow: 1; 
-    min-width: 150px; /* Ensure they don't get too small */
+    flex-basis: calc(50% - 10px); flex-grow: 1; 
+    min-width: 150px; 
   }
-  .captured-panel, #move-history { min-height: 120px; } /* Original min-heights for these */
+  .captured-panel, #move-history { min-height: 120px; } 
   #left-panel-actions { 
-      min-height: auto; /* Button container doesn't need a large min-height */
-      /* It will naturally take space based on button size and padding */
+      min-height: auto; 
+      /* Allow it to stack next to captured pieces panel if there's space.
+         If not enough horizontal space for two 150px items + gap, it will wrap. */
   }
-  /* ****** END MODIFIED ****** */
+   #left-panel-actions > button,
+   #left-panel-actions .panel-button-group > button {
+      width: 100%; /* Buttons take full width of their flex item container in this layout */
+   }
 
    #move-history { max-height: 200px; }
-   .pieces-container { max-width: 160px; min-height: 92px; margin-left: 0; margin-right: 0; }
+   .pieces-container { max-width: 100%; min-height: 92px; margin-left: 0; margin-right: 0; } /* Adjusted max-width */
    #move-list { font-size: 0.8em; }
    .piece-hist { width: 1.2em; height: 1.2em; }
    h1 { font-size: 1.5em; }
    #status, #win-chance-bar-container { max-width: calc(420px + 2 * 20px); width: 95%; }
-   .rank-piece-icon, .rule-piece-icon { height: 1.1em; } /* Adjust rule icon size */
+   .rank-piece-icon, .rule-piece-icon { height: 1.1em; }
 }
 @media (max-width: 520px) {
    #board-container { width: calc(350px + 2 * 15px); height: calc(450px + 2 * 15px); padding: 3px; margin-bottom: 8px; }
@@ -593,30 +508,27 @@ h1 {
    #row-labels-left { left: 0; } #row-labels-right { right: 0; }
    .row-labels span { height: 50px; line-height: 50px; }
    .square { width: 50px; height: 50px; }
-   .piece { width: 40px; height: 40px; border-width: 1px; } /* Reduced border width */
-   /* Adjusted highlight borders for smaller screens */
+   .piece { width: 40px; height: 40px; border-width: 1px; }
    .action-highlight-overlay.possible-move { border-width: 1px !important; }
    .action-highlight-overlay.capture-move { border-width: 1px !important; }
-    /* Adjusted piece history border */
    .piece-hist { border-width: 1px; padding: 0px; }
 
    #game-controls { gap: 8px; padding: 8px; } #ai-controls { gap: 5px 10px; }
    #game-layout { padding: 10px; width: 100%; }
+   /* On smallest screens, stack panel items vertically */
    #left-panel, #right-panel { 
-     flex-direction: column; /* Stack items vertically on very small screens */
-     gap: 8px; /* Adjust gap for column layout */
-     max-width: calc(350px + 2 * 15px); 
-     width: 100%; 
-     align-items: center; 
+     flex-direction: column; gap: 8px; 
+     max-width: calc(350px + 2 * 15px); width: 100%; align-items: center; 
    }
-   /* ****** MODIFIED: Applying consistent width and auto basis for stacked items ****** */
    .captured-panel, #move-history, #left-panel-actions { 
-     flex-basis: auto; 
-     width: 90%; 
-     min-width: unset; 
-     min-height: unset; 
+     flex-basis: auto; width: 90%; 
+     min-width: unset; min-height: unset; 
    }
-   /* ****** END MODIFIED ****** */
+    #left-panel-actions .panel-button-group { gap: 5px; }
+    #left-panel-actions > button,
+    #left-panel-actions .panel-button-group > button {
+        padding: 6px 10px; font-size: 13px;
+    }
    .captured-piece { width: 24px; height: 24px; }
    .pieces-container { max-width: calc(5 * 24px + 4 * 4px + 4px); min-height: calc(3 * 24px + 2 * 4px); margin-left: auto; margin-right: auto; justify-content: center; }
    #move-history { max-height: 150px; min-height: 100px; width: 90%; }
@@ -627,5 +539,5 @@ h1 {
    #status, #win-chance-bar-container { width: 90%; font-size: 0.9em; max-width: calc(350px + 2 * 15px); }
    #win-chance-bar-container { padding: 3px 6px; gap: 0;}
    #win-chance-bar { height: 16px; }
-   .rank-piece-icon, .rule-piece-icon { height: 1em; } /* Adjust rule icon size */
+   .rank-piece-icon, .rule-piece-icon { height: 1em; }
 }
