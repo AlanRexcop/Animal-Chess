@@ -402,10 +402,20 @@ h1 {
 
 
 /* --- Side Panels --- */
-.captured-panel, #move-history {
+/* ****** MODIFIED: Grouping #left-panel-actions with other panel items ****** */
+.captured-panel, #move-history, #left-panel-actions {
   background-color: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; border-radius: 5px;
   padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;
 }
+/* Remove background/border if #left-panel-actions shouldn't have it */
+#left-panel-actions {
+    background-color: transparent; /* No distinct background for the action div itself */
+    border: none;
+    box-shadow: none;
+    padding: 0; /* Adjust padding if button should align closer or if div had own bg */
+}
+/* ****** END MODIFIED ****** */
+
 .captured-panel h2, #move-history h2 { font-size: 1em; margin-top: 0; margin-bottom: 8px; text-align: center; color: #444; }
 .pieces-container {
   display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start;
@@ -419,6 +429,7 @@ h1 {
 .captured-piece.player0 { border-color: red !important;} /* Border indicates who captured it */
 .captured-piece.player1 { border-color: blue !important;} /* Border indicates who captured it */
 .captured-piece img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
 #move-history { min-height: 150px; max-height: 350px; display: flex; flex-direction: column; overflow: hidden; }
 #move-list {
   list-style: decimal; margin: 0; padding: 0 0 0 0px; font-size: 1.1em;
@@ -442,6 +453,42 @@ h1 {
 .piece-hist.player1 { border-color: red !important; }  /* Red border for P1 */
 .piece-hist img { display: block; width: 100%; height: 100%; object-fit: contain; }
 /* END MODIFIED */
+
+/* Randomize Board Button Styling */
+#randomize-board-button {
+  font-size: 14px;
+  padding: 7px 15px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out, transform 0.1s ease, box-shadow 0.15s ease;
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+  margin: 0 auto 5px auto; /* Centered within its container */
+  display: block;
+  width: fit-content;
+}
+#randomize-board-button:hover {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+}
+#randomize-board-button:active {
+  background-color: #d5d5d5;
+  border-color: #aaa;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+#randomize-board-button:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  border-color: #ced4da;
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
 
 
 /* --- Game Rules Panel --- */
@@ -504,8 +551,29 @@ h1 {
 /* --- Responsive adjustments --- */
 @media (max-width: 880px) {
   #game-layout { flex-direction: column; align-items: center; max-width: 100%; gap: 10px; }
-  #left-panel, #right-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; min-width: 95%; width: 95%; max-width: calc(420px + 2 * 20px); gap: 8px; }
-  .captured-panel, #move-history { flex-basis: calc(50% - 10px); flex-grow: 1; min-width: 150px; min-height: 120px; }
+  #left-panel, #right-panel { 
+    flex-direction: row; 
+    flex-wrap: wrap; 
+    justify-content: center; 
+    min-width: 95%; 
+    width: 95%; 
+    max-width: calc(420px + 2 * 20px); 
+    gap: 10px; 
+    align-items: center; 
+  }
+  /* ****** MODIFIED: Applying consistent flex properties to panel items including the new action div ****** */
+  .captured-panel, #move-history, #left-panel-actions { 
+    flex-basis: calc(50% - 10px); /* Each takes up roughly half the panel width if two items fit */
+    flex-grow: 1; 
+    min-width: 150px; /* Ensure they don't get too small */
+  }
+  .captured-panel, #move-history { min-height: 120px; } /* Original min-heights for these */
+  #left-panel-actions { 
+      min-height: auto; /* Button container doesn't need a large min-height */
+      /* It will naturally take space based on button size and padding */
+  }
+  /* ****** END MODIFIED ****** */
+
    #move-history { max-height: 200px; }
    .pieces-container { max-width: 160px; min-height: 92px; margin-left: 0; margin-right: 0; }
    #move-list { font-size: 0.8em; }
@@ -534,8 +602,21 @@ h1 {
 
    #game-controls { gap: 8px; padding: 8px; } #ai-controls { gap: 5px 10px; }
    #game-layout { padding: 10px; width: 100%; }
-   #left-panel, #right-panel { flex-direction: column; gap: 5px; max-width: calc(350px + 2 * 15px); width: 100%; align-items: center; }
-   .captured-panel, #move-history { flex-basis: auto; width: 90%; min-width: unset; min-height: unset; }
+   #left-panel, #right-panel { 
+     flex-direction: column; /* Stack items vertically on very small screens */
+     gap: 8px; /* Adjust gap for column layout */
+     max-width: calc(350px + 2 * 15px); 
+     width: 100%; 
+     align-items: center; 
+   }
+   /* ****** MODIFIED: Applying consistent width and auto basis for stacked items ****** */
+   .captured-panel, #move-history, #left-panel-actions { 
+     flex-basis: auto; 
+     width: 90%; 
+     min-width: unset; 
+     min-height: unset; 
+   }
+   /* ****** END MODIFIED ****** */
    .captured-piece { width: 24px; height: 24px; }
    .pieces-container { max-width: calc(5 * 24px + 4 * 4px + 4px); min-height: calc(3 * 24px + 2 * 4px); margin-left: auto; margin-right: auto; justify-content: center; }
    #move-history { max-height: 150px; min-height: 100px; width: 90%; }

@@ -69,10 +69,15 @@
     <div id="game-layout">
         <!-- Left Panel -->
         <div id="left-panel">
-            <div id="captured-by-player1" class="captured-panel">
+            <div id="captured-by-player1" class="captured-panel"> <!-- Player1 is Red -->
                 <h2 data-translate="capturedByRedLabel">Captured by Red:</h2>
                 <div class="pieces-container"></div>
             </div>
+            <!-- ****** MOVED: Action buttons for the left panel ****** -->
+            <div id="left-panel-actions" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%;">
+                <button id="randomize-board-button" data-translate="randomizeBoardButton">Randomize Board</button>
+            </div>
+            <!-- ****** END MOVED ****** -->
         </div>
         <!-- Main Game Area -->
         <div id="main-game-area">
@@ -95,7 +100,7 @@
         </div>
         <!-- Right Panel -->
         <div id="right-panel">
-             <div id="captured-by-player0" class="captured-panel">
+             <div id="captured-by-player0" class="captured-panel"> <!-- Player0 is Blue -->
                 <h2 data-translate="capturedByBlueLabel">Captured by Blue:</h2>
                 <div class="pieces-container"></div>
             </div>

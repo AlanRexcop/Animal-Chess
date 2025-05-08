@@ -1,4 +1,3 @@
-// js/board.js
 import {
     BOARD_ROWS, BOARD_COLS,
     TERRAIN_LAND, TERRAIN_WATER, TERRAIN_TRAP, TERRAIN_PLAYER0_DEN, TERRAIN_PLAYER1_DEN,
@@ -10,18 +9,19 @@ import { Piece } from './piece.js';
 export class Board {
     constructor() {
         this.state = []; // 2D array: state[row][col] = { piece: Piece | null, terrain: number }
-        // Don't call initBoard here, let game.js decide when
     }
 
     // --- Initialization ---
 
     initBoard() {
+        // This function now primarily sets up terrain and ensures the board is clear of pieces.
+        // Actual piece placement is handled by setupStandardInitialPieces or setupPiecesFromLayout.
         this.state = [];
         for (let r = 0; r < BOARD_ROWS; r++) {
             this.state.push(Array(BOARD_COLS).fill(null));
         }
         this._setupTerrain();
-        this._setupInitialPieces();
+        this.clearAllPieces(); // Ensure pieces are cleared after terrain setup
     }
 
     _setupTerrain() {
@@ -33,24 +33,16 @@ export class Board {
     }
 
     _getTerrainType(r, c) {
-        // Dens
-        if (r === PLAYER1_DEN_ROW && c === PLAYER1_DEN_COL) return TERRAIN_PLAYER1_DEN; // Red Den
-        if (r === PLAYER0_DEN_ROW && c === PLAYER0_DEN_COL) return TERRAIN_PLAYER0_DEN; // Blue Den
-
-        // Traps (Using original numeric constants for consistency with worker if needed)
-        // Player 1 (Red) Traps are near row 0
+        if (r === PLAYER1_DEN_ROW && c === PLAYER1_DEN_COL) return TERRAIN_PLAYER1_DEN;
+        if (r === PLAYER0_DEN_ROW && c === PLAYER0_DEN_COL) return TERRAIN_PLAYER0_DEN;
         if ((r === 0 && (c === 2 || c === 4)) || (r === 1 && c === 3)) return TERRAIN_TRAP;
-        // Player 0 (Blue) Traps are near row 8
         if ((r === 8 && (c === 2 || c === 4)) || (r === 7 && c === 3)) return TERRAIN_TRAP;
-
-        // Water - These are the standard river squares
         if (r >= 3 && r <= 5 && (c === 1 || c === 2 || c === 4 || c === 5)) return TERRAIN_WATER;
-
-        // Land - Anything not a Den, Trap, or Water
         return TERRAIN_LAND;
     }
 
-     _setupInitialPieces() {
+    // ****** MOVED & RENAMED: Logic for standard piece setup ******
+    setupStandardInitialPieces() {
         const initialPositions = [
             // Player 1 (Red)
             { type: 'lion',    row: 0, col: 0, pl: Player.PLAYER1 },
@@ -76,72 +68,103 @@ export class Board {
             if (this.isValidCoordinate(pos.row, pos.col)) {
                 try {
                     const piece = new Piece(pos.type, pos.pl, pos.row, pos.col);
-                    this.state[pos.row][pos.col].piece = piece;
+                    // Ensure the cell exists before setting piece
+                    if (this.state[pos.row] && this.state[pos.row][pos.col]) {
+                        this.state[pos.row][pos.col].piece = piece;
+                    } else {
+                         console.error(`Board.js: Cell [${pos.row},${pos.col}] does not exist for standard setup.`);
+                    }
                 } catch (e) {
-                    console.error(`Failed to create piece: ${pos.type}`, e);
+                    console.error(`Board.js: Failed to create piece for standard setup: ${pos.type}`, e);
                 }
             } else {
-                console.error("Invalid initial position:", pos);
+                console.error("Board.js: Invalid initial position in standard setup:", pos);
             }
         });
     }
+    // ****** END MOVED & RENAMED ******
 
-    // --- State Access (unchanged) ---
+    // ****** ADDED: Method to set up pieces from a layout array ******
+    setupPiecesFromLayout(layoutArray) {
+        if (!Array.isArray(layoutArray)) {
+            console.error("Board.js: Invalid layoutArray provided. Must be an array. Falling back to standard.");
+            this.setupStandardInitialPieces(); // Fallback
+            return;
+        }
+        this.clearAllPieces(); // Ensure board is clear before applying new layout
 
+        layoutArray.forEach(pieceDetail => {
+            const { type, player, r, c } = pieceDetail;
+            if (this.isValidCoordinate(r, c)) {
+                try {
+                    const piece = new Piece(type, player, r, c);
+                     // Ensure the cell exists before setting piece
+                    if (this.state[r] && this.state[r][c]) {
+                        this.state[r][c].piece = piece;
+                    } else {
+                        console.error(`Board.js: Cell [${r},${c}] does not exist for layout setup.`);
+                    }
+                } catch (e) {
+                    console.error(`Board.js: Failed to create piece from layout: ${type} for player ${player} at ${r},${c}`, e);
+                }
+            } else {
+                console.error("Board.js: Invalid coordinate in layout array:", pieceDetail);
+            }
+        });
+    }
+    // ****** END ADDED ******
+
+    clearAllPieces() {
+        if (!this.state || this.state.length === 0) {
+            console.warn("Board.js: Board state not initialized, cannot clear pieces.");
+            return;
+        }
+        for (let r = 0; r < BOARD_ROWS; r++) {
+            for (let c = 0; c < BOARD_COLS; c++) {
+                if (this.state[r] && this.state[r][c]) { // Check if row and cell exist
+                    this.state[r][c].piece = null;
+                }
+            }
+        }
+    }
+
+    // --- State Access ---
     isValidCoordinate(row, col) {
         return row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS;
     }
 
     getSquareData(row, col) {
-        if (!this.isValidCoordinate(row, col)) {
-            return null; // Or throw error
-        }
-        // Return a copy to prevent accidental modification? For now, return direct ref.
+        if (!this.isValidCoordinate(row, col)) return null;
         return this.state[row][col];
     }
 
     getPiece(row, col) {
-        if (!this.isValidCoordinate(row, col)) {
-            return null;
-        }
-        return this.state[row][col]?.piece ?? null;
+        if (!this.isValidCoordinate(row, col)) return null;
+        return this.state[row]?.[col]?.piece ?? null;
     }
 
     getTerrain(row, col) {
-         if (!this.isValidCoordinate(row, col)) {
-            // Return a default or handle error
-            return TERRAIN_LAND; // Or null/undefined
-        }
-        return this.state[row][col]?.terrain ?? TERRAIN_LAND;
+         if (!this.isValidCoordinate(row, col)) return TERRAIN_LAND; // Default for out of bounds
+        return this.state[row]?.[col]?.terrain ?? TERRAIN_LAND; // Default if somehow undefined
     }
 
     isEmpty(row, col) {
-        if (!this.isValidCoordinate(row, col)) {
-            return true; // Treat off-board as empty for movement checks?
-        }
-        return this.state[row][col]?.piece === null;
+        if (!this.isValidCoordinate(row, col)) return true;
+        return this.state[row]?.[col]?.piece === null;
     }
 
-    // --- State Modification (unchanged) ---
-
-    setPiece(row, col, piece) { // piece can be a Piece object or null
-        if (!this.isValidCoordinate(row, col)) {
-            console.error(`SetPiece: Invalid coordinates (${row}, ${col})`);
-            return;
-        }
-        // Update the board state
-        this.state[row][col].piece = piece;
-
-        // If adding a piece (not null), update its internal position
-        if (piece instanceof Piece) {
-            piece.setPosition(row, col);
+    // --- State Modification ---
+    setPiece(row, col, piece) {
+        if (!this.isValidCoordinate(row, col)) { console.error(`Board.js: SetPiece: Invalid coordinates (${row}, ${col})`); return; }
+        if (this.state[row] && this.state[row][col]) { // Ensure cell exists
+            this.state[row][col].piece = piece;
+            if (piece instanceof Piece) { piece.setPosition(row, col); }
+        } else {
+            console.error(`Board.js: Cell [${row},${c}] does not exist for setPiece.`);
         }
     }
 
-    // --- Getters (unchanged) ---
-
-    // Returns a deep copy suitable for the AI worker or history
-    // Note: The original worker expected a specific format. Let's mimic the original cloneBoard.
+    // --- Getters ---
     getClonedStateForWorker() {
         return this.state.map(row =>
             row.map(cell => ({
@@ -151,7 +174,6 @@ export class Board {
         );
     }
 
-     // Get simple 2D array of piece/terrain for rendering if needed
      getState() {
         return this.state;
      }
